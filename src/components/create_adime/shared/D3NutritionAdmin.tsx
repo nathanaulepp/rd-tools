@@ -147,29 +147,25 @@ function calcENNutrients(feed: ENFeed) {
   const protGPerL = num(feed.protGPerL);
   const fwPct = num(feed.fwPct);
 
-  let totalMl = 0;
+  let formulaMl = 0;
   if (feed.type === "bolus") {
-    const eachMl = num(feed.bolusMl);
-    const timesPerDay = num(feed.bolusTimesPerDay);
-    totalMl = eachMl * timesPerDay;
+    formulaMl = num(feed.bolusMl) * num(feed.bolusTimesPerDay);
   } else {
-    const rate = num(feed.continuousRate);
-    const hrs = num(feed.continuousHrs);
-    totalMl = rate * hrs;
+    formulaMl = num(feed.continuousRate) * num(feed.continuousHrs);
   }
 
   const flushMl = num(feed.flushMl) * num(feed.flushTimesPerDay);
-  const totalMlWithFlush = totalMl + flushMl;
 
-  const totalCal = totalMlWithFlush * calPerMl;
-  const totalProt = (totalMlWithFlush / 1000) * protGPerL;
-  const totalFw = totalMlWithFlush * (fwPct / 100);
+  const totalCal = formulaMl * calPerMl;
+  const totalProt = (formulaMl / 1000) * protGPerL;
+  const formulaFw = formulaMl * (fwPct / 100);
 
   return {
-    totalMl: totalMlWithFlush,
-    totalCal: Math.round(totalCal),
-    totalProt: Math.round(totalProt * 10) / 10,
-    totalFw: Math.round(totalFw),
+    totalMl: formulaMl + flushMl,       // total volume = formula + flushes
+    totalCal: Math.round(totalCal),      // cal from formula only
+    totalProt: Math.round(totalProt * 10) / 10,  // protein from formula only
+    totalFw: Math.round(formulaFw),      // free water from formula only
+    flushMl: Math.round(flushMl),        // flush water, pure H₂O
   };
 }
 
@@ -603,6 +599,7 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
             <NutrientChip label="Calories" value={nutrients.totalCal} unit="kcal/day" color="#e67e22" />
             <NutrientChip label="Protein" value={nutrients.totalProt} unit="g/day" color="#8e44ad" />
             <NutrientChip label="Free Water" value={nutrients.totalFw} unit="mL/day" color="#27ae60" />
+            <NutrientChip label="Flush Water" value={nutrients.flushMl} unit="mL/day" color="#0891b2" />
           </div>
 
           <button
@@ -640,8 +637,9 @@ function D32Enteral() {
       cal: acc.cal + n.totalCal,
       prot: acc.prot + n.totalProt,
       fw: acc.fw + n.totalFw,
+      flush: acc.flush + n.flushMl,
     };
-  }, { vol: 0, cal: 0, prot: 0, fw: 0 });
+  }, { vol: 0, cal: 0, prot: 0, fw: 0, flush: 0 });
 
   return (
     <div className="card" style={{ marginBottom: "1.5rem" }}>
@@ -931,6 +929,7 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
             <NutrientChip label="Est. Total Water" value={totalWater > 0 ? Math.round(totalWater) : "—"} unit="mL/day" color="#3498db" />
             <NutrientChip label="Est. Calories" value={totalCal > 0 ? totalCal : "—"} unit="kcal/day" color="#e67e22" />
             <NutrientChip label="Est. Protein" value={totalProt} unit="g/day" color="#8e44ad" />
+            <NutrientChip label="Total Flush Water" value={Math.round(totals.flush)} unit="mL/day" color="#0891b2" />
           </div>
 
           {/* Electrolytes collapsible */}
