@@ -28,7 +28,15 @@ export default function App() {
   const [activeSubDomain, setActiveSubDomain] = useState<string>("D1");
   const [searchQuery, setSearchQuery] = useState("");
   const [toastMsg, setToastMsg] = useState("");
-
+  const [patientData, setPatientData] = useState({
+    name: '',
+    dob: '',
+    sex: '',
+    mrn: '',
+    admissionDate: new Date().toISOString().split('T')[0],
+    noteDate: new Date().toISOString().split('T')[0],
+    languages: ''
+  });
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(""), 3000);
@@ -233,10 +241,19 @@ export default function App() {
           <button className="exit-workspace-btn" onClick={handleExitToStart}>Exit Note</button>
         </header>
 
-        <PatientHeader />
+        <PatientHeader patientData={patientData} setPatientData={setPatientData} />
 
         <div className="content-area">
-          {activeDomain === "A" && <AnthroDomain anthro={anthro} setAnthro={setAnthro} dexaScans={dexaScans} setDexaScans={setDexaScans} calculatedMetrics={calculatedMetrics} />}
+          {activeDomain === "A" && (
+            <AnthroDomain 
+              anthro={anthro} 
+              setAnthro={setAnthro} 
+              dexaScans={dexaScans} 
+              setDexaScans={setDexaScans} 
+              calculatedMetrics={calculatedMetrics} 
+              patientData={patientData} /* <-- Pass patientData here too! */
+            />
+          )}
           {activeDomain === "B" && <BiochemicalDomain labs={labs} setLabs={setLabs} />}
           {activeDomain === "C" && <ClinicalDomain clinical={clinical} setClinical={setClinical} />}
           {activeDomain === "D" && <DietaryDomain dietary={dietary} setDietary={setDietary} activeSubDomain={activeSubDomain} />}

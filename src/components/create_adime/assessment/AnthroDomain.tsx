@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { AlertBanner } from '../shared/AlertBanner';
+import GrowthStandardsTable from './GrowthStandardsTable';
 
-export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScans, calculatedMetrics }: any) {
+export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScans, calculatedMetrics, patientData }: any) {
   const handleUpdate = (field: string, val: string) => setAnthro({ ...anthro, [field]: val });
 
   const addDexaScan = () => setDexaScans([...dexaScans, { id: Date.now(), date: "", bmd: "", fatMass: "", leanMass: "", bodyFatPct: "" }]);
@@ -192,6 +193,9 @@ export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScan
           </div>
         </div>
       </div>
+
+      {/* --- Pass patientData into the table --- */}
+      <GrowthStandardsTable anthro={anthro} patientData={patientData} />
 
       <details className="card" style={{ background: "#f8fafc" }}>
         <summary style={{ cursor: "pointer", fontWeight: "bold" }}>A7: Body Composition (DEXA) - Click to expand</summary>

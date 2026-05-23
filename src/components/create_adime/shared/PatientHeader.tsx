@@ -1,3 +1,4 @@
+// src/components/create_adime/shared/PatientHeader.tsx
 import React, { useState } from 'react';
 
 interface Patient {
@@ -5,31 +6,38 @@ interface Patient {
   name: string;
   dob: string;
   mrn: string;
+  sex?: string; 
 }
 
-export default function PatientHeader() {
-  const [selectedPatientId, setSelectedPatientId] = useState<string>('');
-  
-  const [newPatientData, setNewPatientData] = useState({
-    name: '',
-    dob: '',
-    sex: '',
-    admissionDate: new Date().toISOString().split('T')[0],
-    languages: ''
-  });
+export default function PatientHeader({ patientData, setPatientData }: any) {
+  const [selectedPatientId, setSelectedPatientId] = useState<string>('NEW');
   
   const previousPatients: Patient[] = [
-    { id: '1', name: 'Doe, John', dob: '05/14/1980 (45y)', mrn: '9823471' },
-    { id: '2', name: 'Smith, Jane', dob: '08/22/1992 (33y)', mrn: '1029384' }
+    { id: '1', name: 'Doe, John', dob: '1980-05-14', sex: 'M', mrn: '9823471' },
+    { id: '2', name: 'Smith, Jane', dob: '1992-08-22', sex: 'F', mrn: '1029384' }
   ];
 
   const handleSelectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    setSelectedPatientId(e.target.value);
+    const val = e.target.value;
+    setSelectedPatientId(val);
+    
+    // Auto-fill data if a previous patient is selected
+    if (val !== 'NEW') {
+      const p = previousPatients.find(p => p.id === val);
+      if (p) {
+        setPatientData({
+          ...patientData,
+          name: p.name,
+          dob: p.dob,
+          sex: p.sex || ''
+        });
+      }
+    }
   };
 
-  const handleNewPatientChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setNewPatientData({
-      ...newPatientData,
+  const handleDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    setPatientData({
+      ...patientData,
       [e.target.name]: e.target.value
     });
   };
@@ -37,15 +45,10 @@ export default function PatientHeader() {
   const selectedPatient = previousPatients.find(p => p.id === selectedPatientId);
 
   return (
-    // The sticky wrapper keeps this pinned to the top while scrolling domains
     <section style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-color, #f4f7f6)', paddingBottom: '1rem', paddingTop: '1rem' }}>
-      
-      {/* Utilizing your native .card class for the container */}
       <div className="card" style={{ marginBottom: 0 }}>
         
-        {/* Utilizing your native .flex-between for the top row */}
         <h4 className="flex-between" style={{ margin: 0, borderBottom: selectedPatientId === 'NEW' ? '1px solid #e2e8f0' : 'none', paddingBottom: selectedPatientId === 'NEW' ? '10px' : '0' }}>
-          
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             <span>Patient Record:</span>
             <select 
@@ -64,7 +67,6 @@ export default function PatientHeader() {
             </select>
           </div>
 
-          {/* Utilizing your native .chip class, just like the BMI indicator */}
           {selectedPatientId !== 'NEW' && selectedPatient && (
             <span className="chip active">
               DOB: {selectedPatient.dob} | MRN: {selectedPatient.mrn}
@@ -72,24 +74,21 @@ export default function PatientHeader() {
           )}
         </h4>
 
-        {/* Utilizing your native .input-group class for demographics */}
         {selectedPatientId === 'NEW' && (
-          // Using a flex row that behaves like your grid-4-col but ensures 5 items fit nicely
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '15px' }}>
-              
               <div className="input-group" style={{ flex: '1 1 150px' }}>
                 <label>Patient Name</label>
-                <input type="text" name="name" placeholder="Last, First" value={newPatientData.name} onChange={handleNewPatientChange} />
+                <input type="text" name="name" placeholder="Last, First" value={patientData?.name || ''} onChange={handleDataChange} />
               </div>
 
               <div className="input-group" style={{ flex: '1 1 120px' }}>
                 <label>Date of Birth</label>
-                <input type="date" name="dob" value={newPatientData.dob} onChange={handleNewPatientChange} />
+                <input type="date" name="dob" value={patientData?.dob || ''} onChange={handleDataChange} />
               </div>
               
               <div className="input-group" style={{ flex: '0 1 80px' }}>
                 <label>Sex</label>
-                <select name="sex" value={newPatientData.sex} onChange={handleNewPatientChange}>
+                <select name="sex" value={patientData?.sex || ''} onChange={handleDataChange}>
                   <option value=""></option>
                   <option value="M">M</option>
                   <option value="F">F</option>
@@ -98,14 +97,19 @@ export default function PatientHeader() {
 
               <div className="input-group" style={{ flex: '1 1 120px' }}>
                 <label>Admission Date</label>
-                <input type="date" name="admissionDate" value={newPatientData.admissionDate} onChange={handleNewPatientChange} />
+                <input type="date" name="admissionDate" value={patientData?.admissionDate || ''} onChange={handleDataChange} />
+              </div>
+
+              {/* --- NEW: Note Date Field --- */}
+              <div className="input-group" style={{ flex: '1 1 120px' }}>
+                <label>Note Date</label>
+                <input type="date" name="noteDate" value={patientData?.noteDate || ''} onChange={handleDataChange} />
               </div>
 
               <div className="input-group" style={{ flex: '1 1 100px' }}>
                 <label>Languages (Opt)</label>
-                <input type="text" name="languages" placeholder="e.g. Spanish" value={newPatientData.languages} onChange={handleNewPatientChange} />
+                <input type="text" name="languages" placeholder="e.g. Spanish" value={patientData?.languages || ''} onChange={handleDataChange} />
               </div>
-
           </div>
         )}
       </div>
