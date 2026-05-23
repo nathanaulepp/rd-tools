@@ -249,7 +249,7 @@ export default function GrowthStandardsTable({ anthro, patientData }: any) {
 return (
   <div className="card mt-2">
     <h4 className="mb-1 flex-between" style={{ alignItems: 'center' }}>
-      A6b: Growth Standards Projection
+      A7: Growth Standards Projection
       <button className="btn-primary" onClick={handleGenerate}>Calculate Z-Scores</button>
     </h4>
 

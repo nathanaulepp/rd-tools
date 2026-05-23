@@ -198,7 +198,7 @@ export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScan
       <GrowthStandardsTable anthro={anthro} patientData={patientData} />
 
       <details className="card" style={{ background: "#f8fafc" }}>
-        <summary style={{ cursor: "pointer", fontWeight: "bold" }}>A7: Body Composition (DEXA) - Click to expand</summary>
+        <summary style={{ cursor: "pointer", fontWeight: "bold" }}>A8: Body Composition (DEXA) - Click to expand</summary>
         <div className="mt-1">
           {dexaScans.length >= 2 && (
             <AlertBanner type="warning" message={`Trend Alert: Lean Delta is ${Number(dexaScans[dexaScans.length-1].leanMass) - Number(dexaScans[dexaScans.length-2].leanMass)} kg`} />
