@@ -29,7 +29,8 @@ export default function App() {
   const [searchQuery, setSearchQuery] = useState("");
   const [toastMsg, setToastMsg] = useState("");
   const [patientData, setPatientData] = useState({
-    name: '',
+    lastName: '',
+    firstName: '',
     dob: '',
     sex: '',
     mrn: '',

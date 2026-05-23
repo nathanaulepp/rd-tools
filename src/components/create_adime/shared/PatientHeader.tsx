@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 
 interface Patient {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
   dob: string;
   mrn: string;
   sex?: string; 
@@ -13,8 +14,8 @@ export default function PatientHeader({ patientData, setPatientData }: any) {
   const [selectedPatientId, setSelectedPatientId] = useState<string>('NEW');
   
   const previousPatients: Patient[] = [
-    { id: '1', name: 'Doe, John', dob: '1980-05-14', sex: 'M', mrn: '9823471' },
-    { id: '2', name: 'Smith, Jane', dob: '1992-08-22', sex: 'F', mrn: '1029384' }
+    { id: '1', lastName: 'Doe', firstName: 'John', dob: '1980-05-14', sex: 'M', mrn: '9823471' },
+    { id: '2', lastName: 'Smith', firstName: 'Jane', dob: '1992-08-22', sex: 'F', mrn: '1029384' }
   ];
 
   const handleSelectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -27,13 +28,24 @@ export default function PatientHeader({ patientData, setPatientData }: any) {
       if (p) {
         setPatientData({
           ...patientData,
-          name: p.name,
+          firstName: p.firstName,
+          lastName: p.lastName,
           dob: p.dob,
           sex: p.sex || ''
         });
       }
+    } else {
+      // Clear fields when switching back to New Patient
+      setPatientData({
+        ...patientData,
+        firstName: '',
+        lastName: '',
+        dob: '',
+        sex: ''
+      });
     }
   };
+  
 
   const handleDataChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setPatientData({
@@ -61,7 +73,7 @@ export default function PatientHeader({ patientData, setPatientData }: any) {
               <option disabled>──────────</option>
               {previousPatients.map((patient) => (
                 <option key={patient.id} value={patient.id}>
-                   {patient.name}
+                   {patient.lastName}, {patient.firstName}
                 </option>
               ))}
             </select>
@@ -76,10 +88,26 @@ export default function PatientHeader({ patientData, setPatientData }: any) {
 
         {selectedPatientId === 'NEW' && (
           <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '15px' }}>
-              <div className="input-group" style={{ flex: '1 1 150px' }}>
-                <label>Patient Name</label>
-                <input type="text" name="name" placeholder="Last, First" value={patientData?.name || ''} onChange={handleDataChange} />
-              </div>
+            <div className="input-group" style={{ flex: '1 1 130px' }}>
+              <label>Last Name</label>
+              <input
+                type="text"
+                name="lastName"
+                placeholder="Last name"
+                value={patientData?.lastName || ''}
+                onChange={handleDataChange}
+              />
+            </div>
+            <div className="input-group" style={{ flex: '1 1 130px' }}>
+              <label>First Name</label>
+              <input
+                type="text"
+                name="firstName"
+                placeholder="First name"
+                value={patientData?.firstName || ''}
+                onChange={handleDataChange}
+              />
+            </div>
 
               <div className="input-group" style={{ flex: '1 1 120px' }}>
                 <label>Date of Birth</label>
@@ -100,7 +128,6 @@ export default function PatientHeader({ patientData, setPatientData }: any) {
                 <input type="date" name="admissionDate" value={patientData?.admissionDate || ''} onChange={handleDataChange} />
               </div>
 
-              {/* --- NEW: Note Date Field --- */}
               <div className="input-group" style={{ flex: '1 1 120px' }}>
                 <label>Note Date</label>
                 <input type="date" name="noteDate" value={patientData?.noteDate || ''} onChange={handleDataChange} />
