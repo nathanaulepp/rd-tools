@@ -673,6 +673,7 @@ function D32Enteral() {
             <NutrientChip label="Total Calories" value={Math.round(totals.cal)} unit="kcal/day" color="#e67e22" />
             <NutrientChip label="Total Protein" value={Math.round(totals.prot * 10) / 10} unit="g/day" color="#8e44ad" />
             <NutrientChip label="Total Free Water" value={Math.round(totals.fw)} unit="mL/day" color="#3498db" />
+            <NutrientChip label="Total Flush Water" value={Math.round(totals.flush)} unit="mL/day" color="#0891b2" />
           </div>
         </div>
       )}
@@ -929,7 +930,6 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
             <NutrientChip label="Est. Total Water" value={totalWater > 0 ? Math.round(totalWater) : "—"} unit="mL/day" color="#3498db" />
             <NutrientChip label="Est. Calories" value={totalCal > 0 ? totalCal : "—"} unit="kcal/day" color="#e67e22" />
             <NutrientChip label="Est. Protein" value={totalProt} unit="g/day" color="#8e44ad" />
-            <NutrientChip label="Total Flush Water" value={Math.round(totals.flush)} unit="mL/day" color="#0891b2" />
           </div>
 
           {/* Electrolytes collapsible */}
