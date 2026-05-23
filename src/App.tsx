@@ -56,8 +56,7 @@ export default function App() {
     waist: "", mac: "", calf: "", head: "", circUnit: "cm",
     triceps: "", subscapular: "", suprailiac: "", thigh: "", skinfoldUnit: "cm",
     past_ht: "cm", past_htUnit: "cm", past_wt: "", past_wtUnit: "kg",  past_head: "", past_headUnit: "cm", 
-    past_htTime_amount1: "1", past_htTime_unit1: "mo", past_wtTime_amount1: "1", past_wtTime_unit1: "mo", past_headTime_amount1: "1", past_headTime_unit1: "mo",
-    past_htTime_amount2: "1", past_htTime_unit2: "mo", past_wtTime_amount2: "1", past_wtTime_unit2: "mo", past_headTime_amount2: "1", past_headTime_unit2: "mo"
+    past_htDate: "", past_wtDate: "", past_headDate: ""
   });
   const [dexaScans, setDexaScans] = useState<any[]>([]);
   const [labs, setLabs] = useState<Record<string, { current: string, historical: string }>>({});

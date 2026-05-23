@@ -135,61 +135,86 @@ export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScan
       <div className="card">
         <h4 className="mb-1">A6: Growth Velocity (Pediatrics)</h4>
         <div className="grid-3-col">
+
+          {/* Past Height/Length */}
           <div className="input-group">
             <label>Past Height/Length</label>
             <div className="input-group-row" style={{ marginBottom: "0.5rem" }}>
-              <input type="number" value={anthro.past_ht} onChange={e => handleUpdate("past_ht", e.target.value)} />
-              <select style={{width: '70px'}} value={anthro.past_htUnit} onChange={e => handleUpdate("past_htUnit", e.target.value)}>
+              <input
+                type="number"
+                value={anthro.past_ht}
+                onChange={e => handleUpdate("past_ht", e.target.value)}
+              />
+              <select
+                style={{ width: '70px' }}
+                value={anthro.past_htUnit}
+                onChange={e => handleUpdate("past_htUnit", e.target.value)}
+              >
                 <option>cm</option><option>in</option>
               </select>
             </div>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Time Elapsed</label>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <div className="input-group-row">
-                <input type="number" value={anthro.past_htTime_amount1} onChange={e => handleUpdate("past_htTime_amount1", e.target.value)} style={{width: '60px'}} />
-                <select value={anthro.past_htTime_unit1} onChange={e => handleUpdate("past_htTime_unit1", e.target.value)} style={{flex: 1}}>
-                  <option value="d">d</option><option value="wk">wk</option><option value="mo">mo</option><option value="yr">yr</option>
-                </select>
-              </div>
-            </div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Date Measured
+            </label>
+            <input
+              type="date"
+              value={anthro.past_htDate}
+              onChange={e => handleUpdate("past_htDate", e.target.value)}
+            />
           </div>
 
+          {/* Past Weight */}
           <div className="input-group">
             <label>Past Weight</label>
             <div className="input-group-row" style={{ marginBottom: "0.5rem" }}>
-              <input type="number" value={anthro.past_wt} onChange={e => handleUpdate("past_wt", e.target.value)} />
-              <select style={{width: '70px'}} value={anthro.past_wtUnit} onChange={e => handleUpdate("past_wtUnit", e.target.value)}>
+              <input
+                type="number"
+                value={anthro.past_wt}
+                onChange={e => handleUpdate("past_wt", e.target.value)}
+              />
+              <select
+                style={{ width: '70px' }}
+                value={anthro.past_wtUnit}
+                onChange={e => handleUpdate("past_wtUnit", e.target.value)}
+              >
                 <option>g</option><option>oz</option><option>kg</option><option>lbs</option>
               </select>
             </div>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Time Elapsed</label>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <div className="input-group-row">
-                <input type="number" value={anthro.past_wtTime_amount1} onChange={e => handleUpdate("past_wtTime_amount1", e.target.value)} style={{width: '60px'}} />
-                <select value={anthro.past_wtTime_unit1} onChange={e => handleUpdate("past_wtTime_unit1", e.target.value)} style={{flex: 1}}>
-                  <option value="d">d</option><option value="wk">wk</option><option value="mo">mo</option><option value="yr">yr</option>
-                </select>
-              </div>
-            </div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Date Measured
+            </label>
+            <input
+              type="date"
+              value={anthro.past_wtDate}
+              onChange={e => handleUpdate("past_wtDate", e.target.value)}
+            />
           </div>
 
+          {/* Past Head Circumference */}
           <div className="input-group">
             <label>Past Head Circ.</label>
             <div className="input-group-row" style={{ marginBottom: "0.5rem" }}>
-              <input type="number" value={anthro.past_head} onChange={e => handleUpdate("past_head", e.target.value)} />
-              <select style={{width: '70px'}} value={anthro.past_headUnit} onChange={e => handleUpdate("past_headUnit", e.target.value)}>
+              <input
+                type="number"
+                value={anthro.past_head}
+                onChange={e => handleUpdate("past_head", e.target.value)}
+              />
+              <select
+                style={{ width: '70px' }}
+                value={anthro.past_headUnit}
+                onChange={e => handleUpdate("past_headUnit", e.target.value)}
+              >
                 <option>cm</option><option>in</option>
               </select>
             </div>
-            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Time Elapsed</label>
-            <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-              <div className="input-group-row">
-                <input type="number" value={anthro.past_headTime_amount1} onChange={e => handleUpdate("past_headTime_amount1", e.target.value)} style={{width: '60px'}} />
-                <select value={anthro.past_headTime_unit1} onChange={e => handleUpdate("past_headTime_unit1", e.target.value)} style={{flex: 1}}>
-                  <option value="d">d</option><option value="wk">wk</option><option value="mo">mo</option><option value="yr">yr</option>
-                </select>
-              </div>
-            </div>
+            <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+              Date Measured
+            </label>
+            <input
+              type="date"
+              value={anthro.past_headDate}
+              onChange={e => handleUpdate("past_headDate", e.target.value)}
+            />
           </div>
         </div>
       </div>
