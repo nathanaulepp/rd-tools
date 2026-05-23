@@ -5,7 +5,7 @@ import D3NutritionAdmin from '../shared/D3NutritionAdmin'; // <-- This import is
 export const DIETARY_CATEGORIES = [
   { id: "D1", title: "D1: Food & Nutrient Intake" },
   { id: "D2", title: "D2: Cultural & Social Food Context" },
-  { id: "D3", title: "D3: Food & Nutrient Administration" },
+  { id: "D3", title: "D3: Food & Nutrient Prescription" },
   { id: "D4", title: "D4: Medication & CAM Use" },
   { id: "D5", title: "D5: Knowledge, Beliefs, & Attitudes" },
   { id: "D6", title: "D6: Behavior" },
