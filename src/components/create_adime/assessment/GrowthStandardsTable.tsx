@@ -247,30 +247,88 @@ export default function GrowthStandardsTable({ anthro, patientData }: any) {
     setShowTable(true);
   };
 return (
-    <div className="card mt-2">
-      <h4 className="mb-1 flex-between" style={{ alignItems: 'center' }}>
-        A6b: Growth Standards Projection
-        <button className="btn-primary" onClick={handleGenerate}>Calculate Z-Scores</button>
-      </h4>
+  <div className="card mt-2">
+    <h4 className="mb-1 flex-between" style={{ alignItems: 'center' }}>
+      A6b: Growth Standards Projection
+      <button className="btn-primary" onClick={handleGenerate}>Calculate Z-Scores</button>
+    </h4>
 
-      {/* Inputs are removed because they live in the Patient Header now! */}
+    {showTable && results.length > 0 && (
+      <div className="mt-2">
+        <h5 className="mb-1 text-center">
+          {ageMonthsCalc} months, {patientData?.sex === "F" ? "Female" : "Male"}
+        </h5>
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+            <thead>
+              <tr style={{ background: 'var(--bg-color)', borderBottom: '2px solid var(--border)' }}>
+                <th style={{ padding: '0.6rem 0.75rem' }}>Measure</th>
+                <th style={{ padding: '0.6rem 0.75rem' }}>Value</th>
+                <th style={{ padding: '0.6rem 0.75rem' }}>Z-Score</th>
+                <th style={{ padding: '0.6rem 0.75rem' }}>Percentile</th>
+                <th style={{ padding: '0.6rem 0.75rem' }}>50th %ile Ref</th>
+                <th style={{ padding: '0.6rem 0.75rem' }}>Expected +/mo*</th>
+                <th style={{ padding: '0.6rem 0.75rem' }}>Expected +/yr*</th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map((row, i) => {
+                const zAbs = Math.abs(row.z);
+                const rowColor =
+                  zAbs >= 3 ? '#fdf2f8' :
+                  zAbs >= 2 ? '#fefcbf' :
+                  'transparent';
+                const zColor =
+                  zAbs >= 3 ? 'var(--danger)' :
+                  zAbs >= 2 ? 'var(--warning-border)' :
+                  'inherit';
 
-      {showTable && results.length > 0 && (
-        <div className="mt-2">
-          <h5 className="mb-1 text-center">
-            {ageMonthsCalc} months, {patientData?.sex === "M" ? "Male" : "Female"}
-          </h5>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-              {/* ... KEEP Table Headers and Body ... */}
-            </table>
-          </div>
-          <p style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: 'var(--text-muted)' }}>
-            *Expected monthly/yearly increase to maintain current percentile
-          </p>
+                return (
+                  <tr key={i} style={{ background: rowColor, borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '0.6rem 0.75rem', fontWeight: 600 }}>{row.measure}</td>
+                    <td style={{ padding: '0.6rem 0.75rem' }}>
+                      {formatMetric(row.measure, row.value)}
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>
+                        ({formatImperial(row.measure, row.value)})
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.6rem 0.75rem', fontWeight: 700, color: zColor }}>
+                      {row.z >= 0 ? '+' : ''}{row.z.toFixed(2)}
+                    </td>
+                    <td style={{ padding: '0.6rem 0.75rem', fontWeight: 600, color: zColor }}>
+                      {row.p < 0.1 ? '<0.1' : row.p > 99.9 ? '>99.9' : row.p.toFixed(1)}th
+                    </td>
+                    <td style={{ padding: '0.6rem 0.75rem', color: 'var(--text-muted)' }}>
+                      {formatMetric(row.measure, row.p50)}
+                    </td>
+                    <td style={{ padding: '0.6rem 0.75rem' }}>
+                      {row.monthly !== null
+                        ? `${row.monthly >= 0 ? '+' : ''}${formatMetric(row.measure, row.monthly)}`
+                        : '—'}
+                    </td>
+                    <td style={{ padding: '0.6rem 0.75rem' }}>
+                      {row.yearly !== null 
+                        ? `${row.yearly >= 0 ? '+' : ''}${formatMetric(row.measure, row.yearly)}`
+                        : '—'}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
-      )}
-    </div>
-  );
+        <p style={{ fontSize: '0.75rem', marginTop: '0.5rem', color: 'var(--text-muted)' }}>
+          *Expected monthly/yearly increase to maintain current percentile. Rows highlighted yellow = Z ±2, red = Z ±3.
+        </p>
+      </div>
+    )}
+
+    {showTable && results.length === 0 && (
+      <p style={{ color: 'var(--text-muted)', marginTop: '1rem' }}>
+        No measurements available to calculate. Please enter height and/or weight in A1–A3.
+      </p>
+    )}
+  </div>
+);
 }
   

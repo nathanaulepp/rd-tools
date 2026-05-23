@@ -424,6 +424,12 @@ input[type=range]::-webkit-slider-runnable-track {
   padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-weight: 600;
 }
 .btn-outline:hover { background: var(--bg-color); }
+.btn-primary {
+     background: var(--accent); color: var(--white);
+     border: none; padding: 0.5rem 1rem;
+     border-radius: 4px; cursor: pointer; font-weight: 600;
+   }
+   .btn-primary:hover { background: var(--accent-hover); }
 
 /* Responsive Media Queries */
 @media (max-width: 768px) {
