@@ -6,7 +6,6 @@ interface Patient {
   firstName: string;
   lastName: string;
   dob: string;
-  mrn: string;
   sex?: string; 
 }
 
@@ -14,8 +13,8 @@ export default function PatientHeader({ patientData, setPatientData }: any) {
   const [selectedPatientId, setSelectedPatientId] = useState<string>('NEW');
   
   const previousPatients: Patient[] = [
-    { id: '1', lastName: 'Doe', firstName: 'John', dob: '1980-05-14', sex: 'M', mrn: '9823471' },
-    { id: '2', lastName: 'Smith', firstName: 'Jane', dob: '1992-08-22', sex: 'F', mrn: '1029384' }
+    { id: '1', lastName: 'Doe', firstName: 'John', dob: '1980-05-14', sex: 'M' },
+    { id: '2', lastName: 'Smith', firstName: 'Jane', dob: '1992-08-22', sex: 'F' }
   ];
 
   const handleSelectionChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -81,7 +80,7 @@ export default function PatientHeader({ patientData, setPatientData }: any) {
 
           {selectedPatientId !== 'NEW' && selectedPatient && (
             <span className="chip active">
-              DOB: {selectedPatient.dob} | MRN: {selectedPatient.mrn}
+              DOB: {selectedPatient.dob} | Sex: {selectedPatient.sex} | Admission: {patientData?.admissionDate || 'N/A'} | Note Date: {patientData?.noteDate || 'N/A'} Languages: {patientData?.languages || ''}
             </span>
           )}
         </h4>
