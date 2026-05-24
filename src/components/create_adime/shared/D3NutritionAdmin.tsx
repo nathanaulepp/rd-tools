@@ -50,28 +50,33 @@ export interface PNFeed {
   // Dextrose
   dextType: string;
   dextHrs: string | number;
-  dextAmount: string | number;
+  dextAmount: string | number;      // grams/day (amount mode)
   dextAmountUnit: string;
   dextRateUnit: string;
   dextDuration: string;
-  dextRate: string | number;        // infusion rate mL/hr
+  dextRate: string | number;        // mL/hr (rate mode)
+  dextConc: string;                 // D% e.g. "10", "20", "50" (rate mode)
+  dextInputMode: "amount" | "rate"; // toggle between g/day vs rate+conc
   // Amino Acids
   aaType: string;
   aaHrs: string | number;
-  aaAmount: string | number;
+  aaAmount: string | number;        // grams/day (amount mode)
   aaAmountUnit: string;
   aaRateUnit: string;
   aaDuration: string;
-  aaRate: string | number;          // infusion rate mL/hr
+  aaRate: string | number;          // mL/hr (rate mode)
+  aaConc: string;                   // % solution e.g. "10", "15" (rate mode)
+  aaInputMode: "amount" | "rate";   // toggle
   // Lipids
   lipidType: string;
   lipidHrs: string | number;
   lipidOil: string;
-  lipidAmount: string | number;
+  lipidAmount: string | number;     // grams/day (always derived when rate+conc used)
   lipidAmountUnit: string;
   lipidRateUnit: string;
   lipidDuration: string;
-  lipidRate: string | number;       // infusion rate mL/hr
+  lipidRate: string | number;       // mL/hr
+  lipidConc: "10" | "20" | "30";   // % concentration
   lipidCustomOil: string;
   // Combined rate for TNA / 2n1
   combinedRate: string | number;    // TNA: single rate; 2n1: combined dext+aa rate
@@ -192,9 +197,9 @@ function makePNFeed(id: number): PNFeed {
     id, label: `PN Bag ${id}`, indication: "",
     route: "", access: "", delivery: "", goal: "",
     startDate: "", startTime: "",
-    dextType: "", dextHrs: "", dextAmount: "", dextAmountUnit: "g", dextRateUnit: "per day", dextDuration: "", dextRate: "",
-    aaType: "", aaHrs: "", aaAmount: "", aaAmountUnit: "g", aaRateUnit: "per day", aaDuration: "", aaRate: "",
-    lipidType: "", lipidHrs: "", lipidOil: "", lipidAmount: "", lipidAmountUnit: "g", lipidRateUnit: "per day", lipidDuration: "", lipidRate: "",
+    dextType: "", dextHrs: "", dextAmount: "", dextAmountUnit: "g", dextRateUnit: "per day", dextDuration: "", dextRate: "", dextConc: "10", dextInputMode: "amount",
+    aaType: "", aaHrs: "", aaAmount: "", aaAmountUnit: "g", aaRateUnit: "per day", aaDuration: "", aaRate: "", aaConc: "10", aaInputMode: "amount",
+    lipidType: "", lipidHrs: "", lipidOil: "", lipidAmount: "", lipidAmountUnit: "g", lipidRateUnit: "per day", lipidDuration: "", lipidRate: "", lipidConc: "20",
     lipidCustomOil: "",
     combinedRate: "",
     insulinUnits: "",
@@ -488,31 +493,204 @@ function MicroPanel({ title, fields, values, onChange, accent, expanded, onToggl
   );
 }
 
-// ─── Macro Row: type + hrs + amount + duration + infusion rate ───────────────
+// ─── Lipid concentration metadata ────────────────────────────────────────────
+const LIPID_CONCS = [
+  { pct: "10", gPerMl: 0.10, kcalPerMl: 1.1,  note: "Ready-to-infuse" },
+  { pct: "20", gPerMl: 0.20, kcalPerMl: 2.0,  note: "Most common (adult PN)" },
+  { pct: "30", gPerMl: 0.30, kcalPerMl: 3.0,  note: "Compounding / admixture only" },
+];
+function getLipidMeta(pct: string) { return LIPID_CONCS.find(c => c.pct === pct) ?? LIPID_CONCS[1]; }
+
+// ─── Dextrose concentration helpers ──────────────────────────────────────────
+// D% → g dextrose per 100 mL → g/mL
+const DEXT_CONC_OPTIONS = ["5","10","20","25","30","50","70"];
+function dextGPerMl(pct: string) { return parseFloat(pct) / 100; }
+// Dextrose: 3.4 kcal/g
+function dextKcalFromRate(rateMlHr: number, hrs: number, concPct: string) {
+  return rateMlHr * hrs * dextGPerMl(concPct) * 3.4;
+}
+function dextGFromRate(rateMlHr: number, hrs: number, concPct: string) {
+  return rateMlHr * hrs * dextGPerMl(concPct);
+}
+
+// ─── AA concentration helpers ─────────────────────────────────────────────────
+// AA solution % → g protein per 100 mL → g/mL  (4 kcal/g)
+const AA_CONC_OPTIONS = ["5","8.5","10","11.4","15"];
+function aaGPerMl(pct: string) { return parseFloat(pct) / 100; }
+function aaGFromRate(rateMlHr: number, hrs: number, concPct: string) {
+  return rateMlHr * hrs * aaGPerMl(concPct);
+}
+
+// ─── InputModeToggle ─────────────────────────────────────────────────────────
+interface InputModeToggleProps { mode: "amount" | "rate"; onChange: (m: "amount" | "rate") => void; color: string; }
+function InputModeToggle({ mode, onChange, color }: InputModeToggleProps) {
+  return (
+    <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", padding: "2px", borderRadius: "6px", width: "fit-content" }}>
+      {(["amount", "rate"] as const).map(m => (
+        <button key={m} onClick={() => onChange(m)} style={{
+          padding: "3px 10px", border: "none", borderRadius: "4px", fontSize: "0.72rem", fontWeight: 600, cursor: "pointer",
+          background: mode === m ? color : "transparent",
+          color: mode === m ? "#fff" : "#718096",
+          transition: "all 0.15s",
+        }}>
+          {m === "amount" ? "g/day" : "Rate + Conc"}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── MacroRow (Dextrose & Amino Acids) ───────────────────────────────────────
+// Supports two input modes:
+//   "amount" → classic g/day entry (AmountRateInput)
+//   "rate"   → rate (mL/hr) + concentration (%) → auto-derives g/day & kcal
 interface MacroRowProps {
   label: string;
   color: string;
   macroType: string; onMacroType: (v: string) => void;
   hrs: string | number; onHrs: (v: string) => void;
+  // Amount-mode fields
   amount: string | number; amountUnit: string; rateUnit: string;
   onAmount: (v: string) => void; onAmountUnit: (v: string) => void; onRateUnit: (v: string) => void;
-  duration: string; onDuration: (v: string) => void;
+  // Rate-mode fields
   infusionRate: string | number; onInfusionRate: (v: string) => void;
-  showRate: boolean;   // whether to show per-macro rate (false for TNA/2n1 combined modes)
-  rateLabel?: string;
-  extraField?: React.ReactNode;
+  conc: string; onConc: (v: string) => void;
+  concOptions: string[];
+  concLabel: string;   // e.g. "D%" or "AA %"
+  duration: string; onDuration: (v: string) => void;
+  showRate: boolean;   // show rate fields (false for TNA/2n1)
+  inputMode: "amount" | "rate";
+  onInputMode: (m: "amount" | "rate") => void;
+  // Derived display (only in rate mode)
+  derivedG?: number;
+  derivedKcal?: number;
+  derivedUnit?: string; // "g protein" | "g dextrose"
 }
-function MacroRow({ label, color, macroType, onMacroType, hrs, onHrs, amount, amountUnit, rateUnit, onAmount, onAmountUnit, onRateUnit, duration, onDuration, infusionRate, onInfusionRate, showRate, rateLabel = "Rate (mL/hr)", extraField }: MacroRowProps) {
-  // Build columns dynamically based on what's visible so there's no blank space.
-  // Type=120px, Hours=90px, Duration=140px, Amount=2fr (multi-control), Rate=130px, Extra=140px
-  const colParts: string[] = ["120px", "90px", "140px", "2fr"];
-  if (showRate) colParts.push("130px");
-  if (extraField) colParts.push("140px");
-  const gridCols = colParts.join(" ");
+function MacroRow({ label, color, macroType, onMacroType, hrs, onHrs, amount, amountUnit, rateUnit, onAmount, onAmountUnit, onRateUnit, infusionRate, onInfusionRate, conc, onConc, concOptions, concLabel, duration, onDuration, showRate, inputMode, onInputMode, derivedG, derivedKcal, derivedUnit }: MacroRowProps) {
+  const useRateMode = showRate && inputMode === "rate";
+
+  // Column layout: Type | Hours | Duration | [Amount or Rate+Conc cols]
+  let dataCols: string;
+  if (!showRate) {
+    // TNA/2n1 modes: no rate column, always amount mode — 4 even cols
+    dataCols = "120px 90px 140px 2fr";
+  } else if (useRateMode) {
+    // Rate mode: Type | Hours | Duration | Rate(mL/hr) | Conc | → derived preview
+    dataCols = "110px 80px 130px 110px 110px 1fr";
+  } else {
+    // Amount mode with rate visible: same as non-rate but has the mode toggle
+    dataCols = "120px 90px 140px 2fr";
+  }
 
   return (
     <div style={{ background: "#fff", border: `1px solid ${color}30`, borderRadius: "8px", padding: "0.85rem", marginBottom: "0.75rem" }}>
-      <div style={{ fontSize: "0.82rem", fontWeight: 700, color, marginBottom: "0.65rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.65rem" }}>
+        <div style={{ fontSize: "0.82rem", fontWeight: 700, color, textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
+        {showRate && <InputModeToggle mode={inputMode} onChange={onInputMode} color={color} />}
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: dataCols, gap: "0.6rem", alignItems: "end" }}>
+        <FieldRow label="Type">
+          <Sel value={macroType} onChange={onMacroType} options={MACRO_TYPES} placeholder="Select..." />
+        </FieldRow>
+        <FieldRow label="Hours">
+          <NumInput value={hrs} onChange={onHrs} placeholder="24" />
+        </FieldRow>
+        <FieldRow label="Duration Plan">
+          <Sel value={duration} onChange={onDuration} options={PN_DURATIONS} placeholder="Select..." />
+        </FieldRow>
+
+        {useRateMode ? (
+          <>
+            <FieldRow label="Rate (mL/hr)">
+              <NumInput value={infusionRate} onChange={onInfusionRate} placeholder="mL/hr" />
+            </FieldRow>
+            <FieldRow label={concLabel}>
+              <select value={conc} onChange={e => onConc(e.target.value)}
+                style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }}>
+                {concOptions.map(o => <option key={o} value={o}>{o}%</option>)}
+              </select>
+            </FieldRow>
+            {/* Derived preview */}
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", paddingBottom: "2px" }}>
+              {(derivedG !== undefined && derivedG > 0) ? (
+                <div style={{ background: `${color}10`, border: `1px solid ${color}30`, borderRadius: "6px", padding: "4px 10px", fontSize: "0.78rem" }}>
+                  <span style={{ color, fontWeight: 700 }}>{Math.round(derivedG)} g</span>
+                  <span style={{ color: "#718096" }}> {derivedUnit}</span>
+                  {derivedKcal !== undefined && derivedKcal > 0 && (
+                    <span style={{ color: "#718096" }}> · <span style={{ color, fontWeight: 600 }}>{Math.round(derivedKcal)} kcal</span></span>
+                  )}
+                </div>
+              ) : (
+                <div style={{ fontSize: "0.72rem", color: "#a0aec0", fontStyle: "italic" }}>Enter rate + conc to auto-calc</div>
+              )}
+            </div>
+          </>
+        ) : (
+          <FieldRow label="Amount">
+            <AmountRateInput amount={amount} amountUnit={amountUnit} rateUnit={rateUnit} onAmount={onAmount} onAmountUnit={onAmountUnit} onRateUnit={onRateUnit} />
+          </FieldRow>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── LipidRow ────────────────────────────────────────────────────────────────
+// Always uses rate + concentration (the clinical standard for lipid ordering).
+// Auto-derives g/day and kcal/day. Concentration also unlocks clinical note.
+interface LipidRowProps {
+  color: string;
+  macroType: string; onMacroType: (v: string) => void;
+  hrs: string | number; onHrs: (v: string) => void;
+  lipidOil: string; onLipidOil: (v: string) => void;
+  lipidCustomOil: string; onLipidCustomOil: (v: string) => void;
+  duration: string; onDuration: (v: string) => void;
+  infusionRate: string | number; onInfusionRate: (v: string) => void;
+  lipidConc: "10" | "20" | "30"; onLipidConc: (v: "10" | "20" | "30") => void;
+  showRate: boolean;
+  rateLabel?: string;
+}
+function LipidRow({ color, macroType, onMacroType, hrs, onHrs, lipidOil, onLipidOil, lipidCustomOil, onLipidCustomOil, duration, onDuration, infusionRate, onInfusionRate, lipidConc, onLipidConc, showRate, rateLabel = "Rate (mL/hr)" }: LipidRowProps) {
+  const meta = getLipidMeta(lipidConc);
+  const rate = num(infusionRate);
+  const hoursN = num(hrs) || 0;
+  const derivedG = showRate && rate > 0 && hoursN > 0 ? rate * hoursN * meta.gPerMl : null;
+  const derivedKcal = derivedG !== null ? derivedG * (meta.kcalPerMl / meta.gPerMl) : null;
+
+  // Cols: Type | Hours | Duration | [Conc | Rate | Oil] or [Amount(g/day) | Oil] if no rate
+  const colsWithRate = "110px 80px 130px 140px 120px 140px";
+  const colsNoRate   = "120px 90px 140px 2fr 140px";
+  const gridCols = showRate ? colsWithRate : colsNoRate;
+
+  return (
+    <div style={{ background: "#fff", border: `1px solid ${color}30`, borderRadius: "8px", padding: "0.85rem", marginBottom: "0.75rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.65rem" }}>
+        <div style={{ fontSize: "0.82rem", fontWeight: 700, color, textTransform: "uppercase", letterSpacing: "0.04em" }}>Lipids (ILE)</div>
+        {/* Concentration badge with clinical note */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          {lipidConc === "30" && (
+            <span style={{ fontSize: "0.7rem", background: "#fef3c7", color: "#92400e", border: "1px solid #f59e0b", borderRadius: "4px", padding: "2px 7px", fontWeight: 600 }}>
+              ⚠ Admixture only — not for direct infusion
+            </span>
+          )}
+          <div style={{ display: "flex", gap: "3px" }}>
+            {LIPID_CONCS.map(c => (
+              <button key={c.pct} onClick={() => onLipidConc(c.pct as "10" | "20" | "30")} title={`${c.pct}% — ${c.kcalPerMl} kcal/mL — ${c.note}`} style={{
+                padding: "3px 10px", border: `1px solid ${lipidConc === c.pct ? color : "#e2e8f0"}`,
+                borderRadius: "5px", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer",
+                background: lipidConc === c.pct ? color : "#fff",
+                color: lipidConc === c.pct ? "#fff" : "#4a5568",
+                transition: "all 0.15s",
+              }}>
+                {c.pct}%
+              </button>
+            ))}
+          </div>
+          <span style={{ fontSize: "0.72rem", color: "#718096" }}>{meta.kcalPerMl} kcal/mL · {meta.gPerMl * 1000} mg/mL</span>
+        </div>
+      </div>
+
       <div style={{ display: "grid", gridTemplateColumns: gridCols, gap: "0.6rem", alignItems: "end" }}>
         <FieldRow label="Type">
           <Sel value={macroType} onChange={onMacroType} options={MACRO_TYPES} placeholder="Select..." />
@@ -523,19 +701,45 @@ function MacroRow({ label, color, macroType, onMacroType, hrs, onHrs, amount, am
         <FieldRow label="Duration Plan">
           <Sel value={duration} onChange={onDuration} options={PN_DURATIONS} placeholder="Select..." />
         </FieldRow>
-        <FieldRow label="Amount">
-          <AmountRateInput amount={amount} amountUnit={amountUnit} rateUnit={rateUnit} onAmount={onAmount} onAmountUnit={onAmountUnit} onRateUnit={onRateUnit} />
-        </FieldRow>
-        {showRate && (
-          <FieldRow label={rateLabel}>
-            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+
+        {showRate ? (
+          <>
+            <FieldRow label={rateLabel}>
               <NumInput value={infusionRate} onChange={onInfusionRate} placeholder="mL/hr" />
-              <span style={{ fontSize: "0.72rem", color: "#718096", whiteSpace: "nowrap" }}>mL/hr</span>
+            </FieldRow>
+            {/* Derived g/kcal preview */}
+            <div style={{ display: "flex", flexDirection: "column", justifyContent: "flex-end", paddingBottom: "2px" }}>
+              {(derivedG !== null && derivedG > 0) ? (
+                <div style={{ background: `${color}10`, border: `1px solid ${color}30`, borderRadius: "6px", padding: "4px 10px", fontSize: "0.78rem" }}>
+                  <span style={{ color, fontWeight: 700 }}>{Math.round(derivedG)} g</span>
+                  <span style={{ color: "#718096" }}> lipid · </span>
+                  <span style={{ color, fontWeight: 700 }}>{Math.round(derivedKcal!)} kcal</span>
+                </div>
+              ) : (
+                <div style={{ fontSize: "0.72rem", color: "#a0aec0", fontStyle: "italic" }}>Rate → auto-calc</div>
+              )}
             </div>
-          </FieldRow>
+            <FieldRow label="Oil">
+              <Sel value={lipidOil} onChange={onLipidOil} options={LIPID_OILS} />
+            </FieldRow>
+          </>
+        ) : (
+          <>
+            <FieldRow label="Amount (g/day)">
+              <NumInput value={num(infusionRate)} onChange={onInfusionRate} placeholder="g" />
+            </FieldRow>
+            <FieldRow label="Oil">
+              <Sel value={lipidOil} onChange={onLipidOil} options={LIPID_OILS} />
+            </FieldRow>
+          </>
         )}
-        {extraField}
       </div>
+
+      {lipidOil === "Custom (specify)" && (
+        <div style={{ marginTop: "0.5rem" }}>
+          <input type="text" value={lipidCustomOil} onChange={e => onLipidCustomOil(e.target.value)} placeholder="Specify oil blend..." style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }} />
+        </div>
+      )}
     </div>
   );
 }
@@ -549,11 +753,31 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
   const updateElectrolyte = (key: string, subField: string, val: string) => onChange({ ...feed, electrolytes: { ...feed.electrolytes, [key]: { ...(feed.electrolytes[key] || {}), [subField]: val } } });
   const updateVitamin = (key: string, subField: string, val: string) => onChange({ ...feed, vitamins: { ...feed.vitamins, [key]: { ...(feed.vitamins[key] || {}), [subField]: val } } });
 
-  const dextCal = num(feed.dextAmount) * (feed.dextAmountUnit === "g" ? 3.4 : 0);
-  const aaCal = num(feed.aaAmount) * (feed.aaAmountUnit === "g" ? 4 : 0);
-  const lipidCal = num(feed.lipidAmount) * (feed.lipidAmountUnit === "g" ? 10 : 0);
-  const totalCal = Math.round(dextCal + aaCal + lipidCal);
-  const totalProt = feed.aaAmountUnit === "g" ? Math.round(num(feed.aaAmount) * 10) / 10 : "?";
+  // ── Calorie & protein calculations (mode-aware) ─────────────────────────
+  // Dextrose
+  const dextShowRate = rateMode === "three";
+  const dextG = (dextShowRate && feed.dextInputMode === "rate")
+    ? dextGFromRate(num(feed.dextRate), num(feed.dextHrs), feed.dextConc)
+    : num(feed.dextAmount);
+  const dextKcal = dextG * 3.4;
+
+  // Amino Acids
+  const aaShowRate = rateMode === "three";
+  const aaG = (aaShowRate && feed.aaInputMode === "rate")
+    ? aaGFromRate(num(feed.aaRate), num(feed.aaHrs), feed.aaConc)
+    : num(feed.aaAmount);
+  const aaKcal = aaG * 4;
+
+  // Lipids — always rate-derived when rate visible, else from lipidAmount field
+  const lipidShowRate = rateMode === "three" || rateMode === "twoplusone";
+  const lipidMeta = getLipidMeta(feed.lipidConc);
+  const lipidG = lipidShowRate && num(feed.lipidRate) > 0 && num(feed.lipidHrs) > 0
+    ? num(feed.lipidRate) * num(feed.lipidHrs) * lipidMeta.gPerMl
+    : num(feed.lipidAmount);
+  const lipidKcal = lipidG * (lipidMeta.kcalPerMl / lipidMeta.gPerMl);
+
+  const totalCal = Math.round(dextKcal + aaKcal + lipidKcal);
+  const totalProt = Math.round(aaG * 10) / 10;
 
   return (
     <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", marginBottom: "1rem", overflow: "hidden" }}>
@@ -618,8 +842,13 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
               onAmount={v => update("dextAmount", v)} onAmountUnit={v => update("dextAmountUnit", v)} onRateUnit={v => update("dextRateUnit", v)}
               duration={feed.dextDuration} onDuration={v => update("dextDuration", v)}
               infusionRate={feed.dextRate} onInfusionRate={v => update("dextRate", v)}
+              conc={feed.dextConc} onConc={v => update("dextConc", v)}
+              concOptions={DEXT_CONC_OPTIONS} concLabel="D% Concentration"
+              inputMode={feed.dextInputMode} onInputMode={m => update("dextInputMode", m)}
               showRate={rateMode === "three"}
-              rateLabel="Dextrose Rate (mL/hr)"
+              derivedG={dextShowRate && feed.dextInputMode === "rate" ? dextGFromRate(num(feed.dextRate), num(feed.dextHrs), feed.dextConc) : undefined}
+              derivedKcal={dextShowRate && feed.dextInputMode === "rate" ? dextKcalFromRate(num(feed.dextRate), num(feed.dextHrs), feed.dextConc) : undefined}
+              derivedUnit="g dextrose"
             />
 
             {/* Amino Acids */}
@@ -632,33 +861,28 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
               onAmount={v => update("aaAmount", v)} onAmountUnit={v => update("aaAmountUnit", v)} onRateUnit={v => update("aaRateUnit", v)}
               duration={feed.aaDuration} onDuration={v => update("aaDuration", v)}
               infusionRate={feed.aaRate} onInfusionRate={v => update("aaRate", v)}
+              conc={feed.aaConc} onConc={v => update("aaConc", v)}
+              concOptions={AA_CONC_OPTIONS} concLabel="AA % Solution"
+              inputMode={feed.aaInputMode} onInputMode={m => update("aaInputMode", m)}
               showRate={rateMode === "three"}
-              rateLabel="AA Rate (mL/hr)"
+              derivedG={aaShowRate && feed.aaInputMode === "rate" ? aaGFromRate(num(feed.aaRate), num(feed.aaHrs), feed.aaConc) : undefined}
+              derivedKcal={aaShowRate && feed.aaInputMode === "rate" ? aaGFromRate(num(feed.aaRate), num(feed.aaHrs), feed.aaConc) * 4 : undefined}
+              derivedUnit="g protein"
             />
 
             {/* Lipids */}
-            <MacroRow
-              label="Lipids (ILE)"
+            <LipidRow
               color="#e67e22"
               macroType={feed.lipidType} onMacroType={v => update("lipidType", v)}
               hrs={feed.lipidHrs} onHrs={v => update("lipidHrs", v)}
-              amount={feed.lipidAmount} amountUnit={feed.lipidAmountUnit} rateUnit={feed.lipidRateUnit}
-              onAmount={v => update("lipidAmount", v)} onAmountUnit={v => update("lipidAmountUnit", v)} onRateUnit={v => update("lipidRateUnit", v)}
+              lipidOil={feed.lipidOil} onLipidOil={v => update("lipidOil", v)}
+              lipidCustomOil={feed.lipidCustomOil} onLipidCustomOil={v => update("lipidCustomOil", v)}
               duration={feed.lipidDuration} onDuration={v => update("lipidDuration", v)}
               infusionRate={feed.lipidRate} onInfusionRate={v => update("lipidRate", v)}
+              lipidConc={feed.lipidConc as "10" | "20" | "30"} onLipidConc={v => update("lipidConc", v)}
               showRate={rateMode === "three" || rateMode === "twoplusone"}
               rateLabel={rateMode === "twoplusone" ? "Lipid Infusion Rate (mL/hr)" : "Lipid Rate (mL/hr)"}
-              extraField={
-                <FieldRow label="Oil">
-                  <Sel value={feed.lipidOil} onChange={v => update("lipidOil", v)} options={LIPID_OILS} />
-                </FieldRow>
-              }
             />
-            {feed.lipidOil === "Custom (specify)" && (
-              <div style={{ marginTop: "-0.5rem", marginBottom: "0.75rem" }}>
-                <input type="text" value={feed.lipidCustomOil} onChange={e => update("lipidCustomOil", e.target.value)} placeholder="Specify oil blend..." style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }} />
-              </div>
-            )}
 
             {/* Insulin */}
             <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "12px" }}>
