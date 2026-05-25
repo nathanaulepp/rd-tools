@@ -69,6 +69,16 @@ export default function PatientHeader({ patientData, setPatientData }: any) {
                 </option>
               ))}
             </select>
+            
+            {selectedPatientId === 'NEW' && (
+              <button 
+                className="btn-primary" 
+                style={{ padding: '4px 12px', fontSize: '0.8rem' }}
+                onClick={() => console.log('Submit new patient record')}
+              >
+                Submit
+              </button>
+            )}
           </div>
 
           {selectedPatientId !== 'NEW' && selectedPatient && (
