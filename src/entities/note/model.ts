@@ -14,6 +14,7 @@ export const [anthro, setAnthro] = useState({
     orbital: "", cheek: "", tricepsFat: "", midAxillary: "",
     hair: "", eyes: "", mouthLips: "", tongue: "", teethGums: "", headNeck: "", nails: "", skin: "",
     pittingEdema: "", ascites: "", edemaDescription: "",
+    temp: "", hr: "", spo2: "", bp: "", rr: "",
     gripStrength: "",
     giDistress: "", chewing: "", oralHygiene: "", swallowing: "", clinicalNotes: ""
   });

@@ -97,6 +97,7 @@ export default function App() {
     tongue: [] as string[], teethGums: [] as string[], headNeck: [] as string[],
     nails: [] as string[], skin: [] as string[],
     pittingEdema: "", ascites: "", edemaDescription: "",
+    temp: "", hr: "", spo2: "", bp: "", rr: "",
     gripStrength: "",
     giDistress: "", chewing: "", oralHygiene: "", swallowing: "",
     clinicalNotes: "",

@@ -43,23 +43,49 @@ export default function ClinicalDomain({ clinical, setClinical }: any) {
       </div>
 
       <div className="card">
+        <h4 className="mb-1">C5: Vital Signs</h4>
+        <div className="grid-5-col">
+          <div className="input-group">
+            <label>Temp (°F)</label>
+            <input type="text" value={clinical.temp} onChange={e => handleUpdate("temp", e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label>HR (bpm)</label>
+            <input type="text" value={clinical.hr} onChange={e => handleUpdate("hr", e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label>SpO<sub>2</sub> (%)</label>
+            <input type="text" value={clinical.spo2} onChange={e => handleUpdate("spo2", e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label>BP (mmHg)</label>
+            <input type="text" value={clinical.bp} onChange={e => handleUpdate("bp", e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label>RR (bpm)</label>
+            <input type="text" value={clinical.rr} onChange={e => handleUpdate("rr", e.target.value)} />
+          </div>
+        </div>
+      </div>
+
+      <div className="card">
         <h4 className="mb-1">C2: GI & Systemic Function</h4>
         <div className="grid-2-col">
           <div className="input-group">
             <label>GI Distress</label>
-            <input type="text" value={clinical.giDistress} onChange={e => handleUpdate("giDistress", e.target.value)} placeholder="e.g. nausea, vomiting, diarrhea" />
+            <input type="text" value={clinical.giDistress} onChange={e => handleUpdate("giDistress", e.target.value)} placeholder="e.g. Nausea, vomiting, diarrhea" />
           </div>
           <div className="input-group">
             <label>Oral/Chewing</label>
-            <input type="text" value={clinical.chewing} onChange={e => handleUpdate("chewing", e.target.value)} placeholder="e.g. missing molars/incisors, tongue-tied" />
+            <input type="text" value={clinical.chewing} onChange={e => handleUpdate("chewing", e.target.value)} placeholder="e.g. missing molars/incisors" />
           </div>
           <div className="input-group">
             <label>Oral Hygiene</label>
-            <input type="text" value={clinical.oralHygiene} onChange={e => handleUpdate("oralHygiene", e.target.value)} placeholder="e.g. brushes teeth, no floss" />
+            <input type="text" value={clinical.oralHygiene} onChange={e => handleUpdate("oralHygiene", e.target.value)} placeholder="e.g. brushes teeth, no flossing" />
           </div>
           <div className="input-group">
             <label>Swallowing</label>
-            <input type="text" value={clinical.swallowing} onChange={e => handleUpdate("swallowing", e.target.value)} placeholder="e.g. painful oropharyngeal dysphagia" />
+            <input type="text" value={clinical.swallowing} onChange={e => handleUpdate("swallowing", e.target.value)} placeholder="e.g. painful oropharyngeal swallow" />
           </div>
         </div>
       </div>

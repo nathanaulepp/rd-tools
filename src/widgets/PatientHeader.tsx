@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Patient } from '../entities/patient/model'; // Adjust the path as necessary
 
-export default function PatientHeader({ patientData, setPatientData }: any) {
+export default function PatientHeader({ patientData, setPatientData, clinical }: any) {
   const [selectedPatientId, setSelectedPatientId] = useState<string>('NEW');
   
   const previousPatients: Patient[] = [
@@ -141,6 +141,40 @@ export default function PatientHeader({ patientData, setPatientData }: any) {
               </div>
           </div>
         )}
+
+        {/* Vital Signs persistent display */}
+        <div style={{ display: 'flex', gap: '0.75rem', marginTop: '10px', flexWrap: 'wrap' }}>
+          {clinical?.temp && (
+            <div className="vital-stat">
+              <span className="label">Temp</span>
+              <span className="value">{clinical.temp}<span>°F</span></span>
+            </div>
+          )}
+          {clinical?.hr && (
+            <div className="vital-stat">
+              <span className="label">HR</span>
+              <span className="value">{clinical.hr}<span>bpm</span></span>
+            </div>
+          )}
+          {clinical?.spo2 && (
+            <div className="vital-stat">
+              <span className="label">SpO₂</span>
+              <span className="value">{clinical.spo2}<span>%</span></span>
+            </div>
+          )}
+          {clinical?.bp && (
+            <div className="vital-stat">
+              <span className="label">BP</span>
+              <span className="value">{clinical.bp}<span>mmHg</span></span>
+            </div>
+          )}
+          {clinical?.rr && (
+            <div className="vital-stat">
+              <span className="label">RR</span>
+              <span className="value">{clinical.rr}<span>bpm</span></span>
+            </div>
+          )}
+        </div>
       </div>
     </section>
   );
