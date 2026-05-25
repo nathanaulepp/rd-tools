@@ -1,11 +1,12 @@
 import React from 'react';
-import { ChipGroup } from '../shared/ChipGroup';
+import { ChipGroup } from '../../../shared/ui/ChipGroup';
 
 export default function ClinicalDomain({ clinical, setClinical }: any) {
-  const handleUpdate = (field: string, val: string | string[]) => setClinical({ ...clinical, [field]: val });
+  const handleUpdate = (field: string, val: string | string[]) =>
+    setClinical({ ...clinical, [field]: val });
 
   const nfpeOptions = ["Normal", "Mild", "Moderate", "Severe"];
-  
+
   const microOptionsHair = ["WNL", "Alopecia", "Depigmentation", "Flag Sign", "Thinning", "Corkscrew", "Hirsutism", "Other"];
   const microOptionsEyes = ["WNL", "Pale Conjunctiva", "Nyctalopia", "Bitot's Spots", "Corneal Xerosis", "Keratomalacia", "Opthalmoplegia", "Kayser-Fleischer Rings", "Corneal Vascularization", "Xanthelasma", "Corneal Arcus", "Other"];
   const microOptionsMouthLips = ["WNL", "Angular Stomatitis", "Cheilitis", "Sore/Swelling", "Excessive Saliva", "Pale Mucosa", "Other"];
@@ -14,8 +15,12 @@ export default function ClinicalDomain({ clinical, setClinical }: any) {
   const microOptionsHeadNeck = ["WNL", "Goiter", "Moon Face", "Sialadenosis", "Other"];
   const microOptionsNails = ["WNL", "Koilonychia", "Beau's Lines", "Muehrcke Lines", "Mees Lines", "Splinter Hemorrhage", "Brittle", "Vertical Ridges", "Clubbing", "Leukonychia", "Half and Half", "Terry's Nail", "Pitting", "Other"];
   const microOptionsSkin = ["WNL", "Delayed Wound Healing", "Bedsore", "Seborrheic Dermatitis", "Reddish-purple Spots", "Bruising", "Pallor", "Follicular Hyperkeratosis", "Hypopigmentation", "Hyperpigmentation", "Pellagra", "Bilateral edema", "Poor Turgor", "Carotenemia", "Jaundice", "Acanthosis Nigricans", "Other"];
-  
-  const severityMap = { "Mild": "warning", "Severe": "danger", "Loss": "warning", "Dry": "warning", "Pale": "warning", "Brittle": "warning", "Thinning": "warning", "Inflamed": "danger", "Bleeding": "danger", "Edema": "danger" };
+
+  const severityMap = {
+    "Mild": "warning", "Severe": "danger", "Loss": "warning", "Dry": "warning",
+    "Pale": "warning", "Brittle": "warning", "Thinning": "warning",
+    "Inflamed": "danger", "Bleeding": "danger", "Edema": "danger"
+  };
 
   const micronutrientCategories = [
     { area: "Hair", options: microOptionsHair },
@@ -25,18 +30,24 @@ export default function ClinicalDomain({ clinical, setClinical }: any) {
     { area: "TeethGums", options: microOptionsTeethGums },
     { area: "HeadNeck", options: microOptionsHeadNeck },
     { area: "Nails", options: microOptionsNails },
-    { area: "Skin", options: microOptionsSkin }
+    { area: "Skin", options: microOptionsSkin },
   ];
 
   return (
     <div className="fade-in">
       <h2 className="section-title">C. Clinical Findings & NFPE</h2>
-      
+
       <div className="card">
         <h4 className="mb-1">C3: Medical Context</h4>
         <div className="grid-2-col">
-          <div className="input-group"><label>Chief Complaint</label><textarea value={clinical.chiefComplaint} onChange={e => handleUpdate("chiefComplaint", e.target.value)} /></div>
-          <div className="input-group"><label>Medical History</label><textarea value={clinical.medHx} onChange={e => handleUpdate("medHx", e.target.value)} /></div>
+          <div className="input-group">
+            <label>Chief Complaint</label>
+            <textarea value={clinical.chiefComplaint} onChange={e => handleUpdate("chiefComplaint", e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label>Medical History</label>
+            <textarea value={clinical.medHx} onChange={e => handleUpdate("medHx", e.target.value)} />
+          </div>
         </div>
       </div>
 
@@ -48,10 +59,15 @@ export default function ClinicalDomain({ clinical, setClinical }: any) {
             return (
               <div className="input-group" key={muscle}>
                 <label className="flex-between">{muscle}</label>
-                {/* SET TO SINGLE SELECT */}
-                <ChipGroup multiSelect={false} options={nfpeOptions} value={clinical[key]} onChange={v => handleUpdate(key, v)} severityMap={severityMap} />
+                <ChipGroup
+                  multiSelect={false}
+                  options={nfpeOptions}
+                  value={clinical[key]}
+                  onChange={v => handleUpdate(key, v)}
+                  severityMap={severityMap}
+                />
               </div>
-            )
+            );
           })}
         </div>
 
@@ -62,17 +78,27 @@ export default function ClinicalDomain({ clinical, setClinical }: any) {
             return (
               <div className="input-group" key={fatStr}>
                 <label>{fatStr.replace("Fat", "")}</label>
-                {/* SET TO SINGLE SELECT */}
-                <ChipGroup multiSelect={false} options={nfpeOptions} value={clinical[key]} onChange={v => handleUpdate(key, v)} severityMap={severityMap} />
+                <ChipGroup
+                  multiSelect={false}
+                  options={nfpeOptions}
+                  value={clinical[key]}
+                  onChange={v => handleUpdate(key, v)}
+                  severityMap={severityMap}
+                />
               </div>
-            )
+            );
           })}
-          
+
           <h4 className="mb-1 mt-1">C14: Functional Status</h4>
           <div className="input-group">
             <label>Functional Grip Strength</label>
-            {/* SET TO SINGLE SELECT */}
-            <ChipGroup multiSelect={false} options={["WNL", "Measurably Reduced"]} value={clinical.gripStrength} onChange={v => handleUpdate("gripStrength", v)} severityMap={{ "Measurably Reduced": "warning" }} />
+            <ChipGroup
+              multiSelect={false}
+              options={["WNL", "Measurably Reduced"]}
+              value={clinical.gripStrength}
+              onChange={v => handleUpdate("gripStrength", v)}
+              severityMap={{ "Measurably Reduced": "warning" }}
+            />
           </div>
         </div>
       </div>
@@ -81,29 +107,49 @@ export default function ClinicalDomain({ clinical, setClinical }: any) {
         <h4 className="mb-1">C15: Micronutrient Signs (Physical Exam)</h4>
         <div className="grid-4-col">
           {micronutrientCategories.map(({ area, options }) => {
-            const key = area.replace(/^(.)/, c => c.toLowerCase());
+            const key = area.replace(/^(.)/, (c: string) => c.toLowerCase());
             return (
               <div className="input-group" key={area}>
                 <label>{area.replace(/([A-Z])/g, ' $1').trim()}</label>
-                {/* DEFAULTS TO MULTI-SELECT TRUE */}
-                <ChipGroup options={options} value={clinical[key]} onChange={v => handleUpdate(key, v)} severityMap={severityMap} />
+                <ChipGroup
+                  options={options}
+                  value={clinical[key] || []}
+                  onChange={v => handleUpdate(key, v)}
+                  severityMap={severityMap}
+                />
               </div>
-            )
+            );
           })}
         </div>
         <div className="input-group mt-1">
           <label>Clinical Notes (Nuance)</label>
-          <textarea value={clinical.clinicalNotes} onChange={e => handleUpdate("clinicalNotes", e.target.value)} placeholder="Add nuance for physical findings..." />
+          <textarea
+            value={clinical.clinicalNotes}
+            onChange={e => handleUpdate("clinicalNotes", e.target.value)}
+            placeholder="Add nuance for physical findings..."
+          />
         </div>
       </div>
 
       <div className="card">
         <h4 className="mb-1">C2: GI & Systemic Function</h4>
         <div className="grid-2-col">
-          <div className="input-group"><label>GI Distress</label><input type="text" value={clinical.giDistress} onChange={e => handleUpdate("giDistress", e.target.value)} placeholder="e.g. Nausea, vomiting, diarrhea" /></div>
-          <div className="input-group"><label>Oral/Chewing</label><input type="text" value={clinical.chewing} onChange={e => handleUpdate("chewing", e.target.value)} /></div>
-          <div className="input-group"><label>Oral Hygiene</label><input type="text" value={clinical.oralHygiene} onChange={e => handleUpdate("oralHygiene", e.target.value)} /></div>
-          <div className="input-group"><label>Swallowing</label><input type="text" value={clinical.swallowing} onChange={e => handleUpdate("swallowing", e.target.value)} /></div>
+          <div className="input-group">
+            <label>GI Distress</label>
+            <input type="text" value={clinical.giDistress} onChange={e => handleUpdate("giDistress", e.target.value)} placeholder="e.g. Nausea, vomiting, diarrhea" />
+          </div>
+          <div className="input-group">
+            <label>Oral/Chewing</label>
+            <input type="text" value={clinical.chewing} onChange={e => handleUpdate("chewing", e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label>Oral Hygiene</label>
+            <input type="text" value={clinical.oralHygiene} onChange={e => handleUpdate("oralHygiene", e.target.value)} />
+          </div>
+          <div className="input-group">
+            <label>Swallowing</label>
+            <input type="text" value={clinical.swallowing} onChange={e => handleUpdate("swallowing", e.target.value)} />
+          </div>
         </div>
       </div>
     </div>
