@@ -1,13 +1,6 @@
 // src/components/create_adime/shared/PatientHeader.tsx
 import React, { useState } from 'react';
-
-interface Patient {
-  id: string;
-  firstName: string;
-  lastName: string;
-  dob: string;
-  sex?: string; 
-}
+import { Patient } from '../entities/patient/model'; // Adjust the path as necessary
 
 export default function PatientHeader({ patientData, setPatientData }: any) {
   const [selectedPatientId, setSelectedPatientId] = useState<string>('NEW');

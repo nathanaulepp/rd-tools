@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { AlertBanner } from '../shared/AlertBanner';
-import GrowthStandardsTable from './GrowthStandardsTable';
+import { AlertBanner } from '../../../shared/ui/AlertBanner';
+import GrowthStandardsTable from '../assess-anthro/GrowthStandardsTable';
 
 export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScans, calculatedMetrics, patientData }: any) {
   const handleUpdate = (field: string, val: string) => setAnthro({ ...anthro, [field]: val });

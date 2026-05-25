@@ -2,21 +2,21 @@
 import React, { useState } from 'react';
 
 // WHO (0-730 Days)
-import wfaBoysRaw from '../../../assets/datafiles_cleaned_csv/0_730_days/weight_for_age-boys-zscore-expanded-tables.csv?raw';
-import wfaGirlsRaw from '../../../assets/datafiles_cleaned_csv/0_730_days/weight_for_age-girls-zscore-expanded-tables.csv?raw';
-import lfaBoysRaw from '../../../assets/datafiles_cleaned_csv/0_730_days/lengthheight_for_age-boys-zscore-expanded-tables.csv?raw';
-import lfaGirlsRaw from '../../../assets/datafiles_cleaned_csv/0_730_days/lengthheight_for_age-girls-zscore-expanded-tables.csv?raw';
-import wflBoysRaw from '../../../assets/datafiles_cleaned_csv/0_730_days/weight_for_length-boys-zscore-expanded-table.csv?raw';
-import wflGirlsRaw from '../../../assets/datafiles_cleaned_csv/0_730_days/weight_for_length-girls-zscore-expanded-table.csv?raw';
-import bfaBoysRaw from '../../../assets/datafiles_cleaned_csv/0_730_days/bmi_for_age-boys-zscore-expanded-tables.csv?raw';
-import bfaGirlsRaw from '../../../assets/datafiles_cleaned_csv/0_730_days/bmi_for_age-girls-zscore-expanded-tables.csv?raw';
-import hfaBoysRaw from '../../../assets/datafiles_cleaned_csv/0_730_days/headcircumference_for_age-boys-zscore-expanded-tables.csv?raw';
-import hfaGirlsRaw from '../../../assets/datafiles_cleaned_csv/0_730_days/headcircumference_for_age-girls-zscore-expanded-tables.csv?raw';
+import wfaBoysRaw from '../shared/assets/datafiles_cleaned_csv/0_730_days/weight_for_age-boys-zscore-expanded-tables.csv?raw';
+import wfaGirlsRaw from '../shared/assets/datafiles_cleaned_csv/0_730_days/weight_for_age-girls-zscore-expanded-tables.csv?raw';
+import lfaBoysRaw from '../shared/assets/datafiles_cleaned_csv/0_730_days/lengthheight_for_age-boys-zscore-expanded-tables.csv?raw';
+import lfaGirlsRaw from '../shared/assets/datafiles_cleaned_csv/0_730_days/lengthheight_for_age-girls-zscore-expanded-tables.csv?raw';
+import wflBoysRaw from '../shared/assets/datafiles_cleaned_csv/0_730_days/weight_for_length-boys-zscore-expanded-table.csv?raw';
+import wflGirlsRaw from '../shared/assets/datafiles_cleaned_csv/0_730_days/weight_for_length-girls-zscore-expanded-table.csv?raw';
+import bfaBoysRaw from '../shared/assets/datafiles_cleaned_csv/0_730_days/bmi_for_age-boys-zscore-expanded-tables.csv?raw';
+import bfaGirlsRaw from '../shared/assets/datafiles_cleaned_csv/0_730_days/bmi_for_age-girls-zscore-expanded-tables.csv?raw';
+import hfaBoysRaw from '../shared/assets/datafiles_cleaned_csv/0_730_days/headcircumference_for_age-boys-zscore-expanded-tables.csv?raw';
+import hfaGirlsRaw from '../shared/assets/datafiles_cleaned_csv/0_730_days/headcircumference_for_age-girls-zscore-expanded-tables.csv?raw';
 
 // CDC (24-240 Months)
-import wtageRaw from '../../../assets/datafiles_cleaned_csv/24_240_months/wtage.csv?raw';
-import statageRaw from '../../../assets/datafiles_cleaned_csv/24_240_months/statage.csv?raw';
-import bmiageRaw from '../../../assets/datafiles_cleaned_csv/24_240_months/bmiagerev.csv?raw';
+import wtageRaw from '../shared/assets/datafiles_cleaned_csv/24_240_months/wtage.csv?raw';
+import statageRaw from '../shared/assets/datafiles_cleaned_csv/24_240_months/statage.csv?raw';
+import bmiageRaw from '../shared/assets/datafiles_cleaned_csv/24_240_months/bmiagerev.csv?raw';
 
 // Utility to parse standard CSV string into JS Objects
 function parseCSV(raw: string) {
@@ -331,4 +331,3 @@ return (
   </div>
 );
 }
-  

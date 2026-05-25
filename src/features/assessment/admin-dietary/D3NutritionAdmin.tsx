@@ -1,229 +1,8 @@
 import React, { useState } from "react";
+import * as helper from "./helper";
+import * as constant from "./constant";
+import { Dietary, MicroNutrientParams, ENFeed, PNFeed, ENState, PNState } from "../../../shared/types/index";
 
-// ─── Interfaces ──────────────────────────────────────────────────────────────
-
-export interface Dietary {
-  dietOrder?: string;
-  actualIntake?: string;
-  oralCalories?: string | number;
-  oralProtein?: string | number;
-  oralWater?: string | number;
-  [key: string]: any;
-}
-
-export interface ENFeed {
-  id: number;
-  label: string;
-  route: string;
-  type: string;
-  formula: string;
-  bolusMl: string | number;
-  bolusTimesPerDay: string | number;
-  bolusEveryHrs: string | number;
-  continuousRate: string | number;
-  continuousHrs: string | number;
-  flushMl: string | number;
-  flushTimesPerDay: string | number;
-  flushEveryHrs: string | number;
-  calPerMl: string | number;
-  protGPerL: string | number;
-  fwPct: string | number;
-  expanded: boolean;
-}
-
-export interface MicroNutrientParams {
-  amount?: string | number;
-  unit?: string;
-  rate?: string;
-}
-
-// ─── PNFeed: all three inputs (rate, amount, conc) are always optional ────────
-// Calcs prefer rate+conc when both are present, fall back to amount alone.
-export interface PNFeed {
-  id: number;
-  label: string;
-  indication: string;
-  route: string;
-  access: string;
-  delivery: string;
-  goal: string;
-  startDate: string;
-  startTime: string;
-  // Dextrose
-  dextType: string;
-  dextHrs: string | number;
-  dextAmount: string | number;   // g/day (manual override)
-  dextAmountUnit: string;
-  dextDuration: string;
-  dextRate: string | number;     // mL/hr
-  dextConc: string;              // D% e.g. "10", "20", "50"
-  // Amino Acids
-  aaType: string;
-  aaHrs: string | number;
-  aaAmount: string | number;     // g/day
-  aaAmountUnit: string;
-  aaDuration: string;
-  aaRate: string | number;       // mL/hr
-  aaConc: string;                // % solution
-  // Lipids
-  lipidType: string;
-  lipidHrs: string | number;
-  lipidOil: string;
-  lipidAmount: string | number;  // g/day
-  lipidDuration: string;
-  lipidRate: string | number;    // mL/hr
-  lipidConc: "10" | "20" | "30";
-  lipidCustomOil: string;
-  // Combined rate for TNA / 2-in-1
-  combinedRate: string | number;
-  insulinUnits: string | number;
-  electrolytes: Record<string, MicroNutrientParams>;
-  vitamins: Record<string, MicroNutrientParams>;
-  expanded: boolean;
-  electroExpanded: boolean;
-  vitExpanded: boolean;
-}
-
-// ─── EN & PN top-level state (lifted to root for persistence) ────────────────
-export interface ENState {
-  feeds: ENFeed[];
-  savedFormulas: string[];
-  nextId: number;
-}
-
-export interface PNState {
-  bags: PNFeed[];
-  nextId: number;
-}
-
-// ─── Constants ───────────────────────────────────────────────────────────────
-
-const EN_ROUTES: string[] = [
-  "NG (Nasogastric)", "NJ (Nasojejunal)", "ND (Nasoduodenal)",
-  "OG (Orogastric)", "OJ (Orojejunal)",
-  "PEG (Percutaneous Endoscopic Gastrostomy)",
-  "PEG-J (PEG with Jejunal Extension)",
-  "PRG (Percutaneous Radiologic Gastrostomy)",
-  "PRG-J (PRG with Jejunal Extension)",
-  "Low-Profile G (Button)", "Low-Profile G-J (Button with Jejunal Ext.)",
-  "PEJ (Percutaneous Endoscopic Jejunostomy)",
-  "Surgical Gastrostomy (Open/Laparoscopic)",
-  "Surgical Jejunostomy (Open/Laparoscopic)",
-  "PICC-NJ (PICC-guided Nasojejunal)",
-  "Other (specify in notes)",
-];
-
-const PN_ROUTES: string[] = ["Central", "Peripheral"];
-const PN_ACCESS: string[] = ["PICC", "CVC (Central Venous Catheter)", "Port-a-Cath", "PIV (Peripheral IV)", "Multi-lumen (specify lumen)", "Tunneled CVC", "Other"];
-const PN_GOALS: string[] = ["Full (sole source)", "Supplemental", "Bridging"];
-const PN_DELIVERY: string[] = ["3-in-1 (TNA)", "2-in-1 + Separate Lipid Infusion", "3 Fully Separated Macros", "Module-Based", "Transitioning (Define Phases)"];
-const PN_DURATIONS: string[] = ["Continuous", "Cyclic", "Taper"];
-const MACRO_TYPES: string[] = ["Premade", "Compounded"];
-const LIPID_OILS: string[] = ["Soybean (SO)", "SMOF (Soy/MCT/Olive/Fish)", "Custom (specify)"];
-const AMOUNT_UNITS: string[] = ["%", "mcg", "mg", "g", "mL", "L", "mEq", "mmol"];
-const RATE_UNITS: string[] = ["per hour", "per day"];
-const DEXT_CONC_OPTIONS = ["5","10","20","25","30","50","70"];
-const AA_CONC_OPTIONS = ["5","8.5","10","11.4","15"];
-
-const LIPID_CONCS = [
-  { pct: "10", gPerMl: 0.10, kcalPerMl: 1.1,  note: "Ready-to-infuse" },
-  { pct: "20", gPerMl: 0.20, kcalPerMl: 2.0,  note: "Most common (adult PN)" },
-  { pct: "30", gPerMl: 0.30, kcalPerMl: 3.0,  note: "Compounding / admixture only" },
-];
-
-const ELECTROLYTES: { key: string; label: string }[] = [
-  { key: "na", label: "Na (Sodium)" }, { key: "k", label: "K (Potassium)" },
-  { key: "cl", label: "Cl (Chloride)" }, { key: "acetate", label: "Acetate" },
-  { key: "mg", label: "Mg (Magnesium)" }, { key: "phos", label: "Phos (Phosphate)" },
-  { key: "ca", label: "Ca (Calcium)" }, { key: "zn", label: "Zn (Zinc)" },
-  { key: "cu", label: "Cu (Copper)" }, { key: "se", label: "Se (Selenium)" },
-  { key: "mn", label: "Mn (Manganese)" }, { key: "cr", label: "Cr (Chromium)" },
-  { key: "fe", label: "Fe (Iron)" }, { key: "i", label: "I (Iodine)" },
-  { key: "mo", label: "Mo (Molybdenum)" },
-];
-
-const VITAMINS: { key: string; label: string }[] = [
-  { key: "b1", label: "B1 – Thiamine" }, { key: "b2", label: "B2 – Riboflavin" },
-  { key: "b3", label: "B3 – Niacin" }, { key: "b5", label: "B5 – Pantothenic Acid" },
-  { key: "b6", label: "B6 – Pyridoxine" }, { key: "b7", label: "B7 – Biotin" },
-  { key: "b9", label: "B9 – Folic Acid" }, { key: "b12", label: "B12 – Cobalamin" },
-  { key: "vitC", label: "Vit C – Ascorbic Acid" }, { key: "vitA", label: "Vit A – Retinol" },
-  { key: "vitD", label: "Vit D – Cholecalciferol" }, { key: "vitE", label: "Vit E – Tocopherol" },
-  { key: "vitK", label: "Vit K" },
-];
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-
-const num = (v: string | number | undefined | null): number => (typeof v === "string" ? parseFloat(v) : v) || 0;
-const getLipidMeta = (pct: string) => LIPID_CONCS.find(c => c.pct === pct) ?? LIPID_CONCS[1];
-
-// Derive g and kcal from rate+conc. Returns null when inputs are blank/zero.
-function deriveDextrose(rateMlHr: string | number, hrs: string | number, concPct: string) {
-  const r = num(rateMlHr), h = num(hrs), c = parseFloat(concPct) / 100;
-  if (r <= 0 || h <= 0 || c <= 0) return null;
-  const g = r * h * c;
-  return { g, kcal: g * 3.4 };
-}
-function deriveAA(rateMlHr: string | number, hrs: string | number, concPct: string) {
-  const r = num(rateMlHr), h = num(hrs), c = parseFloat(concPct) / 100;
-  if (r <= 0 || h <= 0 || c <= 0) return null;
-  const g = r * h * c;
-  return { g, kcal: g * 4 };
-}
-function deriveLipid(rateMlHr: string | number, hrs: string | number, concPct: string) {
-  const r = num(rateMlHr), h = num(hrs);
-  const meta = getLipidMeta(concPct);
-  if (r <= 0 || h <= 0) return null;
-  const g = r * h * meta.gPerMl;
-  return { g, kcal: g * (meta.kcalPerMl / meta.gPerMl) };
-}
-
-function getRateMode(delivery: string): "tna" | "twoplusone" | "three" {
-  if (delivery === "3-in-1 (TNA)") return "tna";
-  if (delivery === "2-in-1 + Separate Lipid Infusion") return "twoplusone";
-  return "three";
-}
-
-function calcENNutrients(feed: ENFeed) {
-  const calPerMl = num(feed.calPerMl), protGPerL = num(feed.protGPerL), fwPct = num(feed.fwPct);
-  let formulaMl = feed.type === "bolus"
-    ? num(feed.bolusMl) * num(feed.bolusTimesPerDay)
-    : num(feed.continuousRate) * num(feed.continuousHrs);
-  const flushMl = num(feed.flushMl) * num(feed.flushTimesPerDay);
-  return {
-    totalMl: formulaMl + flushMl,
-    totalCal: Math.round(formulaMl * calPerMl),
-    totalProt: Math.round((formulaMl / 1000) * protGPerL * 10) / 10,
-    totalFw: Math.round(formulaMl * (fwPct / 100)),
-    flushMl: Math.round(flushMl),
-  };
-}
-
-function makeENFeed(id: number): ENFeed {
-  return {
-    id, label: `Feed ${id}`, route: "", type: "continuous", formula: "",
-    bolusMl: "", bolusTimesPerDay: "", bolusEveryHrs: "",
-    continuousRate: "", continuousHrs: "",
-    flushMl: "", flushTimesPerDay: "", flushEveryHrs: "",
-    calPerMl: "", protGPerL: "", fwPct: "", expanded: true,
-  };
-}
-
-function makePNFeed(id: number): PNFeed {
-  return {
-    id, label: `PN Bag ${id}`, indication: "",
-    route: "", access: "", delivery: "", goal: "",
-    startDate: "", startTime: "",
-    dextType: "", dextHrs: "", dextAmount: "", dextAmountUnit: "g", dextDuration: "", dextRate: "", dextConc: "",
-    aaType: "", aaHrs: "", aaAmount: "", aaAmountUnit: "g", aaDuration: "", aaRate: "", aaConc: "",
-    lipidType: "", lipidHrs: "", lipidOil: "", lipidAmount: "", lipidDuration: "", lipidRate: "", lipidConc: "20",
-    lipidCustomOil: "",
-    combinedRate: "",
-    insulinUnits: "",
-    electrolytes: {}, vitamins: {},
-    expanded: true, electroExpanded: false, vitExpanded: false,
-  };
-}
 
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
 
@@ -354,13 +133,13 @@ function MacroSection({
       <div style={{ fontSize: "0.82rem", fontWeight: 700, color, marginBottom: "0.7rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
       <div style={{ display: "grid", gridTemplateColumns: cols.join(" "), gap: "0.55rem", alignItems: "end" }}>
         <FieldRow label="Type">
-          <Sel value={macroType} onChange={onMacroType} options={MACRO_TYPES} placeholder="Select..." />
+          <Sel value={macroType} onChange={onMacroType} options={constant.MACRO_TYPES} placeholder="Select..." />
         </FieldRow>
         <FieldRow label="Hours">
           <NumInput value={hrs} onChange={onHrs} placeholder="24" />
         </FieldRow>
         <FieldRow label="Duration Plan">
-          <Sel value={duration} onChange={onDuration} options={PN_DURATIONS} placeholder="Select..." />
+          <Sel value={duration} onChange={onDuration} options={constant.PN_DURATIONS} placeholder="Select..." />
         </FieldRow>
         {showRate && (
           <FieldRow label={rateLabel}>
@@ -377,7 +156,7 @@ function MacroSection({
             />
             <select value={amountUnit} onChange={e => onAmountUnit(e.target.value)}
               style={{ padding: "5px 4px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.8rem", width: "54px" }}>
-              {AMOUNT_UNITS.map(u => <option key={u}>{u}</option>)}
+              {constant.AMOUNT_UNITS.map(u => <option key={u}>{u}</option>)}
             </select>
           </div>
         </FieldRow>
@@ -406,7 +185,7 @@ function LipidConcButtons({ value, onChange, color }: { value: string; onChange:
     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
       <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#34495e" }}>Conc</label>
       <div style={{ display: "flex", gap: "3px" }}>
-        {LIPID_CONCS.map(c => (
+        {constant.LIPID_CONCS.map(c => (
           <button key={c.pct} onClick={() => onChange(c.pct as "10"|"20"|"30")}
             title={`${c.pct}% — ${c.kcalPerMl} kcal/mL — ${c.note}`}
             style={{
@@ -422,7 +201,7 @@ function LipidConcButtons({ value, onChange, color }: { value: string; onChange:
       </div>
       {value && (
         <span style={{ fontSize: "0.68rem", color: "#718096" }}>
-          {getLipidMeta(value).kcalPerMl} kcal/mL
+          {constant.getLipidMeta(value).kcalPerMl} kcal/mL
           {value === "30" && <span style={{ color: "#c05621", fontWeight: 700 }}> ⚠ admix only</span>}
         </span>
       )}
@@ -446,11 +225,11 @@ function MicroPanel({ title, fields, values, onChange, accent, expanded, onToggl
                   <NumInput value={values[f.key]?.amount || ""} onChange={v => onChange(f.key, "amount", v)} style={{ flex: 1 }} />
                   <select value={values[f.key]?.unit || "mEq"} onChange={e => onChange(f.key, "unit", e.target.value)}
                     style={{ padding: "5px 4px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.78rem", width: "58px" }}>
-                    {AMOUNT_UNITS.map(u => <option key={u}>{u}</option>)}
+                    {constant.AMOUNT_UNITS.map(u => <option key={u}>{u}</option>)}
                   </select>
                   <select value={values[f.key]?.rate || "per day"} onChange={e => onChange(f.key, "rate", e.target.value)}
                     style={{ padding: "5px 4px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.78rem", width: "72px" }}>
-                    {RATE_UNITS.map(u => <option key={u}>{u}</option>)}
+                    {constant.RATE_UNITS.map(u => <option key={u}>{u}</option>)}
                   </select>
                 </div>
               </FieldRow>
@@ -499,7 +278,7 @@ interface ENFeedCardProps { feed: ENFeed; idx: number; onChange: (updated: ENFee
 
 function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula }: ENFeedCardProps) {
   const update = (field: keyof ENFeed, val: any) => onChange({ ...feed, [field]: val });
-  const nutrients = calcENNutrients(feed);
+  const nutrients = helper.calcENNutrients(feed);
   const isExpanded = feed.expanded;
 
   const handleFormulaChange = (val: string) => {
@@ -516,7 +295,7 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
         <div style={{ padding: "1rem", borderTop: "1px solid #e2e8f0", background: "#fff" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "0.75rem", marginBottom: "1rem" }}>
             <FieldRow label="Feed Label"><input type="text" value={feed.label} onChange={e => update("label", e.target.value)} placeholder={`Feed ${idx + 1}`} style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} /></FieldRow>
-            <FieldRow label="Route & Access"><Sel value={feed.route} onChange={v => update("route", v)} options={EN_ROUTES} placeholder="Select route..." /></FieldRow>
+            <FieldRow label="Route & Access"><Sel value={feed.route} onChange={v => update("route", v)} options={constant.EN_ROUTES} placeholder="Select route..." /></FieldRow>
           </div>
           <div style={{ marginBottom: "1rem" }}>
             <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#34495e", marginBottom: "6px" }}>Delivery Type</div>
@@ -579,13 +358,13 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
 interface D32EnteralProps { state: ENState; setState: (s: ENState) => void; }
 
 function D32Enteral({ state, setState }: D32EnteralProps) {
-  const addFeed = () => setState({ ...state, feeds: [...state.feeds, makeENFeed(state.nextId)], nextId: state.nextId + 1 });
+  const addFeed = () => setState({ ...state, feeds: [...state.feeds, helper.makeENFeed(state.nextId)], nextId: state.nextId + 1 });
   const updateFeed = (id: number, updated: ENFeed) => setState({ ...state, feeds: state.feeds.map(f => f.id === id ? updated : f) });
   const removeFeed = (id: number) => setState({ ...state, feeds: state.feeds.filter(f => f.id !== id) });
   const addFormula = (name: string) => setState({ ...state, savedFormulas: [...state.savedFormulas, name] });
 
   const totals = state.feeds.reduce((acc, f) => {
-    const n = calcENNutrients(f);
+    const n = helper.calcENNutrients(f);
     return { vol: acc.vol + n.totalMl, cal: acc.cal + n.totalCal, prot: acc.prot + n.totalProt, fw: acc.fw + n.totalFw, flush: acc.flush + n.flushMl };
   }, { vol: 0, cal: 0, prot: 0, fw: 0, flush: 0 });
 
@@ -621,7 +400,7 @@ interface PNFeedCardProps { feed: PNFeed; idx: number; onChange: (updated: PNFee
 function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
   const update = (field: keyof PNFeed, val: any) => onChange({ ...feed, [field]: val });
   const isExpanded = feed.expanded;
-  const rateMode = getRateMode(feed.delivery);
+  const rateMode = helper.getRateMode(feed.delivery);
 
   const updateElectrolyte = (key: string, sf: string, val: string) => onChange({ ...feed, electrolytes: { ...feed.electrolytes, [key]: { ...(feed.electrolytes[key] || {}), [sf]: val } } });
   const updateVitamin = (key: string, sf: string, val: string) => onChange({ ...feed, vitamins: { ...feed.vitamins, [key]: { ...(feed.vitamins[key] || {}), [sf]: val } } });
@@ -632,25 +411,25 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
   const effectiveLipidRate = rateMode === "tna" ? feed.combinedRate : feed.lipidRate;
 
   // Derived calcs using effective rates
-  const dextDerived  = deriveDextrose(effectiveDextRate, feed.dextHrs, feed.dextConc);
-  const aaDerived    = deriveAA(effectiveAARate, feed.aaHrs, feed.aaConc);
-  const lipidDerived = deriveLipid(effectiveLipidRate, feed.lipidHrs, feed.lipidConc);
+  const dextDerived  = helper.deriveDextrose(effectiveDextRate, feed.dextHrs, feed.dextConc);
+  const aaDerived    = helper.deriveAA(effectiveAARate, feed.aaHrs, feed.aaConc);
+  const lipidDerived = helper.deriveLipid(effectiveLipidRate, feed.lipidHrs, feed.lipidConc);
   
-  const dextG  = dextDerived  ? dextDerived.g  : num(feed.dextAmount);
-  const aaG    = aaDerived    ? aaDerived.g    : num(feed.aaAmount);
-  const lipidG = lipidDerived ? lipidDerived.g : num(feed.lipidAmount);
+  const dextG  = dextDerived  ? dextDerived.g  : helper.num(feed.dextAmount);
+  const aaG    = aaDerived    ? aaDerived.g    : helper.num(feed.aaAmount);
+  const lipidG = lipidDerived ? lipidDerived.g : helper.num(feed.lipidAmount);
 
   // Totals Calcs
-  const totalCal  = Math.round(dextG * 3.4 + aaG * 4 + lipidG * (getLipidMeta(feed.lipidConc).kcalPerMl / getLipidMeta(feed.lipidConc).gPerMl));
+  const totalCal  = Math.round(dextG * 3.4 + aaG * 4 + lipidG * (constant.getLipidMeta(feed.lipidConc).kcalPerMl / constant.getLipidMeta(feed.lipidConc).gPerMl));
   const totalProt = Math.round(aaG * 10) / 10;
 
   let totalVol = 0;
   if (rateMode === "tna") {
-    totalVol = num(effectiveDextRate) * (num(feed.dextHrs) || 24);
+    totalVol = helper.num(effectiveDextRate) * (helper.num(feed.dextHrs) || 24);
   } else if (rateMode === "twoplusone") {
-    totalVol = (num(effectiveDextRate) * (num(feed.dextHrs) || 24)) + (num(effectiveLipidRate) * (num(feed.lipidHrs) || 24));
+    totalVol = (helper.num(effectiveDextRate) * (helper.num(feed.dextHrs) || 24)) + (helper.num(effectiveLipidRate) * (helper.num(feed.lipidHrs) || 24));
   } else {
-    totalVol = (num(effectiveDextRate) * (num(feed.dextHrs) || 24)) + (num(effectiveAARate) * (num(feed.aaHrs) || 24)) + (num(effectiveLipidRate) * (num(feed.lipidHrs) || 24));
+    totalVol = (helper.num(effectiveDextRate) * (helper.num(feed.dextHrs) || 24)) + (helper.num(effectiveAARate) * (helper.num(feed.aaHrs) || 24)) + (helper.num(effectiveLipidRate) * (helper.num(feed.lipidHrs) || 24));
   }
 
   // Display toggles
@@ -676,10 +455,10 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
 
           {/* Route / Access / Delivery / Goal */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginBottom: "1rem" }}>
-            <FieldRow label="Route"><Sel value={feed.route} onChange={v => update("route", v)} options={PN_ROUTES} /></FieldRow>
-            <FieldRow label="Access Line"><Sel value={feed.access} onChange={v => update("access", v)} options={PN_ACCESS} /></FieldRow>
-            <FieldRow label="Delivery Method"><Sel value={feed.delivery} onChange={v => update("delivery", v)} options={PN_DELIVERY} /></FieldRow>
-            <FieldRow label="Goal"><Sel value={feed.goal} onChange={v => update("goal", v)} options={PN_GOALS} /></FieldRow>
+            <FieldRow label="Route"><Sel value={feed.route} onChange={v => update("route", v)} options={constant.PN_ROUTES} /></FieldRow>
+            <FieldRow label="Access Line"><Sel value={feed.access} onChange={v => update("access", v)} options={constant.PN_ACCESS} /></FieldRow>
+            <FieldRow label="Delivery Method"><Sel value={feed.delivery} onChange={v => update("delivery", v)} options={constant.PN_DELIVERY} /></FieldRow>
+            <FieldRow label="Goal"><Sel value={feed.goal} onChange={v => update("goal", v)} options={constant.PN_GOALS} /></FieldRow>
           </div>
 
           {/* Start Date / Time */}
@@ -714,7 +493,7 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
               amount={feed.dextAmount} amountUnit={feed.dextAmountUnit}
               onAmount={v => update("dextAmount", v)} onAmountUnit={v => update("dextAmountUnit", v)}
               conc={feed.dextConc} onConc={v => update("dextConc", v)}
-              concOptions={DEXT_CONC_OPTIONS} showConc={true}
+              concOptions={constant.DEXT_CONC_OPTIONS} showConc={true}
               derivedResult={dextDerived} derivedUnit="g dextrose"
             />
 
@@ -729,7 +508,7 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
               amount={feed.aaAmount} amountUnit={feed.aaAmountUnit}
               onAmount={v => update("aaAmount", v)} onAmountUnit={v => update("aaAmountUnit", v)}
               conc={feed.aaConc} onConc={v => update("aaConc", v)}
-              concOptions={AA_CONC_OPTIONS} showConc={true}
+              concOptions={constant.AA_CONC_OPTIONS} showConc={true}
               derivedResult={aaDerived} derivedUnit="g protein"
             />
 
@@ -752,7 +531,7 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
             />
             {feed.lipidOil !== undefined && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.5rem" }}>
-                <FieldRow label="Oil"><Sel value={feed.lipidOil} onChange={v => update("lipidOil", v)} options={LIPID_OILS} /></FieldRow>
+                <FieldRow label="Oil"><Sel value={feed.lipidOil} onChange={v => update("lipidOil", v)} options={constant.LIPID_OILS} /></FieldRow>
                 {feed.lipidOil === "Custom (specify)" && (
                   <FieldRow label="Specify oil blend">
                     <input type="text" value={feed.lipidCustomOil} onChange={e => update("lipidCustomOil", e.target.value)} placeholder="e.g. SMOF + fish oil..." style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} />
@@ -776,8 +555,8 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
             <NutrientChip label="Est. Volume" value={totalVol > 0 ? totalVol : "—"} unit="mL/day" color="#3498db" />
           </div>
 
-          <MicroPanel title="Electrolytes & Trace Elements" fields={ELECTROLYTES} values={feed.electrolytes} onChange={updateElectrolyte} accent="#2980b9" expanded={feed.electroExpanded} onToggle={() => update("electroExpanded", !feed.electroExpanded)} />
-          <MicroPanel title="Vitamins" fields={VITAMINS} values={feed.vitamins} onChange={updateVitamin} accent="#d35400" expanded={feed.vitExpanded} onToggle={() => update("vitExpanded", !feed.vitExpanded)} />
+          <MicroPanel title="Electrolytes & Trace Elements" fields={constant.ELECTROLYTES} values={feed.electrolytes} onChange={updateElectrolyte} accent="#2980b9" expanded={feed.electroExpanded} onToggle={() => update("electroExpanded", !feed.electroExpanded)} />
+          <MicroPanel title="Vitamins" fields={constant.VITAMINS} values={feed.vitamins} onChange={updateVitamin} accent="#d35400" expanded={feed.vitExpanded} onToggle={() => update("vitExpanded", !feed.vitExpanded)} />
 
           <button onClick={onRemove} style={{ marginTop: "1rem", background: "none", border: "1px solid #e74c3c", color: "#e74c3c", borderRadius: "4px", padding: "4px 12px", cursor: "pointer", fontSize: "0.8rem" }}>Remove Bag</button>
         </div>
@@ -789,7 +568,7 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
 interface D33ParenteralProps { state: PNState; setState: (s: PNState) => void; }
 
 function D33Parenteral({ state, setState }: D33ParenteralProps) {
-  const addBag = () => setState({ bags: [...state.bags, makePNFeed(state.nextId)], nextId: state.nextId + 1 });
+  const addBag = () => setState({ bags: [...state.bags, helper.makePNFeed(state.nextId)], nextId: state.nextId + 1 });
   const updateBag = (id: number, updated: PNFeed) => setState({ ...state, bags: state.bags.map(b => b.id === id ? updated : b) });
   const removeBag = (id: number) => setState({ ...state, bags: state.bags.filter(b => b.id !== id) });
   
@@ -820,13 +599,13 @@ export default function D3NutritionAdmin({ dietary = {}, setDietary = () => {} }
   
   // ── Lifted state: survives tab switches ──────────────────────────────────
   const [enState, setEnState] = useState<ENState>({
-    feeds: [makeENFeed(1)],
+    feeds: [helper.makeENFeed(1)],
     savedFormulas: [],
     nextId: 2,
   });
 
   const [pnState, setPnState] = useState<PNState>({
-    bags: [makePNFeed(1)],
+    bags: [helper.makePNFeed(1)],
     nextId: 2,
   });
 
