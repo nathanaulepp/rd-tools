@@ -1,3 +1,13 @@
+import type { Patient, Note } from '../api/db';
+
+export interface PatientHeaderProps {
+  patient: Patient | null;
+  note: Note | null;
+  patientData: any;          // still used for noteDate / admissionDate edits
+  setPatientData: (d: any) => void;
+  clinical: any;
+}
+
 export interface Dietary {
   dietOrder?: string;
   actualIntake?: string;

@@ -2,9 +2,8 @@
 import { useState, useMemo, useEffect } from "react";
 import "./App.css";
 import { getDb } from "../shared/api/db";
-import type { Patient } from "../shared/api/db";
+import type { Patient, Note } from "../shared/api/db";
 
-// Page Components
 import LoginPage from "./LoginPage";
 import StartPage from "./StartPage";
 import NoteListPage from "./NoteListPage";
@@ -15,12 +14,11 @@ import PatientGatePage from "./PatientGatePage";
 export type ViewState = "LOGIN" | "START" | "PATIENT_GATE" | "VIEW_NOTES" | "CREATE_NOTE" | "TOOLS";
 
 export default function App() {
-  // ── Top-level routing ──────────────────────────────────────────────────────
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<ViewState>("LOGIN");
 
   useEffect(() => {
-    getDb().catch((err) => console.error("Failed to initialize database:", err));
+    getDb().catch(err => console.error("Failed to initialize database:", err));
   }, []);
 
   const [theme, setTheme] = useState<"light" | "dark">(() => {
@@ -56,62 +54,52 @@ export default function App() {
 
   const handleExitToStart = () => {
     if (currentView === "CREATE_NOTE") {
-      const confirmExit = window.confirm(
-        "Are you sure you want to exit? Any unsaved changes will be lost."
-      );
+      const confirmExit = window.confirm("Are you sure you want to exit? Any unsaved changes will be lost.");
       if (!confirmExit) return;
     }
-    // Clear note context when leaving the workspace
     setActivePatientId(null);
     setActiveNoteId(null);
     setActivePatient(null);
+    setActiveNote(null);
     setCurrentView("START");
   };
 
-  // ── Phase 1: Active patient / note context ─────────────────────────────────
-  // These are set by PatientGatePage once a patient + note are confirmed,
-  // then passed down to CreateNotePage (and eventually PatientHeader).
+  // ── Phase 1+2: Active patient / note context ───────────────────────────────
   const [activePatientId, setActivePatientId] = useState<string | null>(null);
-  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
-  const [activePatient, setActivePatient] = useState<Patient | null>(null);
+  const [activeNoteId,    setActiveNoteId]    = useState<string | null>(null);
+  const [activePatient,   setActivePatient]   = useState<Patient | null>(null);
+  const [activeNote,      setActiveNote]      = useState<Note | null>(null);   // Phase 2
 
   /** Called by PatientGatePage when patient + note are ready. */
-  const handleEnterWorkspace = (patientId: string, noteId: string, patient: Patient) => {
+  const handleEnterWorkspace = (patientId: string, noteId: string, patient: Patient, note: Note) => {
     setActivePatientId(patientId);
     setActiveNoteId(noteId);
     setActivePatient(patient);
-    // Reset domain state for the new note
-    resetNoteState(patient);
+    setActiveNote(note);
+    resetNoteState(patient, note);
     setCurrentView("CREATE_NOTE");
   };
 
-  // ── Patient & note state ───────────────────────────────────────────────────
+  // ── Domain state ───────────────────────────────────────────────────────────
   const [patientData, setPatientData] = useState({
-    lastName: "",
-    firstName: "",
-    dob: "",
-    sex: "",
-    mrn: "",
+    lastName: "", firstName: "", dob: "", sex: "", mrn: "",
     admissionDate: new Date().toISOString().split("T")[0],
     noteDate: new Date().toISOString().split("T")[0],
     languages: "",
   });
 
   const [anthro, setAnthro] = useState({
-    ht: "", htUnit: "cm",
-    wt: "", wtUnit: "kg",
+    ht: "", htUnit: "cm", wt: "", wtUnit: "kg",
     ubw: "", ubwTime_amount1: "", ubwTime_unit1: "mo", ubwTime_amount2: "", ubwTime_unit2: "mo",
     waist: "", mac: "", calf: "", head: "", circUnit: "cm",
     triceps: "", subscapular: "", suprailiac: "", thigh: "", skinfoldUnit: "mm",
-    past_ht: "", past_htUnit: "cm",
-    past_wt: "", past_wtUnit: "kg",
+    past_ht: "", past_htUnit: "cm", past_wt: "", past_wtUnit: "kg",
     past_head: "", past_headUnit: "cm",
     past_htDate: "", past_wtDate: "", past_headDate: "",
   });
 
   const [dexaScans, setDexaScans] = useState<any[]>([]);
-
-  const [labs, setLabs] = useState<Record<string, { current: string; historical: string }>>({});
+  const [labs,      setLabs]      = useState<Record<string, { current: string; historical: string }>>({});
 
   const [clinical, setClinical] = useState({
     chiefComplaint: "", medHx: "",
@@ -143,32 +131,27 @@ export default function App() {
   });
 
   /**
-   * Reset all domain state for a new note.
-   * Pre-fills patientData from the DB patient record so PatientHeader
-   * can display demographics immediately (Phase 2 will make this read-only).
+   * Reset all domain state when entering a new note.
+   * Pre-fills patientData from the patient + note records.
    */
-  const resetNoteState = (patient: Patient) => {
-    const today = new Date().toISOString().split("T")[0];
-
+  const resetNoteState = (patient: Patient, note: Note) => {
     setPatientData({
-      lastName: patient.last_name,
-      firstName: patient.first_name,
-      dob: patient.dob,
-      sex: patient.sex ?? "",
-      mrn: patient.mrn ?? "",
-      admissionDate: today,
-      noteDate: today,
-      languages: patient.languages ?? "",
+      lastName:      patient.last_name,
+      firstName:     patient.first_name,
+      dob:           patient.dob,
+      sex:           patient.sex       ?? "",
+      mrn:           patient.mrn       ?? "",
+      admissionDate: note.admission_date ?? new Date().toISOString().split("T")[0],
+      noteDate:      note.note_date     ?? new Date().toISOString().split("T")[0],
+      languages:     patient.languages  ?? "",
     });
 
     setAnthro({
-      ht: "", htUnit: "cm",
-      wt: "", wtUnit: "kg",
+      ht: "", htUnit: "cm", wt: "", wtUnit: "kg",
       ubw: "", ubwTime_amount1: "", ubwTime_unit1: "mo", ubwTime_amount2: "", ubwTime_unit2: "mo",
       waist: "", mac: "", calf: "", head: "", circUnit: "cm",
       triceps: "", subscapular: "", suprailiac: "", thigh: "", skinfoldUnit: "mm",
-      past_ht: "", past_htUnit: "cm",
-      past_wt: "", past_wtUnit: "kg",
+      past_ht: "", past_htUnit: "cm", past_wt: "", past_wtUnit: "kg",
       past_head: "", past_headUnit: "cm",
       past_htDate: "", past_wtDate: "", past_headDate: "",
     });
@@ -205,20 +188,13 @@ export default function App() {
 
   // ── Derived metrics ────────────────────────────────────────────────────────
   const calculatedMetrics = useMemo(() => {
-    const htCm = anthro.htUnit === "in"
-      ? Number(anthro.ht) * 2.54
-      : Number(anthro.ht);
-    const wtKg = anthro.wtUnit === "lbs"
-      ? Number(anthro.wt) / 2.205
-      : Number(anthro.wt);
-    const bmi =
-      htCm > 0 && wtKg > 0
-        ? (wtKg / Math.pow(htCm / 100, 2)).toFixed(1)
-        : "--";
+    const htCm = anthro.htUnit === "in" ? Number(anthro.ht) * 2.54 : Number(anthro.ht);
+    const wtKg = anthro.wtUnit === "lbs" ? Number(anthro.wt) / 2.205 : Number(anthro.wt);
+    const bmi = htCm > 0 && wtKg > 0 ? (wtKg / Math.pow(htCm / 100, 2)).toFixed(1) : "--";
 
     let ageDays: number | null = null;
     if (patientData.dob && patientData.noteDate) {
-      const dDob = new Date(patientData.dob);
+      const dDob  = new Date(patientData.dob);
       const dNote = new Date(patientData.noteDate);
       ageDays = Math.floor((dNote.getTime() - dDob.getTime()) / (1000 * 60 * 60 * 24));
     }
@@ -231,6 +207,7 @@ export default function App() {
     patientId: activePatientId,
     noteId: activeNoteId,
     patient: activePatient,
+    note: activeNote,           // Phase 2
     patientData, setPatientData,
     anthro, setAnthro,
     dexaScans, setDexaScans,
@@ -242,9 +219,7 @@ export default function App() {
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  if (!isAuthenticated) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
+  if (!isAuthenticated) return <LoginPage onLogin={handleLogin} />;
 
   switch (currentView) {
     case "START":
@@ -252,10 +227,8 @@ export default function App() {
         <StartPage
           setCurrentView={setCurrentView}
           handleLogout={handleLogout}
-          zoomLevel={zoomLevel}
-          setZoomLevel={setZoomLevel}
-          theme={theme}
-          setTheme={setTheme}
+          zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
+          theme={theme} setTheme={setTheme}
         />
       );
     case "PATIENT_GATE":
@@ -276,10 +249,8 @@ export default function App() {
         <StartPage
           setCurrentView={setCurrentView}
           handleLogout={handleLogout}
-          zoomLevel={zoomLevel}
-          setZoomLevel={setZoomLevel}
-          theme={theme}
-          setTheme={setTheme}
+          zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
+          theme={theme} setTheme={setTheme}
         />
       );
   }

@@ -1,6 +1,6 @@
 // src/pages/CreateNotePage.tsx
 import React, { useState } from "react";
-import type { Patient } from "../shared/api/db";
+import type { Patient, Note } from "../shared/api/db";
 
 import PatientHeader from "../widgets/PatientHeader";
 import AnthroDomain from "../features/assessment/assess-anthro/AnthroDomain";
@@ -10,10 +10,10 @@ import DietaryDomain from "../features/assessment/assess-dietary/DietaryDomain";
 import { DIETARY_CATEGORIES, ASSESSMENT_CATEGORIES, BIOCHEMICAL_CATEGORIES } from "../shared/constants/adimeSideBarCategories";
 
 interface CreateNotePageProps {
-  // Phase 1: DB context — passed down from App, used by Phase 2+ for autosave & submit
   patientId: string | null;
   noteId: string | null;
   patient: Patient | null;
+  note: Note | null;          // Phase 2: passed so PatientHeader can autosave dates
 
   patientData: any;
   setPatientData: (d: any) => void;
@@ -35,6 +35,7 @@ export default function CreateNotePage({
   patientId,
   noteId,
   patient,
+  note,
   patientData, setPatientData,
   anthro, setAnthro,
   dexaScans, setDexaScans,
@@ -57,14 +58,11 @@ export default function CreateNotePage({
 
   const handleDomainSwitch = (domain: "A" | "B" | "C" | "D") => {
     if (domain !== activeDomain) {
-      // Phase 3 will wire autosave_note() here using noteId
       showToast("Auto-saved previous section");
       setActiveDomain(domain);
-
       if (domain === "A") setActiveSubDomain("A1-A5");
       else if (domain === "B") setActiveSubDomain("B1");
       else if (domain === "D") setActiveSubDomain("D1");
-
       if (window.innerWidth <= 768) setSidebarOpen(false);
     }
   };
@@ -79,67 +77,42 @@ export default function CreateNotePage({
         </div>
 
         <div className="nav-section">
-          <div
-            className={`nav-item ${activeDomain === "A" ? "active" : ""}`}
-            onClick={() => handleDomainSwitch("A")}
-          >
+          <div className={`nav-item ${activeDomain === "A" ? "active" : ""}`} onClick={() => handleDomainSwitch("A")}>
             A. Anthropometrics
           </div>
           {activeDomain === "A" && (
             <div className="sub-nav">
-              {ASSESSMENT_CATEGORIES.map((cat) => (
-                <div
-                  key={cat.id}
-                  className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`}
-                  onClick={() => setActiveSubDomain(cat.id)}
-                >
+              {ASSESSMENT_CATEGORIES.map(cat => (
+                <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => setActiveSubDomain(cat.id)}>
                   {cat.title}
                 </div>
               ))}
             </div>
           )}
 
-          <div
-            className={`nav-item ${activeDomain === "B" ? "active" : ""}`}
-            onClick={() => handleDomainSwitch("B")}
-          >
+          <div className={`nav-item ${activeDomain === "B" ? "active" : ""}`} onClick={() => handleDomainSwitch("B")}>
             B. Biochemical Data
           </div>
           {activeDomain === "B" && (
             <div className="sub-nav">
-              {BIOCHEMICAL_CATEGORIES.map((cat) => (
-                <div
-                  key={cat.id}
-                  className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`}
-                  onClick={() => setActiveSubDomain(cat.id)}
-                >
+              {BIOCHEMICAL_CATEGORIES.map(cat => (
+                <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => setActiveSubDomain(cat.id)}>
                   {cat.title}
                 </div>
               ))}
             </div>
           )}
 
-          <div
-            className={`nav-item ${activeDomain === "C" ? "active" : ""}`}
-            onClick={() => handleDomainSwitch("C")}
-          >
+          <div className={`nav-item ${activeDomain === "C" ? "active" : ""}`} onClick={() => handleDomainSwitch("C")}>
             C. Clinical & NFPE
           </div>
-          <div
-            className={`nav-item ${activeDomain === "D" ? "active" : ""}`}
-            onClick={() => handleDomainSwitch("D")}
-          >
+          <div className={`nav-item ${activeDomain === "D" ? "active" : ""}`} onClick={() => handleDomainSwitch("D")}>
             D. Dietary History
           </div>
-
           {activeDomain === "D" && (
             <div className="sub-nav">
-              {DIETARY_CATEGORIES.map((cat) => (
-                <div
-                  key={cat.id}
-                  className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`}
-                  onClick={() => setActiveSubDomain(cat.id)}
-                >
+              {DIETARY_CATEGORIES.map(cat => (
+                <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => setActiveSubDomain(cat.id)}>
                   {cat.title}
                 </div>
               ))}
@@ -159,14 +132,16 @@ export default function CreateNotePage({
               className="search-bar"
               placeholder="Jump to section..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={e => setSearchQuery(e.target.value)}
             />
           </div>
-          {/* Phase 4 will replace this with a proper submit flow */}
           <button className="btn-outline" onClick={handleExitToStart}>Exit Note</button>
         </header>
 
+        {/* Phase 2: patient + note passed directly */}
         <PatientHeader
+          patient={patient}
+          note={note}
           patientData={patientData}
           setPatientData={setPatientData}
           clinical={clinical}
@@ -175,35 +150,24 @@ export default function CreateNotePage({
         <div className="content-area">
           {activeDomain === "A" && (
             <AnthroDomain
-              anthro={anthro}
-              setAnthro={setAnthro}
-              dexaScans={dexaScans}
-              setDexaScans={setDexaScans}
+              anthro={anthro} setAnthro={setAnthro}
+              dexaScans={dexaScans} setDexaScans={setDexaScans}
               calculatedMetrics={calculatedMetrics}
               patientData={patientData}
               activeSubDomain={activeSubDomain}
             />
           )}
           {activeDomain === "B" && (
-            <BiochemicalDomain
-              labs={labs}
-              setLabs={setLabs}
-              activeSubDomain={activeSubDomain}
-            />
+            <BiochemicalDomain labs={labs} setLabs={setLabs} activeSubDomain={activeSubDomain} />
           )}
           {activeDomain === "C" && (
             <ClinicalDomain clinical={clinical} setClinical={setClinical} />
           )}
           {activeDomain === "D" && (
-            <DietaryDomain
-              dietary={dietary}
-              setDietary={setDietary}
-              activeSubDomain={activeSubDomain}
-            />
+            <DietaryDomain dietary={dietary} setDietary={setDietary} activeSubDomain={activeSubDomain} />
           )}
         </div>
 
-        {/* Toast */}
         <div className={`toast ${toastMsg ? "show" : ""}`}>{toastMsg}</div>
       </main>
     </div>
