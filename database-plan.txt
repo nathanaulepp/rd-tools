@@ -1,28 +1,3 @@
-Here's the full implementation plan before touching any code:
-
-## Phase 1: New Patient / Existing Patient Gate
-
-Before the ADIME workspace opens, replace the current flow with a modal or dedicated screen:
-
-```
-"Create New ADIME" on StartPage →
-  → Gate screen: "New Patient" or "Existing Patient"
-
-New Patient path:
-  → Form: first name, last name, DOB, sex, MRN (opt), languages (opt)
-  → On submit: create_patient() → get back patient_id
-  → create_note(patient_id, today's date, today's date) → get back note_id
-  → Enter ADIME workspace with patient + note context loaded
-
-Existing Patient path:
-  → Searchable dropdown populated from get_all_patients()
-  → On select: demographic fields pre-fill (read-only in header)
-  → create_note() with that patient_id → blank note, demographics pulled in
-  → Enter ADIME workspace
-```
-
-The ADIME workspace then always has two pieces of context: a `patientId` and a `noteId`. Everything auto-saves and submits against that `noteId`.
-
 ---
 
 ## Phase 2: PatientHeader Cleanup

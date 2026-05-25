@@ -1,175 +1,124 @@
-// src/pages/CreateNotePage.tsx
-import React, { useState } from "react";
+// src/widgets/PatientHeader.tsx
+// Phase 2: Receives patient + note as props. Demographics are read-only.
+// Note date and admission date are editable and auto-save on change.
+
+import React from "react";
 import type { Patient, Note } from "../shared/api/db";
+import { autosaveNote } from "../shared/api/db";
 
-import PatientHeader from "../widgets/PatientHeader";
-import AnthroDomain from "../features/assessment/assess-anthro/AnthroDomain";
-import BiochemicalDomain from "../features/assessment/assess-biochemical/BiochemicalDomain";
-import ClinicalDomain from "../features/assessment/assess-clinical/ClinicalDomain";
-import DietaryDomain from "../features/assessment/assess-dietary/DietaryDomain";
-import { DIETARY_CATEGORIES, ASSESSMENT_CATEGORIES, BIOCHEMICAL_CATEGORIES } from "../shared/constants/adimeSideBarCategories";
-
-interface CreateNotePageProps {
-  patientId: string | null;
-  noteId: string | null;
+interface PatientHeaderProps {
   patient: Patient | null;
-  note: Note | null;          // Phase 2: passed so PatientHeader can autosave dates
-
+  note: Note | null;
   patientData: any;
   setPatientData: (d: any) => void;
-  anthro: any;
-  setAnthro: (a: any) => void;
-  dexaScans: any[];
-  setDexaScans: (s: any[]) => void;
-  labs: any;
-  setLabs: (l: any) => void;
   clinical: any;
-  setClinical: (c: any) => void;
-  dietary: any;
-  setDietary: (d: any) => void;
-  calculatedMetrics: any;
-  handleExitToStart: () => void;
 }
 
-export default function CreateNotePage({
-  patientId,
-  noteId,
+export default function PatientHeader({
   patient,
   note,
-  patientData, setPatientData,
-  anthro, setAnthro,
-  dexaScans, setDexaScans,
-  labs, setLabs,
-  clinical, setClinical,
-  dietary, setDietary,
-  calculatedMetrics,
-  handleExitToStart,
-}: CreateNotePageProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeDomain, setActiveDomain] = useState<"A" | "B" | "C" | "D">("A");
-  const [activeSubDomain, setActiveSubDomain] = useState<string>("A1-A5");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [toastMsg, setToastMsg] = useState("");
+  patientData,
+  setPatientData,
+  clinical,
+}: PatientHeaderProps) {
+  if (!patient) return null;
 
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(""), 3000);
-  };
+  const dob = patient.dob;
+  const age = (() => {
+    if (!dob || !patientData.noteDate) return "--";
+    const ms = new Date(patientData.noteDate).getTime() - new Date(dob).getTime();
+    if (isNaN(ms) || ms < 0) return "--";
+    const days = ms / (1000 * 60 * 60 * 24);
+    if (days < 730) {
+      const mo = Math.floor(days / 30.4375);
+      return `${mo} mo`;
+    }
+    return `${Math.floor(days / 365.25)} yr`;
+  })();
 
-  const handleDomainSwitch = (domain: "A" | "B" | "C" | "D") => {
-    if (domain !== activeDomain) {
-      showToast("Auto-saved previous section");
-      setActiveDomain(domain);
-      if (domain === "A") setActiveSubDomain("A1-A5");
-      else if (domain === "B") setActiveSubDomain("B1");
-      else if (domain === "D") setActiveSubDomain("D1");
-      if (window.innerWidth <= 768) setSidebarOpen(false);
+  const handleDateChange = async (field: "noteDate" | "admissionDate", val: string) => {
+    setPatientData({ ...patientData, [field]: val });
+    if (!note?.id) return;
+    const dbField = field === "noteDate" ? "note_date" : "admission_date";
+    try {
+      await autosaveNote(note.id, dbField, val);
+    } catch (e) {
+      console.error("Autosave failed:", e);
     }
   };
 
+  // Vital signs chips
+  const vitals: { label: string; value: string; unit?: string }[] = [
+    { label: "HR", value: clinical?.hr || "--", unit: "bpm" },
+    { label: "BP", value: clinical?.bp || "--", unit: "mmHg" },
+    { label: "SpO₂", value: clinical?.spo2 || "--", unit: "%" },
+    { label: "Temp", value: clinical?.temp || "--", unit: "°F" },
+    { label: "RR", value: clinical?.rr || "--", unit: "bpm" },
+  ];
+
   return (
-    <div className="app-layout">
-      {/* SIDEBAR */}
-      <nav className={`sidebar ${sidebarOpen ? "open" : ""}`}>
-        <div className="sidebar-header">
-          RD Workstation
-          <button className="close-sidebar-btn" onClick={() => setSidebarOpen(false)}>×</button>
-        </div>
+    <div className="patient-header">
+      {/* Demographics block (read-only) */}
+      <div className="patient-info">
+        <h2>
+          {patient.last_name}, {patient.first_name}
+        </h2>
+        <p>
+          DOB: {dob} · Age: {age}
+          {patient.sex ? ` · ${patient.sex}` : ""}
+          {patient.mrn ? ` · MRN: ${patient.mrn}` : ""}
+          {patient.languages ? ` · ${patient.languages}` : ""}
+        </p>
+      </div>
 
-        <div className="nav-section">
-          <div className={`nav-item ${activeDomain === "A" ? "active" : ""}`} onClick={() => handleDomainSwitch("A")}>
-            A. Anthropometrics
-          </div>
-          {activeDomain === "A" && (
-            <div className="sub-nav">
-              {ASSESSMENT_CATEGORIES.map(cat => (
-                <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => setActiveSubDomain(cat.id)}>
-                  {cat.title}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className={`nav-item ${activeDomain === "B" ? "active" : ""}`} onClick={() => handleDomainSwitch("B")}>
-            B. Biochemical Data
-          </div>
-          {activeDomain === "B" && (
-            <div className="sub-nav">
-              {BIOCHEMICAL_CATEGORIES.map(cat => (
-                <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => setActiveSubDomain(cat.id)}>
-                  {cat.title}
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className={`nav-item ${activeDomain === "C" ? "active" : ""}`} onClick={() => handleDomainSwitch("C")}>
-            C. Clinical & NFPE
-          </div>
-          <div className={`nav-item ${activeDomain === "D" ? "active" : ""}`} onClick={() => handleDomainSwitch("D")}>
-            D. Dietary History
-          </div>
-          {activeDomain === "D" && (
-            <div className="sub-nav">
-              {DIETARY_CATEGORIES.map(cat => (
-                <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => setActiveSubDomain(cat.id)}>
-                  {cat.title}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </nav>
-
-      {/* MAIN WORKSPACE */}
-      <main className="main-workspace">
-        <header className="top-nav">
-          <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}>☰</button>
-          <div className="search-bar-container">
-            <span className="search-icon">🔍</span>
-            <input
-              type="text"
-              className="search-bar"
-              placeholder="Jump to section..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-            />
-          </div>
-          <button className="btn-outline" onClick={handleExitToStart}>Exit Note</button>
-        </header>
-
-        {/* Phase 2: patient + note passed directly */}
-        <PatientHeader
-          patient={patient}
-          note={note}
-          patientData={patientData}
-          setPatientData={setPatientData}
-          clinical={clinical}
+      {/* Note Date (editable) */}
+      <div className="vital-stat" style={{ minWidth: "120px" }}>
+        <span className="label">Note Date</span>
+        <input
+          type="date"
+          value={patientData.noteDate || ""}
+          onChange={e => handleDateChange("noteDate", e.target.value)}
+          style={{
+            fontSize: "0.82rem",
+            fontWeight: 700,
+            border: "none",
+            background: "transparent",
+            color: "var(--primary)",
+            padding: 0,
+            width: "100%",
+          }}
         />
+      </div>
 
-        <div className="content-area">
-          {activeDomain === "A" && (
-            <AnthroDomain
-              anthro={anthro} setAnthro={setAnthro}
-              dexaScans={dexaScans} setDexaScans={setDexaScans}
-              calculatedMetrics={calculatedMetrics}
-              patientData={patientData}
-              activeSubDomain={activeSubDomain}
-            />
-          )}
-          {activeDomain === "B" && (
-            <BiochemicalDomain labs={labs} setLabs={setLabs} activeSubDomain={activeSubDomain} />
-          )}
-          {activeDomain === "C" && (
-            <ClinicalDomain clinical={clinical} setClinical={setClinical} />
-          )}
-          {activeDomain === "D" && (
-            <DietaryDomain dietary={dietary} setDietary={setDietary} activeSubDomain={activeSubDomain} />
-          )}
+      {/* Admission Date (editable) */}
+      <div className="vital-stat" style={{ minWidth: "120px" }}>
+        <span className="label">Admission Date</span>
+        <input
+          type="date"
+          value={patientData.admissionDate || ""}
+          onChange={e => handleDateChange("admissionDate", e.target.value)}
+          style={{
+            fontSize: "0.82rem",
+            fontWeight: 700,
+            border: "none",
+            background: "transparent",
+            color: "var(--primary)",
+            padding: 0,
+            width: "100%",
+          }}
+        />
+      </div>
+
+      {/* Vital signs (from clinical state — live, read-only display) */}
+      {vitals.map(v => (
+        <div className="vital-stat" key={v.label}>
+          <span className="label">{v.label}</span>
+          <span className="value">
+            {v.value}
+            {v.value !== "--" && v.unit && <span>{v.unit}</span>}
+          </span>
         </div>
-
-        <div className={`toast ${toastMsg ? "show" : ""}`}>{toastMsg}</div>
-      </main>
+      ))}
     </div>
   );
 }

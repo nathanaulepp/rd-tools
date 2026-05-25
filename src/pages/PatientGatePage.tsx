@@ -126,7 +126,7 @@ export default function PatientGatePage({ onEnterWorkspace, onCancel }: PatientG
 
 const styles: Record<string, CSSProperties> = {
   overlay: { minHeight: "100vh", background: "#f4f7f6", display: "flex", alignItems: "center", justifyContent: "center", padding: "2rem", boxSizing: "border-box" },
-  panel: { background: "#ffffff", borderRadius: "16px", boxShadow: "0 8px 30px rgba(0,0,0,0.09)", width: "100%", maxWidth: "600px", overflow: "hidden" },
+  panel: { background: "#ffffff", borderRadius: "16px", boxShadow: "0 8px 30px rgba(0,0,0,0.09)", width: "100%", maxWidth: "600px" },
   header: { padding: "1.5rem 2rem 1.25rem", borderBottom: "1px solid #e2e8f0", position: "relative" },
   backBtn: { background: "none", border: "none", color: "#3498db", cursor: "pointer", fontSize: "0.8rem", fontWeight: 600, padding: 0, marginBottom: "0.5rem", display: "block" },
   title: { margin: "0 0 0.2rem", fontSize: "1.3rem", fontWeight: 800, color: "#0f172a" },
