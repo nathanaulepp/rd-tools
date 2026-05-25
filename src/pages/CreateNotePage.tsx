@@ -1,4 +1,6 @@
+// src/pages/CreateNotePage.tsx
 import React, { useState } from "react";
+import type { Patient } from "../shared/api/db";
 
 import PatientHeader from "../widgets/PatientHeader";
 import AnthroDomain from "../features/assessment/assess-anthro/AnthroDomain";
@@ -8,6 +10,11 @@ import DietaryDomain from "../features/assessment/assess-dietary/DietaryDomain";
 import { DIETARY_CATEGORIES, ASSESSMENT_CATEGORIES, BIOCHEMICAL_CATEGORIES } from "../shared/constants/adimeSideBarCategories";
 
 interface CreateNotePageProps {
+  // Phase 1: DB context — passed down from App, used by Phase 2+ for autosave & submit
+  patientId: string | null;
+  noteId: string | null;
+  patient: Patient | null;
+
   patientData: any;
   setPatientData: (d: any) => void;
   anthro: any;
@@ -25,6 +32,9 @@ interface CreateNotePageProps {
 }
 
 export default function CreateNotePage({
+  patientId,
+  noteId,
+  patient,
   patientData, setPatientData,
   anthro, setAnthro,
   dexaScans, setDexaScans,
@@ -47,14 +57,14 @@ export default function CreateNotePage({
 
   const handleDomainSwitch = (domain: "A" | "B" | "C" | "D") => {
     if (domain !== activeDomain) {
+      // Phase 3 will wire autosave_note() here using noteId
       showToast("Auto-saved previous section");
       setActiveDomain(domain);
-      
-      // Set default sub-domain based on the new domain
+
       if (domain === "A") setActiveSubDomain("A1-A5");
       else if (domain === "B") setActiveSubDomain("B1");
       else if (domain === "D") setActiveSubDomain("D1");
-      
+
       if (window.innerWidth <= 768) setSidebarOpen(false);
     }
   };
@@ -152,12 +162,13 @@ export default function CreateNotePage({
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
+          {/* Phase 4 will replace this with a proper submit flow */}
           <button className="btn-outline" onClick={handleExitToStart}>Exit Note</button>
         </header>
 
-        <PatientHeader 
-          patientData={patientData} 
-          setPatientData={setPatientData} 
+        <PatientHeader
+          patientData={patientData}
+          setPatientData={setPatientData}
           clinical={clinical}
         />
 
@@ -174,9 +185,9 @@ export default function CreateNotePage({
             />
           )}
           {activeDomain === "B" && (
-            <BiochemicalDomain 
-              labs={labs} 
-              setLabs={setLabs} 
+            <BiochemicalDomain
+              labs={labs}
+              setLabs={setLabs}
               activeSubDomain={activeSubDomain}
             />
           )}
