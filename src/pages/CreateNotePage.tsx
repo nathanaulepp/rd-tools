@@ -1,13 +1,14 @@
 // src/pages/CreateNotePage.tsx
 // Phase 3: Auto-save wiring
-//   • Domain switches (A→B, B→C, etc.) save the outgoing domain before switching.
-//   • Sub-domain switches within the same domain also trigger a save.
-//   • useRef mirrors are kept for each domain so async callbacks always read
-//     the latest state without stale-closure issues.
+// Phase 4: Note Submission Flow
+//   • "Submit Note" button triggers save-all-domains → validation → submit
+//   • Missing fields are shown in a modal with a specific error list
+//   • On success, note is marked submitted and user is returned to StartPage
+//   • isSaved state tracks whether all domains are clean so we can warn on exit
 
 import React, { useState, useRef, useCallback } from "react";
 import type { Patient, Note } from "../shared/api/db";
-import { autosaveNote } from "../shared/api/db";
+import { autosaveNote, submitNote, getSubmissionRequirements } from "../shared/api/db";
 
 import PatientHeader from "../widgets/PatientHeader";
 import AnthroDomain from "../features/assessment/assess-anthro/AnthroDomain";
@@ -42,7 +43,7 @@ interface CreateNotePageProps {
   handleExitToStart: () => void;
 }
 
-// ─── Domain label map (used in toast messages) ────────────────────────────────
+// ─── Domain label map ─────────────────────────────────────────────────────────
 const DOMAIN_LABELS: Record<string, string> = {
   A: "Anthropometrics",
   B: "Biochemical",
@@ -50,6 +51,112 @@ const DOMAIN_LABELS: Record<string, string> = {
   D: "Dietary",
 };
 
+// ─── Submit Modal ─────────────────────────────────────────────────────────────
+interface SubmitModalProps {
+  state: "confirm" | "saving" | "error" | "success";
+  missingFields: string[];
+  onConfirm: () => void;
+  onClose: () => void;
+}
+
+function SubmitModal({ state, missingFields, onConfirm, onClose }: SubmitModalProps) {
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 2000,
+    }}>
+      <div style={{
+        background: "#fff", borderRadius: "14px", padding: "2rem",
+        maxWidth: "460px", width: "90%",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
+      }}>
+
+        {/* ── Confirm ── */}
+        {state === "confirm" && (
+          <>
+            <h3 style={{ margin: "0 0 0.5rem", color: "#0f172a", fontSize: "1.1rem" }}>
+              Submit Note?
+            </h3>
+            <p style={{ margin: "0 0 1.5rem", fontSize: "0.88rem", color: "#64748b", lineHeight: 1.5 }}>
+              All domains will be saved and the note will be marked as <strong>Submitted</strong>.
+              You can still create a revision afterwards if needed.
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button onClick={onClose} style={btnStyles.outline}>Cancel</button>
+              <button onClick={onConfirm} style={btnStyles.primary}>Save &amp; Submit →</button>
+            </div>
+          </>
+        )}
+
+        {/* ── Saving ── */}
+        {state === "saving" && (
+          <div style={{ textAlign: "center", padding: "1rem 0" }}>
+            <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>💾</div>
+            <p style={{ margin: 0, fontWeight: 600, color: "#2c3e50" }}>Saving and submitting…</p>
+          </div>
+        )}
+
+        {/* ── Validation Error ── */}
+        {state === "error" && (
+          <>
+            <h3 style={{ margin: "0 0 0.5rem", color: "#c0392b", fontSize: "1.1rem" }}>
+              🚨 Cannot Submit — Missing Required Fields
+            </h3>
+            <p style={{ margin: "0 0 0.75rem", fontSize: "0.85rem", color: "#64748b" }}>
+              Please complete the following before submitting:
+            </p>
+            <ul style={{
+              margin: "0 0 1.25rem", paddingLeft: "1.25rem",
+              listStyle: "disc", color: "#c0392b",
+              fontSize: "0.88rem", lineHeight: 1.8,
+            }}>
+              {missingFields.map(f => <li key={f}>{f}</li>)}
+            </ul>
+            <p style={{ margin: "0 0 1.25rem", fontSize: "0.78rem", color: "#94a3b8" }}>
+              These fields are set in the <strong>Patient Header</strong> at the top of the workspace
+              (Note Date, Admission Date) or in the Patient Gate (Name, DOB).
+            </p>
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <button onClick={onClose} style={btnStyles.primary}>OK, I'll Fix It</button>
+            </div>
+          </>
+        )}
+
+        {/* ── Success ── */}
+        {state === "success" && (
+          <div style={{ textAlign: "center", padding: "0.5rem 0" }}>
+            <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>✅</div>
+            <h3 style={{ margin: "0 0 0.4rem", color: "#27ae60" }}>Note Submitted!</h3>
+            <p style={{ margin: "0 0 1.5rem", fontSize: "0.85rem", color: "#64748b", lineHeight: 1.5 }}>
+              The note has been saved and marked as <strong>Submitted</strong>.
+              You can create a revision from the Note List if changes are needed.
+            </p>
+            <button onClick={onClose} style={{ ...btnStyles.primary, background: "#27ae60" }}>
+              Return to Home
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const btnStyles: Record<string, React.CSSProperties> = {
+  primary: {
+    background: "#3498db", color: "#fff", border: "none",
+    padding: "0.55rem 1.25rem", borderRadius: "8px",
+    fontSize: "0.88rem", fontWeight: 700, cursor: "pointer",
+  },
+  outline: {
+    background: "transparent", color: "#3498db",
+    border: "1px solid #3498db",
+    padding: "0.55rem 1.25rem", borderRadius: "8px",
+    fontSize: "0.88rem", fontWeight: 700, cursor: "pointer",
+  },
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 export default function CreateNotePage({
   patientId,
   noteId,
@@ -71,41 +178,42 @@ export default function CreateNotePage({
   const [toastMsg, setToastMsg] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  // ── Refs: always hold the latest domain state for stale-closure-safe saves ──
-  // React state updates are async; using refs guarantees the save captures the
-  // value that was on screen at the moment the user clicked, not a cached copy.
+  // ── Phase 4: Submission modal state ──────────────────────────────────────────
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalState, setModalState] = useState<"confirm" | "saving" | "error" | "success">("confirm");
+  const [missingFields, setMissingFields] = useState<string[]>([]);
+  const [noteStatus, setNoteStatus] = useState<"draft" | "submitted">(
+    (note?.status as "draft" | "submitted") ?? "draft"
+  );
+
+  // ── Refs: stale-closure-safe saves ───────────────────────────────────────────
   const anthroRef    = useRef(anthro);
   const dexaRef      = useRef(dexaScans);
   const labsRef      = useRef(labs);
   const clinicalRef  = useRef(clinical);
   const dietaryRef   = useRef(dietary);
 
-  // Keep refs in sync whenever props change (parent re-renders on every state update)
   anthroRef.current   = anthro;
   dexaRef.current     = dexaScans;
   labsRef.current     = labs;
   clinicalRef.current = clinical;
   dietaryRef.current  = dietary;
 
-  // ── Toast helper ─────────────────────────────────────────────────────────────
+  // ── Toast helper ──────────────────────────────────────────────────────────────
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(""), 3000);
   };
 
-  // ── Core save function ───────────────────────────────────────────────────────
-  // Saves all columns for the given domain using the ref values (latest state).
-  // Returns true on success, false on error (so callers can decide whether to
-  // still proceed with the navigation).
+  // ── Save a single domain ──────────────────────────────────────────────────────
   const saveDomain = useCallback(
     async (domain: "A" | "B" | "C" | "D"): Promise<boolean> => {
-      if (!noteId) return true; // Nothing to save if there's no note yet
+      if (!noteId) return true;
 
       setIsSaving(true);
       try {
         switch (domain) {
           case "A":
-            // Domain A spans two columns: anthro + dexa_scans
             await autosaveNote(noteId, "anthro",     anthroRef.current);
             await autosaveNote(noteId, "dexa_scans", dexaRef.current);
             break;
@@ -131,30 +239,90 @@ export default function CreateNotePage({
     [noteId]
   );
 
-  // ── Domain switch (top-level nav: A / B / C / D) ─────────────────────────────
+  // ── Save ALL domains (used before submission) ─────────────────────────────────
+  const saveAllDomains = useCallback(async (): Promise<boolean> => {
+    if (!noteId) return true;
+    setIsSaving(true);
+    try {
+      await autosaveNote(noteId, "anthro",     anthroRef.current);
+      await autosaveNote(noteId, "dexa_scans", dexaRef.current);
+      await autosaveNote(noteId, "labs",       labsRef.current);
+      await autosaveNote(noteId, "clinical",   clinicalRef.current);
+      await autosaveNote(noteId, "dietary",    dietaryRef.current);
+      return true;
+    } catch (e) {
+      console.error("Full save failed:", e);
+      showToast("⚠ Save failed — check connection");
+      return false;
+    } finally {
+      setIsSaving(false);
+    }
+  }, [noteId]);
+
+  // ── Phase 4: Submission handler ───────────────────────────────────────────────
+  const handleSubmitClick = () => {
+    if (noteStatus === "submitted") return; // Already submitted; shouldn't reach here
+    setModalState("confirm");
+    setMissingFields([]);
+    setModalOpen(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    if (!noteId || !patientId) return;
+
+    setModalState("saving");
+
+    // 1. Save all domains first
+    const saved = await saveAllDomains();
+    if (!saved) {
+      // Save failed — close modal and let the toast explain
+      setModalOpen(false);
+      return;
+    }
+
+    // 2. Run submission validation + mark submitted
+    try {
+      const result = await submitNote(noteId, patientId);
+      if (!result.valid) {
+        setMissingFields(result.missingFields);
+        setModalState("error");
+      } else {
+        setNoteStatus("submitted");
+        setModalState("success");
+      }
+    } catch (e) {
+      console.error("Submit failed:", e);
+      setMissingFields(["An unexpected error occurred. Please try again."]);
+      setModalState("error");
+    }
+  };
+
+  const handleModalClose = () => {
+    if (modalState === "success") {
+      // Return to home after successful submission
+      handleExitToStart();
+    } else {
+      setModalOpen(false);
+    }
+  };
+
+  // ── Domain switch ─────────────────────────────────────────────────────────────
   const handleDomainSwitch = async (nextDomain: "A" | "B" | "C" | "D") => {
     if (nextDomain === activeDomain) return;
 
-    // Save the domain we're leaving, then navigate regardless of result
-    // (save failure shows its own toast; navigation still happens so the user
-    // isn't stuck — the next sub-domain switch will retry)
     const ok = await saveDomain(activeDomain);
     if (ok) showToast(`${DOMAIN_LABELS[activeDomain]} saved ✓`);
 
     setActiveDomain(nextDomain);
 
-    // Reset sub-domain to the first entry for the new domain
     if (nextDomain === "A") setActiveSubDomain("A1-A5");
     else if (nextDomain === "B") setActiveSubDomain("B1");
     else if (nextDomain === "D") setActiveSubDomain("D1");
-    // Domain C has no sub-domains, so nothing to set
 
     if (window.innerWidth <= 768) setSidebarOpen(false);
   };
 
-  // ── Sub-domain switch (within same domain) ────────────────────────────────
-  // Saves the current domain before changing the visible panel.
-  // This covers B1 → B2, D1 → D2, A1-A5 → A6-A7, etc.
+  // ── Sub-domain switch ─────────────────────────────────────────────────────────
   const handleSubDomainSwitch = async (nextSub: string) => {
     if (nextSub === activeSubDomain) return;
 
@@ -162,6 +330,21 @@ export default function CreateNotePage({
     if (ok) showToast(`${DOMAIN_LABELS[activeDomain]} saved ✓`);
 
     setActiveSubDomain(nextSub);
+  };
+
+  // ── Derived: submit button label / style ──────────────────────────────────────
+  const isSubmitted = noteStatus === "submitted";
+  const submitBtnStyle: React.CSSProperties = {
+    padding: "0.3rem 0.9rem",
+    borderRadius: "6px",
+    border: "none",
+    fontSize: "0.78rem",
+    fontWeight: 700,
+    cursor: isSubmitted ? "default" : "pointer",
+    background: isSubmitted ? "#27ae60" : "#e74c3c",
+    color: "#fff",
+    opacity: isSubmitted ? 0.85 : 1,
+    transition: "background 0.2s",
   };
 
   return (
@@ -244,6 +427,46 @@ export default function CreateNotePage({
               ))}
             </div>
           )}
+
+          {/* ── Phase 4: Submission section in sidebar ── */}
+          <div style={{
+            margin: "1rem 0.75rem 0.5rem",
+            borderTop: "1px solid rgba(255,255,255,0.1)",
+            paddingTop: "0.75rem",
+          }}>
+            {isSubmitted ? (
+              <div style={{
+                background: "rgba(46,204,113,0.15)",
+                border: "1px solid rgba(46,204,113,0.4)",
+                borderRadius: "8px",
+                padding: "0.6rem 0.75rem",
+                fontSize: "0.78rem",
+                color: "#2ecc71",
+                fontWeight: 700,
+                textAlign: "center",
+              }}>
+                ✓ Note Submitted
+              </div>
+            ) : (
+              <button
+                onClick={handleSubmitClick}
+                style={{
+                  width: "100%",
+                  padding: "0.6rem",
+                  background: "#e74c3c",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "8px",
+                  fontSize: "0.83rem",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  letterSpacing: "0.02em",
+                }}
+              >
+                Submit Note
+              </button>
+            )}
+          </div>
         </div>
       </nav>
 
@@ -263,11 +486,30 @@ export default function CreateNotePage({
             />
           </div>
 
-          {/* Save status indicator */}
+          {/* Save status */}
           {isSaving && (
             <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>
               Saving…
             </span>
+          )}
+
+          {/* Status badge */}
+          {isSubmitted && (
+            <span style={{
+              fontSize: "0.72rem", fontWeight: 700,
+              background: "#d4edda", color: "#155724",
+              border: "1px solid #c3e6cb",
+              borderRadius: "12px", padding: "2px 10px",
+            }}>
+              ✓ Submitted
+            </span>
+          )}
+
+          {/* Phase 4: Submit button in top nav (secondary location) */}
+          {!isSubmitted && (
+            <button style={submitBtnStyle} onClick={handleSubmitClick}>
+              Submit Note
+            </button>
           )}
 
           <button className="btn-outline" onClick={handleExitToStart}>Exit Note</button>
@@ -280,6 +522,23 @@ export default function CreateNotePage({
           setPatientData={setPatientData}
           clinical={clinical}
         />
+
+        {/* Submitted banner */}
+        {isSubmitted && (
+          <div style={{
+            background: "#d4edda",
+            borderBottom: "1px solid #c3e6cb",
+            color: "#155724",
+            padding: "0.4rem 0.75rem",
+            fontSize: "0.78rem",
+            fontWeight: 600,
+            display: "flex",
+            alignItems: "center",
+            gap: "0.5rem",
+          }}>
+            ✓ This note has been submitted and is read-only. To make changes, create a revision from the Note List.
+          </div>
+        )}
 
         <div className="content-area">
           {activeDomain === "A" && (
@@ -313,6 +572,16 @@ export default function CreateNotePage({
         {/* Toast */}
         <div className={`toast ${toastMsg ? "show" : ""}`}>{toastMsg}</div>
       </main>
+
+      {/* ── Phase 4: Submit Modal ── */}
+      {modalOpen && (
+        <SubmitModal
+          state={modalState}
+          missingFields={missingFields}
+          onConfirm={handleConfirmSubmit}
+          onClose={handleModalClose}
+        />
+      )}
     </div>
   );
 }
