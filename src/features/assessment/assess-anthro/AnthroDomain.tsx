@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { AlertBanner } from '../../../shared/ui/AlertBanner';
 import GrowthStandardsTable from '../assess-anthro/GrowthStandardsTable';
 import { ASSESSMENT_CATEGORIES } from '../../../shared/constants/adimeSideBarCategories';
+import GrowthVelocityTable from '../assess-anthro/GrowthVelocityTable';
 
 export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScans, calculatedMetrics, patientData, activeSubDomain }: any) {
   const handleUpdate = (field: string, val: string) => setAnthro({ ...anthro, [field]: val });
@@ -175,6 +176,7 @@ export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScan
                   <input type="date" value={anthro.past_headDate} onChange={e => handleUpdate("past_headDate", e.target.value)} />
                 </div>
               </div>
+              <GrowthVelocityTable anthro={anthro} patientData={patientData} calculatedMetrics={calculatedMetrics}/>
             </div>
             <GrowthStandardsTable anthro={anthro} patientData={patientData} calculatedMetrics={calculatedMetrics} />
           </>

@@ -104,8 +104,8 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain }: 
         return (
           <div className="card">
             <div className="grid-2-col">
-              <div className="input-group"><label>D21: Religious & Spiritual Observances</label><textarea value={dietary?.culturalReligious || ""} onChange={e => handleUpdate("culturalReligious", e.target.value)} /></div>
-              <div className="input-group"><label>D22: Social Meal Dynamics</label><textarea value={dietary?.socialDynamics || ""} onChange={e => handleUpdate("socialDynamics", e.target.value)} /></div>
+              <div className="input-group"><label>D21: Religious & Spiritual Observances</label><textarea style={{ minHeight: "100px" }} value={dietary?.culturalReligious || ""} onChange={e => handleUpdate("culturalReligious", e.target.value)} /></div>
+              <div className="input-group"><label>D22: Social Meal Dynamics</label><textarea style={{ minHeight: "100px" }} value={dietary?.socialDynamics || ""} onChange={e => handleUpdate("socialDynamics", e.target.value)} /></div>
             </div>
           </div>
         );
@@ -131,8 +131,8 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain }: 
           <div className="card">
             <h4 className="mb-1">Knowledge, Beliefs, & Attitudes</h4>
             <div className="grid-2-col">
-              <div className="input-group"><label>D51: Understanding of Condition</label><textarea value={dietary?.understanding || ""} onChange={e => handleUpdate("understanding", e.target.value)} /></div>
-              <div className="input-group"><label>D53: Psychological Ties to Food</label><textarea value={dietary?.psychTies || ""} onChange={e => handleUpdate("psychTies", e.target.value)} /></div>
+              <div className="input-group"><label>D51: Understanding of Condition</label><textarea style={{ minHeight: "100px" }} value={dietary?.understanding || ""} onChange={e => handleUpdate("understanding", e.target.value)} /></div>
+              <div className="input-group"><label>D53: Psychological Ties to Food</label><textarea style={{ minHeight: "100px" }} value={dietary?.psychTies || ""} onChange={e => handleUpdate("psychTies", e.target.value)} /></div>
             </div>
             <div className="input-group" style={{ maxWidth: "400px", marginTop: "1.5rem" }}>
               <label>D52: Readiness to Change</label>
@@ -156,9 +156,9 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain }: 
         return (
           <div className="card">
             <div className="grid-3-col">
-              <div className="input-group"><label>D61: Meal Prep Habits</label><textarea value={dietary?.mealPrep || ""} onChange={e => handleUpdate("mealPrep", e.target.value)} /></div>
-              <div className="input-group"><label>D62: Eating Out Frequency</label><textarea value={dietary?.eatingOut || ""} onChange={e => handleUpdate("eatingOut", e.target.value)} /></div>
-              <div className="input-group"><label>D63: Binge/Purge Tendencies</label><textarea value={dietary?.bingePurge || ""} onChange={e => handleUpdate("bingePurge", e.target.value)} /></div>
+              <div className="input-group"><label>D61: Meal Prep Habits</label><textarea style={{ minHeight: "100px" }} value={dietary?.mealPrep || ""} onChange={e => handleUpdate("mealPrep", e.target.value)} /></div>
+              <div className="input-group"><label>D62: Eating Out Frequency</label><textarea style={{ minHeight: "100px" }} value={dietary?.eatingOut || ""} onChange={e => handleUpdate("eatingOut", e.target.value)} /></div>
+              <div className="input-group"><label>D63: Binge/Purge Tendencies</label><textarea style={{ minHeight: "100px" }} value={dietary?.bingePurge || ""} onChange={e => handleUpdate("bingePurge", e.target.value)} /></div>
             </div>
           </div>
         );
@@ -167,9 +167,9 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain }: 
         return (
           <div className="card">
             <div className="grid-3-col">
-              <div className="input-group"><label>D71: Food Security</label><textarea value={dietary?.foodSecurity || ""} onChange={e => handleUpdate("foodSecurity", e.target.value)} /></div>
-              <div className="input-group"><label>D72: Food-Related Supplies</label><textarea value={dietary?.foodSupplies || ""} onChange={e => handleUpdate("foodSupplies", e.target.value)} /></div>
-              <div className="input-group"><label>D73: Transportation Access</label><textarea value={dietary?.transport || ""} onChange={e => handleUpdate("transport", e.target.value)} /></div>
+              <div className="input-group"><label>D71: Food Security</label><textarea style={{ minHeight: "100px" }} value={dietary?.foodSecurity || ""} onChange={e => handleUpdate("foodSecurity", e.target.value)} /></div>
+              <div className="input-group"><label>D72: Food-Related Supplies</label><textarea style={{ minHeight: "100px" }} value={dietary?.foodSupplies || ""} onChange={e => handleUpdate("foodSupplies", e.target.value)} /></div>
+              <div className="input-group"><label>D73: Transportation Access</label><textarea style={{ minHeight: "100px" }} value={dietary?.transport || ""} onChange={e => handleUpdate("transport", e.target.value)} /></div>
             </div>
           </div>
         );
@@ -178,9 +178,9 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain }: 
         return (
           <div className="card">
             <div className="grid-3-col">
-              <div className="input-group"><label>D81: Physical Activity Level</label><textarea value={dietary?.physicalLevel || ""} onChange={e => handleUpdate("physicalLevel", e.target.value)} /></div>
-              <div className="input-group"><label>D82: Functional Status (ADLs)</label><textarea value={dietary?.adls || ""} onChange={e => handleUpdate("adls", e.target.value)} /></div>
-              <div className="input-group"><label>D83: Physiological Feeding Tasks</label><textarea value={dietary?.feedingTasks || ""} onChange={e => handleUpdate("feedingTasks", e.target.value)} /></div>
+              <div className="input-group"><label>D81: Physical Activity Level</label><textarea style={{ minHeight: "100px" }} value={dietary?.physicalLevel || ""} onChange={e => handleUpdate("physicalLevel", e.target.value)} /></div>
+              <div className="input-group"><label>D82: Functional Status (ADLs)</label><textarea style={{ minHeight: "100px" }} value={dietary?.adls || ""} onChange={e => handleUpdate("adls", e.target.value)} /></div>
+              <div className="input-group"><label>D83: Physiological Feeding Tasks</label><textarea style={{ minHeight: "100px" }} value={dietary?.feedingTasks || ""} onChange={e => handleUpdate("feedingTasks", e.target.value)} /></div>
             </div>
           </div>
         );
@@ -189,8 +189,8 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain }: 
         return (
           <div className="card">
             <div className="grid-2-col">
-              <div className="input-group"><label>D91: Perception of Intervention</label><textarea value={dietary?.perception || ""} onChange={e => handleUpdate("perception", e.target.value)} /></div>
-              <div className="input-group"><label>D92: Personal Goals & QoL</label><textarea value={dietary?.qolGoals || ""} onChange={e => handleUpdate("qolGoals", e.target.value)} /></div>
+              <div className="input-group"><label>D91: Perception of Intervention</label><textarea style={{ minHeight: "100px" }} value={dietary?.perception || ""} onChange={e => handleUpdate("perception", e.target.value)} /></div>
+              <div className="input-group"><label>D92: Personal Goals & QoL</label><textarea style={{ minHeight: "100px" }} value={dietary?.qolGoals || ""} onChange={e => handleUpdate("qolGoals", e.target.value)} /></div>
             </div>
           </div>
         );
