@@ -5,7 +5,7 @@ import AnthroDomain from "../features/assessment/assess-anthro/AnthroDomain";
 import BiochemicalDomain from "../features/assessment/assess-biochemical/BiochemicalDomain";
 import ClinicalDomain from "../features/assessment/assess-clinical/ClinicalDomain";
 import DietaryDomain from "../features/assessment/assess-dietary/DietaryDomain";
-import { DIETARY_CATEGORIES } from "../shared/constants/dietaryCategories";
+import { DIETARY_CATEGORIES, ASSESSMENT_CATEGORIES, BIOCHEMICAL_CATEGORIES } from "../shared/constants/adimeSideBarCategories";
 
 interface CreateNotePageProps {
   patientData: any;
@@ -36,7 +36,7 @@ export default function CreateNotePage({
 }: CreateNotePageProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeDomain, setActiveDomain] = useState<"A" | "B" | "C" | "D">("A");
-  const [activeSubDomain, setActiveSubDomain] = useState<string>("D1");
+  const [activeSubDomain, setActiveSubDomain] = useState<string>("A1-A5");
   const [searchQuery, setSearchQuery] = useState("");
   const [toastMsg, setToastMsg] = useState("");
 
@@ -49,6 +49,12 @@ export default function CreateNotePage({
     if (domain !== activeDomain) {
       showToast("Auto-saved previous section");
       setActiveDomain(domain);
+      
+      // Set default sub-domain based on the new domain
+      if (domain === "A") setActiveSubDomain("A1-A5");
+      else if (domain === "B") setActiveSubDomain("B1");
+      else if (domain === "D") setActiveSubDomain("D1");
+      
       if (window.innerWidth <= 768) setSidebarOpen(false);
     }
   };
@@ -69,12 +75,40 @@ export default function CreateNotePage({
           >
             A. Anthropometrics
           </div>
+          {activeDomain === "A" && (
+            <div className="sub-nav">
+              {ASSESSMENT_CATEGORIES.map((cat) => (
+                <div
+                  key={cat.id}
+                  className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`}
+                  onClick={() => setActiveSubDomain(cat.id)}
+                >
+                  {cat.title}
+                </div>
+              ))}
+            </div>
+          )}
+
           <div
             className={`nav-item ${activeDomain === "B" ? "active" : ""}`}
             onClick={() => handleDomainSwitch("B")}
           >
             B. Biochemical Data
           </div>
+          {activeDomain === "B" && (
+            <div className="sub-nav">
+              {BIOCHEMICAL_CATEGORIES.map((cat) => (
+                <div
+                  key={cat.id}
+                  className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`}
+                  onClick={() => setActiveSubDomain(cat.id)}
+                >
+                  {cat.title}
+                </div>
+              ))}
+            </div>
+          )}
+
           <div
             className={`nav-item ${activeDomain === "C" ? "active" : ""}`}
             onClick={() => handleDomainSwitch("C")}
@@ -132,10 +166,15 @@ export default function CreateNotePage({
               setDexaScans={setDexaScans}
               calculatedMetrics={calculatedMetrics}
               patientData={patientData}
+              activeSubDomain={activeSubDomain}
             />
           )}
           {activeDomain === "B" && (
-            <BiochemicalDomain labs={labs} setLabs={setLabs} />
+            <BiochemicalDomain 
+              labs={labs} 
+              setLabs={setLabs} 
+              activeSubDomain={activeSubDomain}
+            />
           )}
           {activeDomain === "C" && (
             <ClinicalDomain clinical={clinical} setClinical={setClinical} />

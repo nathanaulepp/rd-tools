@@ -8,6 +8,6 @@ import AnthroDomain from "../features/assessment/assess-anthro/AnthroDomain";
 import BiochemicalDomain from "../features/assessment/assess-biochemical/BiochemicalDomain";
 import ClinicalDomain from "../features/assessment/assess-clinical/ClinicalDomain";
 import DietaryDomain from "../features/assessment/assess-dietary/DietaryDomain";
-import { DIETARY_CATEGORIES } from "../shared/constants/dietaryCategories";
+import { DIETARY_CATEGORIES } from "../shared/constants/adimeSideBarCategories";
 
 export { AnthroDomain, BiochemicalDomain, ClinicalDomain, DietaryDomain, DIETARY_CATEGORIES };

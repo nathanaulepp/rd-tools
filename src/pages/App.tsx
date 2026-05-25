@@ -38,7 +38,6 @@ export default function App() {
   };
 
   // ── Patient & note state (lifted here so it persists across domain tabs) ──
-  // ... (rest of state remains unchanged)
   const [patientData, setPatientData] = useState({
     lastName: "",
     firstName: "",
@@ -105,8 +104,17 @@ export default function App() {
       htCm > 0 && wtKg > 0
         ? (wtKg / Math.pow(htCm / 100, 2)).toFixed(1)
         : "--";
-    return { bmi };
-  }, [anthro.ht, anthro.htUnit, anthro.wt, anthro.wtUnit]);
+
+    // Age Calculation
+    let ageDays: number | null = null;
+    if (patientData.dob && patientData.noteDate) {
+      const dDob = new Date(patientData.dob);
+      const dNote = new Date(patientData.noteDate);
+      ageDays = Math.floor((dNote.getTime() - dDob.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    return { bmi, ageDays };
+  }, [anthro.ht, anthro.htUnit, anthro.wt, anthro.wtUnit, patientData.dob, patientData.noteDate]);
 
   // ── Shared props bundles ───────────────────────────────────────────────────
   const sharedNoteProps = {

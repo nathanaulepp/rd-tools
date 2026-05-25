@@ -92,31 +92,45 @@ const formatImperial = (measure: string, val: number) => {
   return '--';
 };
 
-export default function GrowthStandardsTable({ anthro, patientData }: any) {
+export default function GrowthStandardsTable({ anthro, patientData, calculatedMetrics }: any) {
   const [results, setResults] = useState<any[]>([]);
   const [showTable, setShowTable] = useState(false);
-  const [ageMonthsCalc, setAgeMonthsCalc] = useState(0);
+
+  const formatAge = (ageDays: number) => {
+    if (ageDays < 7) {
+      return `${ageDays} day${ageDays !== 1 ? 's' : ''}`;
+    } else if (ageDays < 30) {
+      const weeks = Math.floor(ageDays / 7);
+      const days = ageDays % 7;
+      return `${weeks} week${weeks !== 1 ? 's' : ''}${days > 0 ? `, ${days} day${days !== 1 ? 's' : ''}` : ''}`;
+    } else if (ageDays < 366) {
+      const months = Math.floor(ageDays / 30.4375);
+      const remainingDays = ageDays % 30.4375;
+      const weeks = Math.floor(remainingDays / 7);
+      return `${months} month${months !== 1 ? 's' : ''}${weeks > 0 ? `, ${weeks} week${weeks !== 1 ? 's' : ''}` : ''}`;
+    } else {
+      const years = Math.floor(ageDays / 365.25);
+      const remainingDays = ageDays % 365.25;
+      const months = Math.floor(remainingDays / 30.4375);
+      return `${years} year${years !== 1 ? 's' : ''}${months > 0 ? `, ${months} month${months !== 1 ? 's' : ''}` : ''}`;
+    }
+  };
 
   const handleGenerate = () => {
-    // Pull from the global Patient Header state
-    const dob = patientData?.dob;
-    const noteDate = patientData?.noteDate;
+    // Pull from the global Patient Header state via calculatedMetrics
+    const ageDays = calculatedMetrics?.ageDays;
     const rawSex = patientData?.sex;
 
-    if (!dob || !noteDate) return alert("Please set both Patient DOB and Note Date in the Patient Header to calculate age.");
+    if (ageDays === null || ageDays === undefined) return alert("Please set both Patient DOB and Note Date in the Patient Header to calculate age.");
     if (!rawSex) return alert("Please specify the patient's Sex in the Patient Header.");
 
     // Map 'M'/'F' to WHO/CDC file standard '1'/'2'
     const sex = rawSex === 'F' ? "2" : "1";
-    const dDob = new Date(dob);
-    const dNote = new Date(noteDate);
-    const ageDays = Math.floor((dNote.getTime() - dDob.getTime()) / (1000 * 60 * 60 * 24));
     
     if (ageDays < 0) return alert("Note Date must be after Patient DOB");
 
     const isInfant = ageDays <= 730;
     const ageMos = Math.round((ageDays / 30.5) * 2) / 2;
-    setAgeMonthsCalc(Math.floor(ageDays / 30.5));
 
     const htCm = anthro.ht ? (anthro.htUnit === 'in' ? Number(anthro.ht) * 2.54 : Number(anthro.ht)) : null;
     const wtKg = anthro.wt ? (anthro.wtUnit === 'lbs' ? Number(anthro.wt) / 2.205 : Number(anthro.wt)) : null;
@@ -181,7 +195,7 @@ export default function GrowthStandardsTable({ anthro, patientData }: any) {
             const fLRow = getRow(lfaData, 'Day', ageDays + 365);
             const futLength = computeY(zHt, fLRow.L, fLRow.M, fLRow.S, 'Length/height', false);
             const futWflRow = getRow(data, 'Length', Math.round(futLength * 10) / 10);
-            if (futWflRow) yearly = computeY(z, futWflRow.L, futWflRow.M, futWflRow.S, measureName, false) - yVal;
+            if (futWflRow) yearly = computeY(z, fLRow.L, fLRow.M, fLRow.S, measureName, false) - yVal;
           }
         }
 
@@ -256,7 +270,7 @@ return (
     {showTable && results.length > 0 && (
       <div className="mt-2">
         <h5 className="mb-1 text-center">
-          {ageMonthsCalc} months, {patientData?.sex === "F" ? "Female" : "Male"}
+          {formatAge(calculatedMetrics.ageDays)}, {patientData?.sex === "F" ? "Female" : "Male"}
         </h5>
         <div style={{ overflowX: "auto" }}>
           <table style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: '0.9rem' }}>

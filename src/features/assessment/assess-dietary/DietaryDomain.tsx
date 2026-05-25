@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { AlertBanner } from '../../../shared/ui/AlertBanner';
 import D3NutritionAdmin from '../admin-dietary/D3NutritionAdmin';
-import { DIETARY_CATEGORIES } from '../../../shared/constants/dietaryCategories';
+import { DIETARY_CATEGORIES } from '../../../shared/constants/adimeSideBarCategories.ts';
 
 export default function DietaryDomain({ dietary, setDietary, activeSubDomain }: any) {
   const [recallStep, setRecallStep] = useState(0);
