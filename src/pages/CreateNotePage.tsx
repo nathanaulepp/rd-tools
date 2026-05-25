@@ -155,9 +155,9 @@ export default function CreateNotePage({
           <button className="btn-outline" onClick={handleExitToStart}>Exit Note</button>
         </header>
 
-        <div className="content-area">
-          <PatientHeader patientData={patientData} setPatientData={setPatientData} />
+        <PatientHeader patientData={patientData} setPatientData={setPatientData} />
 
+        <div className="content-area">
           {activeDomain === "A" && (
             <AnthroDomain
               anthro={anthro}

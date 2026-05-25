@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import "./App.css";
 
 // Page Components
@@ -16,6 +16,29 @@ export default function App() {
   // ── Top-level routing ──────────────────────────────────────────────────────
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<ViewState>("LOGIN");
+  
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    const saved = localStorage.getItem("ui-theme");
+    return (saved as "light" | "dark") || "light";
+  });
+
+  const [zoomLevel, setZoomLevel] = useState<number>(() => {
+    const saved = localStorage.getItem("ui-zoom");
+    return saved ? parseFloat(saved) : 1;
+  });
+
+  useEffect(() => {
+    // Apply Theme
+    document.body.className = theme === "dark" ? "dark-theme" : "";
+    localStorage.setItem("ui-theme", theme);
+  }, [theme]);
+
+  useEffect(() => {
+    // Use font-size on html for cleaner scaling than 'zoom'
+    const baseSize = 17.6 * zoomLevel;
+    document.documentElement.style.fontSize = `${baseSize}px`;
+    localStorage.setItem("ui-zoom", zoomLevel.toString());
+  }, [zoomLevel]);
 
   const handleLogin = () => {
     setIsAuthenticated(true);
@@ -135,7 +158,16 @@ export default function App() {
 
   switch (currentView) {
     case "START":
-      return <StartPage setCurrentView={setCurrentView} handleLogout={handleLogout} />;
+      return (
+        <StartPage
+          setCurrentView={setCurrentView}
+          handleLogout={handleLogout}
+          zoomLevel={zoomLevel}
+          setZoomLevel={setZoomLevel}
+          theme={theme}
+          setTheme={setTheme}
+        />
+      );
     case "VIEW_NOTES":
       return <NoteListPage handleExitToStart={handleExitToStart} />;
     case "CREATE_NOTE":

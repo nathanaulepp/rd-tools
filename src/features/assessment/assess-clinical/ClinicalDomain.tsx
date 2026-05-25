@@ -17,9 +17,7 @@ export default function ClinicalDomain({ clinical, setClinical }: any) {
   const microOptionsSkin = ["WNL", "Delayed Wound Healing", "Bedsore", "Seborrheic Dermatitis", "Reddish-purple Spots", "Bruising", "Pallor", "Follicular Hyperkeratosis", "Hypopigmentation", "Hyperpigmentation", "Pellagra", "Bilateral edema", "Poor Turgor", "Carotenemia", "Jaundice", "Acanthosis Nigricans", "Other"];
 
   const severityMap = {
-    "Mild": "warning", "Severe": "danger", "Loss": "warning", "Dry": "warning",
-    "Pale": "warning", "Brittle": "warning", "Thinning": "warning",
-    "Inflamed": "danger", "Bleeding": "danger", "Edema": "danger"
+    "Normal": "success", "Mild": "warning-bg", "Moderate": "warning", "Severe": "danger", "Edema": "danger"
   };
 
   const micronutrientCategories = [

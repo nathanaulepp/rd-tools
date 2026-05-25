@@ -18,7 +18,7 @@ export default function BiochemicalDomain({ labs, setLabs, activeSubDomain }: an
     if (!category) return <div>Select a sub-domain from the sidebar.</div>;
 
     return (
-      <div className="card" style={{ padding: '1.5rem' }}>
+      <div className="card">
         <h4 className="mb-1">{category.title}</h4>
         <div className="table-container">
           <table className="lab-table">

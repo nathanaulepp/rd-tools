@@ -49,7 +49,7 @@ export default function PatientHeader({ patientData, setPatientData }: any) {
   const selectedPatient = previousPatients.find(p => p.id === selectedPatientId);
 
   return (
-    <section style={{ position: 'sticky', top: 0, zIndex: 50, background: 'var(--bg-color, #f4f7f6)', paddingBottom: '1rem', paddingTop: '1rem' }}>
+    <section style={{ zIndex: 50, background: 'var(--bg-color, #f4f7f6)', paddingBottom: '0.5rem' }}>
       <div className="card" style={{ marginBottom: 0 }}>
         
         <h4 className="flex-between" style={{ margin: 0, borderBottom: selectedPatientId === 'NEW' ? '1px solid #e2e8f0' : 'none', paddingBottom: selectedPatientId === 'NEW' ? '10px' : '0' }}>
@@ -79,7 +79,7 @@ export default function PatientHeader({ patientData, setPatientData }: any) {
         </h4>
 
         {selectedPatientId === 'NEW' && (
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginTop: '15px' }}>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '10px' }}>
             <div className="input-group" style={{ flex: '1 1 130px' }}>
               <label>Last Name</label>
               <input
