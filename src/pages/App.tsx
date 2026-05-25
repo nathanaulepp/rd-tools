@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import "./App.css";
+import { getDb } from "../shared/api/db";
 
 // Page Components
 import LoginPage from "./LoginPage";
@@ -17,6 +18,10 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentView, setCurrentView] = useState<ViewState>("LOGIN");
   
+  useEffect(() => {
+      getDb().catch((err) => console.error("Failed to initialize database:", err));
+  }, []);
+
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const saved = localStorage.getItem("ui-theme");
     return (saved as "light" | "dark") || "light";
