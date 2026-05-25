@@ -2,7 +2,6 @@ import { ViewState } from "./App";
 
 import createAdimeImg from "../shared/assets/create_new_adime.jpg";
 import dietitianToolsImg from "../shared/assets/dietitian_tools.jpg";
-import resourcesImg from "../shared/assets/resources.jpg";
 import viewAdimeNoteImg from "../shared/assets/view_adime_note.jpg";
 
 interface StartPageProps {
@@ -53,16 +52,6 @@ export default function StartPage({ setCurrentView, handleLogout }: StartPagePro
             <div className="card-content">
               <h3>Dietitian Tools</h3>
               <p>Access clinical calculators, reference ranges, and anthropometric guidelines.</p>
-            </div>
-          </button>
-
-          <button className="start-card" onClick={() => setCurrentView("RESOURCES")}>
-            <div className="card-image">
-              <img src={resourcesImg} alt="Reference Library" />
-            </div>
-            <div className="card-content">
-              <h3>Reference Library</h3>
-              <p>Browse clinical guidelines, standardized language, and nutrition manuals.</p>
             </div>
           </button>
         </div>

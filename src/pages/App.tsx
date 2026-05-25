@@ -9,9 +9,8 @@ import CreateNotePage from "./CreateNotePage";
 import ToolsHomePage from "./ToolsHomePage";
 
 // Widget Components
-import ReferenceLayout from "../widgets/ReferenceLayout";
 
-export type ViewState = "LOGIN" | "START" | "VIEW_NOTES" | "CREATE_NOTE" | "TOOLS" | "RESOURCES";
+export type ViewState = "LOGIN" | "START" | "VIEW_NOTES" | "CREATE_NOTE" | "TOOLS";
 
 export default function App() {
   // ── Top-level routing ──────────────────────────────────────────────────────
@@ -135,8 +134,6 @@ export default function App() {
       return <CreateNotePage {...sharedNoteProps} />;
     case "TOOLS":
       return <ToolsHomePage handleExitToStart={handleExitToStart} />;
-    case "RESOURCES":
-      return <ReferenceLayout handleExitToStart={handleExitToStart} />;
     default:
       return <StartPage setCurrentView={setCurrentView} handleLogout={handleLogout} />;
   }
