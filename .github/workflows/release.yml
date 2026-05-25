@@ -1,0 +1,47 @@
+name: Release Prototype
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on v0.1.0, v0.1.0-alpha, etc.
+
+jobs:
+  release:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [macos-latest, ubuntu-22.04, windows-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      # Linux requires specific system dependencies for webkit and app indicators
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev libayatana-appindicator3-dev librsvg2-dev patchelf
+
+      - name: Install Frontend Dependencies
+        run: npm install # Replace with 'yarn install' or 'pnpm install' if needed
+
+      - name: Build and Package App
+        uses: tauri-apps/tauri-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: 'RD-Tools Prototype ${{ github.ref_name }}'
+          releaseBody: 'Prototype build for colleague feedback and testing. Expect bugs!'
+          releaseDraft: false
+          prerelease: true # Marks it explicitly as a pre-release/prototype in GitHub
