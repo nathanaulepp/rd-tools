@@ -12,11 +12,15 @@ export const [anthro, setAnthro] = useState({
   const [clinical, setClinical] = useState({
     chiefComplaint: "", medHx: "", temples: "", clavicles: "", shoulders: "", scapula: "", interosseous: "", thighs: "", calves: "",
     orbital: "", cheek: "", tricepsFat: "", midAxillary: "",
-    hair: "", eyes: "", mouthLips: "", tongue: "", teethGums: "", headNeck: "", nails: "", skin: "", gripStrength: "",
+    hair: "", eyes: "", mouthLips: "", tongue: "", teethGums: "", headNeck: "", nails: "", skin: "",
+    pittingEdema: "", ascites: "", edemaDescription: "",
+    gripStrength: "",
     giDistress: "", chewing: "", oralHygiene: "", swallowing: "", clinicalNotes: ""
   });
   const [dietary, setDietary] = useState({
-    recall: { breakfast: "", lunch: "", dinner: "", snacks: "" },
+    recall: [
+      { label: "Meal 1", value: "" },
+    ],
     macroAdequacy: "", mealPatterns: "", currentDiets: "", fluidIntake: "", eatingEnv: "",
     culturalReligious: "", socialDynamics: "", dietOrder: "Standard Diet, Regular", actualIntake: "", enteralPN: "",
     drugInteractions: "", otcMeds: "", herbalCAM: "", supplements: "",

@@ -6,43 +6,82 @@ import { DIETARY_CATEGORIES } from '../../../shared/constants/adimeSideBarCatego
 export default function DietaryDomain({ dietary, setDietary, activeSubDomain }: any) {
   const [recallStep, setRecallStep] = useState(0);
 
-  const handleUpdate = (field: string, val: string) =>
+  const handleUpdate = (field: string, val: any) =>
     setDietary({ ...dietary, [field]: val });
 
-  const updateRecall = (field: string, val: string) =>
-    setDietary({
-      ...dietary,
-      recall: { ...(dietary?.recall || {}), [field]: val },
-    });
+  const updateRecallMeal = (index: number, updates: any) => {
+    const newRecall = [...(dietary.recall || [])];
+    newRecall[index] = { ...newRecall[index], ...updates };
+    handleUpdate("recall", newRecall);
+  };
+
+  const addMeal = () => {
+    const newRecall = [...(dietary.recall || [])];
+    const nextIndex = newRecall.length + 1;
+    newRecall.push({ label: `Meal ${nextIndex}`, value: "" });
+    handleUpdate("recall", newRecall);
+    setRecallStep(newRecall.length - 1);
+  };
+
+  const removeMeal = (index: number) => {
+    if (dietary.recall.length <= 1) return;
+    let newRecall = dietary.recall.filter((_: any, i: number) => i !== index);
+    
+    // Re-index labels
+    newRecall = newRecall.map((meal: any, i: number) => ({
+      ...meal,
+      label: `Meal ${i + 1}`
+    }));
+
+    handleUpdate("recall", newRecall);
+    if (recallStep >= newRecall.length) setRecallStep(newRecall.length - 1);
+  };
 
   const renderContent = () => {
-    const steps = ["breakfast", "lunch", "dinner", "snacks"] as const;
-    const currentStepField = steps[recallStep];
+    const recall = dietary?.recall || [];
+    const currentMeal = recall[recallStep] || { label: "Meal 1", value: "" };
 
     switch (activeSubDomain) {
       case "D1":
         return (
           <>
             <div className="card">
-              <h4 className="mb-1">D11: 24-Hour Recall / Intake Journals</h4>
+              <div className="flex-between mb-1">
+                <h4 style={{ margin: 0 }}>D11: 24-Hour Recall / Intake Journals</h4>
+                <button className="btn-outline" onClick={addMeal} style={{ fontSize: '0.7rem' }}>+ Add Meal</button>
+              </div>
               <div className="stepper-container">
-                <div className="stepper-header">
-                  {["Breakfast", "Lunch", "Dinner", "Snacks"].map((step, idx) => (
+                <div className="stepper-header" style={{ overflowX: 'auto', paddingBottom: '10px' }}>
+                  {recall.map((meal: any, idx: number) => (
                     <div
-                      key={step}
+                      key={idx}
                       className={`step ${recallStep === idx ? "active" : ""}`}
                       onClick={() => setRecallStep(idx)}
                     >
                       <div className="step-circle">{idx + 1}</div>
-                      <span>{step}</span>
+                      <span>{meal.label}</span>
                     </div>
                   ))}
                 </div>
                 <div className="input-group">
+                  <div className="flex-between" style={{ marginBottom: '4px' }}>
+                    <label style={{ margin: 0 }}>{currentMeal.label} Details</label>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      {recall.length > 1 && (
+                        <button 
+                          className="btn-outline" 
+                          onClick={() => removeMeal(recallStep)}
+                          style={{ fontSize: '0.65rem', padding: '2px 6px', borderColor: 'var(--danger)', color: 'var(--danger)' }}
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <textarea
-                    value={dietary?.recall?.[currentStepField] || ""}
-                    onChange={e => updateRecall(currentStepField, e.target.value)}
-                    placeholder={`Enter details for ${["Breakfast", "Lunch", "Dinner", "Snacks"][recallStep]}...`}
+                    value={currentMeal.value}
+                    onChange={e => updateRecallMeal(recallStep, { value: e.target.value })}
+                    placeholder={`Enter details for ${currentMeal.label}...`}
                     style={{ minHeight: "150px" }}
                   />
                 </div>

@@ -96,13 +96,16 @@ export default function App() {
     hair: [] as string[], eyes: [] as string[], mouthLips: [] as string[],
     tongue: [] as string[], teethGums: [] as string[], headNeck: [] as string[],
     nails: [] as string[], skin: [] as string[],
+    pittingEdema: "", ascites: "", edemaDescription: "",
     gripStrength: "",
     giDistress: "", chewing: "", oralHygiene: "", swallowing: "",
     clinicalNotes: "",
   });
 
   const [dietary, setDietary] = useState<any>({
-    recall: { breakfast: "", lunch: "", dinner: "", snacks: "" },
+    recall: [
+      { label: "Meal 1", value: "" },
+    ],
     macroAdequacy: "", mealPatterns: "", currentDiets: "", fluidIntake: "", eatingEnv: "",
     culturalReligious: "", socialDynamics: "",
     dietOrder: "Standard Diet, Regular", actualIntake: "",
