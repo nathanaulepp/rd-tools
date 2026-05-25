@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, CSSProperties } from "react";
-import { Patient, getAllPatients } from "../../shared/api/db";
+import { Patient, getAllPatients, deletePatient } from "../../shared/api/db";
 import { Field } from "../../shared/ui/Field";
 import { FormError } from "../../shared/ui/FormError";
 
@@ -22,6 +22,7 @@ export const PatientSearch = ({
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [internalError, setInternalError] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -54,11 +55,26 @@ export const PatientSearch = ({
     setSelectedPatient(p);
     setSearchQuery(`${p.last_name}, ${p.first_name}`);
     setDropdownOpen(false);
+    setShowDeleteConfirm(false);
   };
 
   const handleStartNote = () => {
     if (selectedPatient) {
       onSelect(selectedPatient);
+    }
+  };
+
+  const handleDeletePatient = async () => {
+    if (!selectedPatient) return;
+    try {
+      await deletePatient(selectedPatient.id);
+      setAllPatients(allPatients.filter(p => p.id !== selectedPatient.id));
+      setSelectedPatient(null);
+      setSearchQuery("");
+      setShowDeleteConfirm(false);
+    } catch (e) {
+      console.error(e);
+      setInternalError("Failed to delete patient record. Please try again.");
     }
   };
 
@@ -149,6 +165,35 @@ export const PatientSearch = ({
                 <span style={styles.previewValue}>{r.value}</span>
               </div>
             ))}
+
+          <div style={styles.deleteZone}>
+            {!showDeleteConfirm ? (
+              <button
+                style={{ ...styles.btnSmall, ...styles.btnDangerOutline }}
+                onClick={() => setShowDeleteConfirm(true)}
+              >
+                Delete Patient Record
+              </button>
+            ) : (
+              <div style={styles.confirmRow}>
+                <span style={styles.confirmText}>Are you sure? This deletes all history for this patient.</span>
+                <div style={{ display: "flex", gap: "0.5rem" }}>
+                  <button
+                    style={{ ...styles.btnSmall, ...styles.btnDanger }}
+                    onClick={handleDeletePatient}
+                  >
+                    Yes, Delete
+                  </button>
+                  <button
+                    style={{ ...styles.btnSmall, ...styles.btnSecondary }}
+                    onClick={() => setShowDeleteConfirm(false)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -206,7 +251,37 @@ const styles: Record<string, CSSProperties> = {
     fontWeight: 700,
     cursor: "pointer",
   },
+  btnSmall: {
+    padding: "0.35rem 0.75rem",
+    borderRadius: "6px",
+    border: "none",
+    fontSize: "0.75rem",
+    fontWeight: 700,
+    cursor: "pointer",
+  },
   btnPrimary: { background: "#3498db", color: "#fff" },
+  btnDanger: { background: "#e74c3c", color: "#fff" },
+  btnDangerOutline: { background: "none", border: "1px solid #e74c3c", color: "#e74c3c" },
+  btnSecondary: { background: "#e2e8f0", color: "#475569" },
+  deleteZone: {
+    marginTop: "1.25rem",
+    paddingTop: "0.75rem",
+    borderTop: "1px solid #e2e8f0",
+    display: "flex",
+    justifyContent: "flex-end",
+  },
+  confirmRow: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-end",
+    gap: "0.5rem",
+  },
+  confirmText: {
+    fontSize: "0.72rem",
+    color: "#e74c3c",
+    fontWeight: 600,
+    textAlign: "right",
+  },
   dropdown: {
     position: "absolute",
     top: "calc(100% + 4px)",
@@ -269,3 +344,4 @@ const styles: Record<string, CSSProperties> = {
   },
   previewValue: { fontSize: "0.88rem", fontWeight: 600, color: "#1e293b" },
 };
+

@@ -211,6 +211,19 @@ export async function getPatientById(id: string): Promise<Patient | null> {
   return rows[0] ?? null;
 }
 
+/**
+ * Delete a patient and all their associated notes.
+ * This is a destructive operation used for cleaning up duplicates
+ * or removing records for patients who are no longer under care.
+ */
+export async function deletePatient(patientId: string): Promise<void> {
+  const db = await getDb();
+  // Delete associated notes first to respect foreign key constraints
+  // (though not strictly required if FK enforcement is off, it's good practice)
+  await db.execute(`DELETE FROM notes WHERE patient_id = ?`, [patientId]);
+  await db.execute(`DELETE FROM patients WHERE id = ?`, [patientId]);
+}
+
 // ─── Note commands ────────────────────────────────────────────────────────────
 
 /**
@@ -474,7 +487,7 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
  */
 export async function getSubmissionRequirements(): Promise<SubmissionRequirement[]> {
   const db = await getDb();
-  const rows = await db.select<Array<SubmissionRequirement & { required: number }>>(
+  const rows = await db.select<Array<Omit<SubmissionRequirement, "required"> & { required: number }>>(
     `SELECT * FROM submission_requirements ORDER BY id`
   );
   // SQLite stores booleans as integers; normalize to boolean
