@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import "./App.css";
 
 // Page Components
+import LoginPage from "./LoginPage";
 import StartPage from "./StartPage";
 import NoteListPage from "./NoteListPage";
 import CreateNotePage from "./CreateNotePage";
@@ -10,11 +11,22 @@ import ToolsHomePage from "./ToolsHomePage";
 // Widget Components
 import ReferenceLayout from "../widgets/ReferenceLayout";
 
-export type ViewState = "START" | "VIEW_NOTES" | "CREATE_NOTE" | "TOOLS" | "RESOURCES";
+export type ViewState = "LOGIN" | "START" | "VIEW_NOTES" | "CREATE_NOTE" | "TOOLS" | "RESOURCES";
 
 export default function App() {
   // ── Top-level routing ──────────────────────────────────────────────────────
-  const [currentView, setCurrentView] = useState<ViewState>("START");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentView, setCurrentView] = useState<ViewState>("LOGIN");
+
+  const handleLogin = () => {
+    setIsAuthenticated(true);
+    setCurrentView("START");
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    setCurrentView("LOGIN");
+  };
 
   const handleExitToStart = () => {
     if (currentView === "CREATE_NOTE") {
@@ -27,6 +39,7 @@ export default function App() {
   };
 
   // ── Patient & note state (lifted here so it persists across domain tabs) ──
+  // ... (rest of state remains unchanged)
   const [patientData, setPatientData] = useState({
     lastName: "",
     firstName: "",
@@ -109,9 +122,13 @@ export default function App() {
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
+  if (!isAuthenticated) {
+    return <LoginPage onLogin={handleLogin} />;
+  }
+
   switch (currentView) {
     case "START":
-      return <StartPage setCurrentView={setCurrentView} />;
+      return <StartPage setCurrentView={setCurrentView} handleLogout={handleLogout} />;
     case "VIEW_NOTES":
       return <NoteListPage handleExitToStart={handleExitToStart} />;
     case "CREATE_NOTE":
@@ -121,6 +138,6 @@ export default function App() {
     case "RESOURCES":
       return <ReferenceLayout handleExitToStart={handleExitToStart} />;
     default:
-      return <StartPage setCurrentView={setCurrentView} />;
+      return <StartPage setCurrentView={setCurrentView} handleLogout={handleLogout} />;
   }
 }

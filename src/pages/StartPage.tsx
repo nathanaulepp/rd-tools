@@ -1,4 +1,3 @@
-import React from "react";
 import { ViewState } from "./App";
 
 import createAdimeImg from "../shared/assets/create_new_adime.jpg";
@@ -8,14 +7,20 @@ import viewAdimeNoteImg from "../shared/assets/view_adime_note.jpg";
 
 interface StartPageProps {
   setCurrentView: (view: ViewState) => void;
+  handleLogout: () => void;
 }
 
-export default function StartPage({ setCurrentView }: StartPageProps) {
+export default function StartPage({ setCurrentView, handleLogout }: StartPageProps) {
   return (
     <div className="start-page-wrapper">
       <div className="start-page-content">
 
         <div className="start-header">
+          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "-20px" }}>
+            <button className="btn-outline" onClick={handleLogout} style={{ fontSize: "0.8rem", padding: "4px 12px" }}>
+              Log Out
+            </button>
+          </div>
           <h1>RD Workstation</h1>
           <p>Select a clinical module to begin your workflow</p>
         </div>
