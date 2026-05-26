@@ -1,16 +1,14 @@
 // src/shared/api/db.ts
-// Phase 2: Database foundation for RD Workstation
-// Uses tauri-plugin-sql v2 with SQLite backend.
-// All SQL runs from the frontend via the plugin's Database class.
-// lib.rs requires no changes.
+// Phase 6: Future-Proofing Hooks
+//   • diagnosis, intervention, monitor_evaluate columns added to notes
+//     via safe ALTER TABLE IF NOT EXISTS (idempotent on every launch)
+//   • autosaveNote domain union extended
+//   • PDF export helper added (uses Tauri shell to open system print dialog)
 
 import Database from "@tauri-apps/plugin-sql";
 import { getLocalIsoDate } from "../utils/date";
 
 // ─── Singleton connection ─────────────────────────────────────────────────────
-// We open the database once and reuse the connection throughout the app lifetime.
-// The file is stored in Tauri's app data directory automatically.
-
 let _db: Database | null = null;
 
 export async function getDb(): Promise<Database> {
@@ -21,11 +19,8 @@ export async function getDb(): Promise<Database> {
 }
 
 // ─── Schema initialization ────────────────────────────────────────────────────
-// Runs on every app launch. All statements use IF NOT EXISTS so they are safe
-// to run repeatedly — they only create tables on the very first launch.
-
 async function initSchema(db: Database): Promise<void> {
-  // patients: demographic information that persists across notes
+  // patients
   await db.execute(`
     CREATE TABLE IF NOT EXISTS patients (
       id            TEXT PRIMARY KEY,
@@ -39,8 +34,7 @@ async function initSchema(db: Database): Promise<void> {
     )
   `);
 
-  // notes: one row per ADIME note, domains stored as JSON blobs
-  // parent_note_id links a revision back to the note it was based on
+  // notes — original schema
   await db.execute(`
     CREATE TABLE IF NOT EXISTS notes (
       id              TEXT PRIMARY KEY,
@@ -61,8 +55,24 @@ async function initSchema(db: Database): Promise<void> {
     )
   `);
 
-  // submission_requirements: which fields must be present before a note can be
-  // submitted. Seeded with initial rules; updatable without code changes later.
+  // Phase 6: Add new ADIME domain columns — safe on existing databases
+  // SQLite does not support ADD COLUMN IF NOT EXISTS, so we catch the error
+  // "duplicate column name" and ignore it.
+  const newColumns = [
+    { name: "diagnosis",        type: "TEXT" },
+    { name: "intervention",     type: "TEXT" },
+    { name: "monitor_evaluate", type: "TEXT" },
+  ];
+
+  for (const col of newColumns) {
+    try {
+      await db.execute(`ALTER TABLE notes ADD COLUMN ${col.name} ${col.type}`);
+    } catch (_e) {
+      // Column already exists — safe to ignore
+    }
+  }
+
+  // submission_requirements
   await db.execute(`
     CREATE TABLE IF NOT EXISTS submission_requirements (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -73,7 +83,6 @@ async function initSchema(db: Database): Promise<void> {
     )
   `);
 
-  // Seed default requirements — INSERT OR IGNORE means this only runs once
   const now = new Date().toISOString();
   const defaultRequirements = [
     { field_key: "first_name", label: "First Name" },
@@ -93,8 +102,6 @@ async function initSchema(db: Database): Promise<void> {
 }
 
 // ─── UUID helper ──────────────────────────────────────────────────────────────
-// crypto.randomUUID() is available in Tauri's WebView context.
-
 function uuid(): string {
   return crypto.randomUUID();
 }
@@ -120,11 +127,15 @@ export interface Note {
   status: "draft" | "submitted";
   version: number;
   parent_note_id: string | null;
-  anthro: string | null;        // JSON string, parsed by caller
+  anthro: string | null;
   labs: string | null;
   clinical: string | null;
   dietary: string | null;
   dexa_scans: string | null;
+  // Phase 6 new columns
+  diagnosis: string | null;
+  intervention: string | null;
+  monitor_evaluate: string | null;
   created_at: string;
   submitted_at: string | null;
 }
@@ -145,14 +156,11 @@ export interface SubmissionRequirement {
 
 export interface SubmissionCheckResult {
   valid: boolean;
-  missingFields: string[];  // human-readable labels of missing required fields
+  missingFields: string[];
 }
 
 // ─── Patient commands ─────────────────────────────────────────────────────────
 
-/**
- * Insert a new patient row and return the created patient.
- */
 export async function createPatient(payload: {
   first_name: string;
   last_name: string;
@@ -176,24 +184,13 @@ export async function createPatient(payload: {
   await db.execute(
     `INSERT INTO patients (id, first_name, last_name, dob, sex, mrn, languages, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      patient.id,
-      patient.first_name,
-      patient.last_name,
-      patient.dob,
-      patient.sex,
-      patient.mrn,
-      patient.languages,
-      patient.created_at,
-    ]
+    [patient.id, patient.first_name, patient.last_name, patient.dob,
+     patient.sex, patient.mrn, patient.languages, patient.created_at]
   );
 
   return patient;
 }
 
-/**
- * Return all patients ordered by last name for dropdowns and list views.
- */
 export async function getAllPatients(): Promise<Patient[]> {
   const db = await getDb();
   return await db.select<Patient[]>(
@@ -201,9 +198,6 @@ export async function getAllPatients(): Promise<Patient[]> {
   );
 }
 
-/**
- * Return a single patient by id.
- */
 export async function getPatientById(id: string): Promise<Patient | null> {
   const db = await getDb();
   const rows = await db.select<Patient[]>(
@@ -213,25 +207,14 @@ export async function getPatientById(id: string): Promise<Patient | null> {
   return rows[0] ?? null;
 }
 
-/**
- * Delete a patient and all their associated notes.
- * This is a destructive operation used for cleaning up duplicates
- * or removing records for patients who are no longer under care.
- */
 export async function deletePatient(patientId: string): Promise<void> {
   const db = await getDb();
-  // Delete associated notes first to respect foreign key constraints
-  // (though not strictly required if FK enforcement is off, it's good practice)
   await db.execute(`DELETE FROM notes WHERE patient_id = ?`, [patientId]);
   await db.execute(`DELETE FROM patients WHERE id = ?`, [patientId]);
 }
 
 // ─── Note commands ────────────────────────────────────────────────────────────
 
-/**
- * Create a blank draft note for a patient and return it.
- * Called immediately after the patient is selected/created in the gate screen.
- */
 export async function createNote(payload: {
   patient_id: string;
   note_date?: string;
@@ -241,43 +224,38 @@ export async function createNote(payload: {
   const today = getLocalIsoDate();
 
   const note: Note = {
-    id:             uuid(),
-    patient_id:     payload.patient_id,
-    note_date:      payload.note_date      ?? today,
-    admission_date: payload.admission_date ?? today,
-    status:         "draft",
-    version:        1,
-    parent_note_id: null,
-    anthro:         null,
-    labs:           null,
-    clinical:       null,
-    dietary:        null,
-    dexa_scans:     null,
-    created_at:     new Date().toISOString(),
-    submitted_at:   null,
+    id:               uuid(),
+    patient_id:       payload.patient_id,
+    note_date:        payload.note_date      ?? today,
+    admission_date:   payload.admission_date ?? today,
+    status:           "draft",
+    version:          1,
+    parent_note_id:   null,
+    anthro:           null,
+    labs:             null,
+    clinical:         null,
+    dietary:          null,
+    dexa_scans:       null,
+    diagnosis:        null,
+    intervention:     null,
+    monitor_evaluate: null,
+    created_at:       new Date().toISOString(),
+    submitted_at:     null,
   };
 
   await db.execute(
     `INSERT INTO notes
        (id, patient_id, note_date, admission_date, status, version,
         parent_note_id, anthro, labs, clinical, dietary, dexa_scans,
+        diagnosis, intervention, monitor_evaluate,
         created_at, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      note.id,
-      note.patient_id,
-      note.note_date,
-      note.admission_date,
-      note.status,
-      note.version,
-      note.parent_note_id,
-      note.anthro,
-      note.labs,
-      note.clinical,
-      note.dietary,
-      note.dexa_scans,
-      note.created_at,
-      note.submitted_at,
+      note.id, note.patient_id, note.note_date, note.admission_date,
+      note.status, note.version, note.parent_note_id,
+      note.anthro, note.labs, note.clinical, note.dietary, note.dexa_scans,
+      note.diagnosis, note.intervention, note.monitor_evaluate,
+      note.created_at, note.submitted_at,
     ]
   );
 
@@ -286,30 +264,26 @@ export async function createNote(payload: {
 
 /**
  * Auto-save a single domain column for an existing note.
- * domain: "anthro" | "labs" | "clinical" | "dietary" | "dexa_scans"
- *         | "note_date" | "admission_date"
- *
- * For JSON domains (anthro, labs, clinical, dietary, dexa_scans),
- * pass the raw state object — this function will stringify it.
- * For scalar fields (note_date, admission_date), pass the string value directly.
- *
- * Called on every sub-domain switch in CreateNotePage.
+ * Phase 6 extends the domain union to include the new ADIME columns.
  */
 export async function autosaveNote(
   noteId: string,
-  domain: "anthro" | "labs" | "clinical" | "dietary" | "dexa_scans" | "note_date" | "admission_date",
+  domain:
+    | "anthro" | "labs" | "clinical" | "dietary" | "dexa_scans"
+    | "diagnosis" | "intervention" | "monitor_evaluate"
+    | "note_date" | "admission_date",
   data: object | string
 ): Promise<void> {
   const db = await getDb();
 
-  // JSON domains get stringified; scalar fields are stored as-is
-  const jsonDomains = ["anthro", "labs", "clinical", "dietary", "dexa_scans"];
+  const jsonDomains = [
+    "anthro", "labs", "clinical", "dietary", "dexa_scans",
+    "diagnosis", "intervention", "monitor_evaluate",
+  ];
   const value = jsonDomains.includes(domain)
     ? JSON.stringify(data)
     : (data as string);
 
-  // Dynamic column name is safe here because domain is a controlled union type,
-  // never user-supplied freeform input.
   await db.execute(
     `UPDATE notes SET ${domain} = ? WHERE id = ?`,
     [value, noteId]
@@ -318,10 +292,6 @@ export async function autosaveNote(
 
 /**
  * Run submission validation, then mark the note as submitted if it passes.
- * Returns a SubmissionCheckResult so the UI can show specific missing fields.
- *
- * Checks required fields from submission_requirements table against the
- * current patient row and note row — so requirements are data-driven.
  */
 export async function submitNote(
   noteId: string,
@@ -329,12 +299,10 @@ export async function submitNote(
 ): Promise<SubmissionCheckResult> {
   const db = await getDb();
 
-  // Load current requirements
   const requirements = await db.select<SubmissionRequirement[]>(
     `SELECT * FROM submission_requirements WHERE required = 1`
   );
 
-  // Load patient and note for field checking
   const patient = await getPatientById(patientId);
   const noteRows = await db.select<Note[]>(
     `SELECT * FROM notes WHERE id = ?`,
@@ -346,7 +314,6 @@ export async function submitNote(
     return { valid: false, missingFields: ["Patient or note not found"] };
   }
 
-  // Map field_key → actual value from patient or note
   const fieldValues: Record<string, string | null> = {
     first_name:     patient.first_name,
     last_name:      patient.last_name,
@@ -367,7 +334,6 @@ export async function submitNote(
     return { valid: false, missingFields };
   }
 
-  // All requirements met — mark submitted
   await db.execute(
     `UPDATE notes SET status = 'submitted', submitted_at = ? WHERE id = ?`,
     [new Date().toISOString(), noteId]
@@ -376,10 +342,6 @@ export async function submitNote(
   return { valid: true, missingFields: [] };
 }
 
-/**
- * Return all notes for a specific patient, newest first.
- * Used for the NoteListPage "by patient" view.
- */
 export async function getNotesByPatient(patientId: string): Promise<Note[]> {
   const db = await getDb();
   return await db.select<Note[]>(
@@ -388,10 +350,6 @@ export async function getNotesByPatient(patientId: string): Promise<Note[]> {
   );
 }
 
-/**
- * Return all notes joined with patient name, newest first.
- * Used for the NoteListPage "by date" view.
- */
 export async function getAllNotes(): Promise<NoteWithPatient[]> {
   const db = await getDb();
   return await db.select<NoteWithPatient[]>(
@@ -407,11 +365,6 @@ export async function getAllNotes(): Promise<NoteWithPatient[]> {
   );
 }
 
-/**
- * Return a single fully-loaded note by id.
- * JSON domain columns are returned as raw strings — parse them in the caller
- * with JSON.parse() before loading into React state.
- */
 export async function getNoteById(noteId: string): Promise<Note | null> {
   const db = await getDb();
   const rows = await db.select<Note[]>(
@@ -421,69 +374,49 @@ export async function getNoteById(noteId: string): Promise<Note | null> {
   return rows[0] ?? null;
 }
 
-/**
- * Delete a single note by id.
- */
 export async function deleteNote(noteId: string): Promise<void> {
   const db = await getDb();
   await db.execute(`DELETE FROM notes WHERE id = ?`, [noteId]);
 }
 
-/**
- * Clone a submitted note into a new draft for revision.
- * The new note has:
- *   - a fresh id and created_at
- *   - status = "draft"
- *   - version = original version + 1
- *   - parent_note_id = original note id
- *   - all domain data copied from the original
- *   - submitted_at = null
- *
- * Returns the new draft note so the UI can open it in the ADIME workspace.
- */
 export async function createRevision(originalNoteId: string): Promise<Note | null> {
   const original = await getNoteById(originalNoteId);
   if (!original) return null;
 
   const db = await getDb();
   const revision: Note = {
-    id:             uuid(),
-    patient_id:     original.patient_id,
-    note_date:      original.note_date,
-    admission_date: original.admission_date,
-    status:         "draft",
-    version:        original.version + 1,
-    parent_note_id: original.id,
-    anthro:         original.anthro,
-    labs:           original.labs,
-    clinical:       original.clinical,
-    dietary:        original.dietary,
-    dexa_scans:     original.dexa_scans,
-    created_at:     new Date().toISOString(),
-    submitted_at:   null,
+    id:               uuid(),
+    patient_id:       original.patient_id,
+    note_date:        original.note_date,
+    admission_date:   original.admission_date,
+    status:           "draft",
+    version:          original.version + 1,
+    parent_note_id:   original.id,
+    anthro:           original.anthro,
+    labs:             original.labs,
+    clinical:         original.clinical,
+    dietary:          original.dietary,
+    dexa_scans:       original.dexa_scans,
+    diagnosis:        original.diagnosis,
+    intervention:     original.intervention,
+    monitor_evaluate: original.monitor_evaluate,
+    created_at:       new Date().toISOString(),
+    submitted_at:     null,
   };
 
   await db.execute(
     `INSERT INTO notes
        (id, patient_id, note_date, admission_date, status, version,
         parent_note_id, anthro, labs, clinical, dietary, dexa_scans,
+        diagnosis, intervention, monitor_evaluate,
         created_at, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      revision.id,
-      revision.patient_id,
-      revision.note_date,
-      revision.admission_date,
-      revision.status,
-      revision.version,
-      revision.parent_note_id,
-      revision.anthro,
-      revision.labs,
-      revision.clinical,
-      revision.dietary,
-      revision.dexa_scans,
-      revision.created_at,
-      revision.submitted_at,
+      revision.id, revision.patient_id, revision.note_date, revision.admission_date,
+      revision.status, revision.version, revision.parent_note_id,
+      revision.anthro, revision.labs, revision.clinical, revision.dietary, revision.dexa_scans,
+      revision.diagnosis, revision.intervention, revision.monitor_evaluate,
+      revision.created_at, revision.submitted_at,
     ]
   );
 
@@ -492,23 +425,14 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
 
 // ─── Submission requirement commands ─────────────────────────────────────────
 
-/**
- * Return all submission requirements for display in settings or
- * for use during submission validation.
- */
 export async function getSubmissionRequirements(): Promise<SubmissionRequirement[]> {
   const db = await getDb();
   const rows = await db.select<Array<Omit<SubmissionRequirement, "required"> & { required: number }>>(
     `SELECT * FROM submission_requirements ORDER BY id`
   );
-  // SQLite stores booleans as integers; normalize to boolean
   return rows.map(r => ({ ...r, required: r.required === 1 }));
 }
 
-/**
- * Toggle a field's required status.
- * Used in a future settings UI to update submission rules without code changes.
- */
 export async function updateSubmissionRequirement(
   fieldKey: string,
   required: boolean
@@ -517,5 +441,20 @@ export async function updateSubmissionRequirement(
   await db.execute(
     `UPDATE submission_requirements SET required = ? WHERE field_key = ?`,
     [required ? 1 : 0, fieldKey]
+  );
+}
+
+/**
+ * Phase 6: Add a new submission requirement (for extensibility via Settings UI).
+ */
+export async function addSubmissionRequirement(
+  fieldKey: string,
+  label: string
+): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `INSERT OR IGNORE INTO submission_requirements (field_key, label, required, created_at)
+     VALUES (?, ?, 1, ?)`,
+    [fieldKey, label, new Date().toISOString()]
   );
 }

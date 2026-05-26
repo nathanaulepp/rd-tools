@@ -1,4 +1,6 @@
 // src/pages/App.tsx
+// Phase 6: New domains (Diagnosis, Intervention, Monitor/Eval) + Settings view
+
 import { useState, useMemo, useEffect } from "react";
 import "./App.css";
 import { getDb } from "../shared/api/db";
@@ -11,16 +13,23 @@ import CreateNotePage from "./CreateNotePage";
 import ToolsHomePage from "./ToolsHomePage";
 import PatientGatePage from "./PatientGatePage";
 import ClinicalSummaryView from "./ClinicalSummaryView";
+import SettingsPage from "./SettingsPage"; // Phase 6
 import {
   defaultPatientData,
   defaultAnthro,
   defaultDexaScans,
   defaultLabs,
   defaultClinical,
-  defaultDietary
+  defaultDietary,
+  defaultDiagnosis,     // Phase 6
+  defaultIntervention,  // Phase 6
+  defaultMonitorEval,   // Phase 6
 } from "../entities/note/defaults";
 
-export type ViewState = "LOGIN" | "START" | "PATIENT_GATE" | "VIEW_NOTES" | "CREATE_NOTE" | "VIEW_SUMMARY" | "TOOLS";
+export type ViewState =
+  | "LOGIN" | "START" | "PATIENT_GATE" | "VIEW_NOTES"
+  | "CREATE_NOTE" | "VIEW_SUMMARY" | "TOOLS"
+  | "SETTINGS"; // Phase 6
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -73,21 +82,19 @@ export default function App() {
     setCurrentView("START");
   };
 
-  // ── Phase 1+2: Active patient / note context ───────────────────────────────
+  // ── Active patient / note context ──────────────────────────────────────────
   const [activePatientId, setActivePatientId] = useState<string | null>(null);
   const [activeNoteId,    setActiveNoteId]    = useState<string | null>(null);
   const [activePatient,   setActivePatient]   = useState<Patient | null>(null);
-  const [activeNote,      setActiveNote]      = useState<Note | null>(null);   // Phase 2
+  const [activeNote,      setActiveNote]      = useState<Note | null>(null);
 
-  /** Called by PatientGatePage or NoteListPage when patient + note are ready. */
   const handleOpenNote = (patientId: string, noteId: string, patient: Patient, note: Note) => {
     setActivePatientId(patientId);
     setActiveNoteId(noteId);
     setActivePatient(patient);
     setActiveNote(note);
     resetNoteState(patient, note);
-    
-    // If note is already submitted, show the summary view. Otherwise, open workspace.
+
     if (note.status === "submitted") {
       setCurrentView("VIEW_SUMMARY");
     } else {
@@ -96,19 +103,18 @@ export default function App() {
   };
 
   // ── Domain state ───────────────────────────────────────────────────────────
-  const [patientData, setPatientData] = useState(defaultPatientData);
-  const [anthro,      setAnthro]      = useState(defaultAnthro);
-  const [dexaScans,   setDexaScans]   = useState(defaultDexaScans);
-  const [labs,        setLabs]        = useState(defaultLabs);
-  const [clinical,    setClinical]    = useState(defaultClinical);
-  const [dietary,     setDietary]     = useState<any>(defaultDietary);
+  const [patientData,  setPatientData]  = useState(defaultPatientData);
+  const [anthro,       setAnthro]       = useState(defaultAnthro);
+  const [dexaScans,    setDexaScans]    = useState(defaultDexaScans);
+  const [labs,         setLabs]         = useState(defaultLabs);
+  const [clinical,     setClinical]     = useState(defaultClinical);
+  const [dietary,      setDietary]      = useState<any>(defaultDietary);
+  // Phase 6 new domains
+  const [diagnosis,    setDiagnosis]    = useState<any>(defaultDiagnosis);
+  const [intervention, setIntervention] = useState<any>(defaultIntervention);
+  const [monitorEval,  setMonitorEval]  = useState<any>(defaultMonitorEval);
 
-  /**
-   * Reset or load all domain state when entering a note.
-   * If note contains JSON strings, they are parsed and loaded.
-   */
   const resetNoteState = (patient: Patient, note: Note) => {
-    // 1. Patient Metadata
     setPatientData({
       lastName:      patient.last_name,
       firstName:     patient.first_name,
@@ -120,40 +126,38 @@ export default function App() {
       languages:     patient.languages  ?? "",
     });
 
-    // 2. Anthropometrics
     if (note.anthro) {
-      try { setAnthro(JSON.parse(note.anthro)); } catch(e) { console.error("Anthro parse failed", e); }
-    } else {
-      setAnthro(defaultAnthro);
-    }
+      try { setAnthro(JSON.parse(note.anthro)); } catch(e) { setAnthro(defaultAnthro); }
+    } else { setAnthro(defaultAnthro); }
 
-    // 3. DEXA Scans
     if (note.dexa_scans) {
-      try { setDexaScans(JSON.parse(note.dexa_scans)); } catch(e) { console.error("DEXA parse failed", e); }
-    } else {
-      setDexaScans(defaultDexaScans);
-    }
+      try { setDexaScans(JSON.parse(note.dexa_scans)); } catch(e) { setDexaScans(defaultDexaScans); }
+    } else { setDexaScans(defaultDexaScans); }
 
-    // 4. Labs (Biochemical)
     if (note.labs) {
-      try { setLabs(JSON.parse(note.labs)); } catch(e) { console.error("Labs parse failed", e); }
-    } else {
-      setLabs(defaultLabs);
-    }
+      try { setLabs(JSON.parse(note.labs)); } catch(e) { setLabs(defaultLabs); }
+    } else { setLabs(defaultLabs); }
 
-    // 5. Clinical / NFPE
     if (note.clinical) {
-      try { setClinical(JSON.parse(note.clinical)); } catch(e) { console.error("Clinical parse failed", e); }
-    } else {
-      setClinical(defaultClinical);
-    }
+      try { setClinical(JSON.parse(note.clinical)); } catch(e) { setClinical(defaultClinical); }
+    } else { setClinical(defaultClinical); }
 
-    // 6. Dietary
     if (note.dietary) {
-      try { setDietary(JSON.parse(note.dietary)); } catch(e) { console.error("Dietary parse failed", e); }
-    } else {
-      setDietary(defaultDietary);
-    }
+      try { setDietary(JSON.parse(note.dietary)); } catch(e) { setDietary(defaultDietary); }
+    } else { setDietary(defaultDietary); }
+
+    // Phase 6: new domains
+    if (note.diagnosis) {
+      try { setDiagnosis(JSON.parse(note.diagnosis)); } catch(e) { setDiagnosis(defaultDiagnosis); }
+    } else { setDiagnosis(defaultDiagnosis); }
+
+    if (note.intervention) {
+      try { setIntervention(JSON.parse(note.intervention)); } catch(e) { setIntervention(defaultIntervention); }
+    } else { setIntervention(defaultIntervention); }
+
+    if (note.monitor_evaluate) {
+      try { setMonitorEval(JSON.parse(note.monitor_evaluate)); } catch(e) { setMonitorEval(defaultMonitorEval); }
+    } else { setMonitorEval(defaultMonitorEval); }
   };
 
   // ── Derived metrics ────────────────────────────────────────────────────────
@@ -172,18 +176,22 @@ export default function App() {
     return { bmi, ageDays };
   }, [anthro.ht, anthro.htUnit, anthro.wt, anthro.wtUnit, patientData.dob, patientData.noteDate]);
 
-  // ── Shared props for CreateNotePage ───────────────────────────────────────
+  // ── Shared props ───────────────────────────────────────────────────────────
   const sharedNoteProps = {
     patientId: activePatientId,
     noteId: activeNoteId,
     patient: activePatient,
-    note: activeNote,           // Phase 2
+    note: activeNote,
     patientData, setPatientData,
     anthro, setAnthro,
     dexaScans, setDexaScans,
     labs, setLabs,
     clinical, setClinical,
     dietary, setDietary,
+    // Phase 6
+    diagnosis, setDiagnosis,
+    intervention, setIntervention,
+    monitorEval, setMonitorEval,
     calculatedMetrics,
     handleExitToStart,
   };
@@ -228,6 +236,8 @@ export default function App() {
       );
     case "TOOLS":
       return <ToolsHomePage handleExitToStart={handleExitToStart} />;
+    case "SETTINGS": // Phase 6
+      return <SettingsPage handleExitToStart={handleExitToStart} />;
     default:
       return (
         <StartPage
