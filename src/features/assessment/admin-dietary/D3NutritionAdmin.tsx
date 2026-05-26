@@ -94,13 +94,13 @@ function MacroSection({
           </div>
         </Field>
         {showConc && (
-          <FieldRow label="Conc (%)">
+          <Field label="Conc (%)">
             <select value={conc} onChange={e => onConc(e.target.value)}
               style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }}>
               <option value="">—</option>
               {concOptions.map(o => <option key={o} value={o}>{o}%</option>)}
             </select>
-          </FieldRow>
+          </Field>
         )}
         {extra}
       </div>
@@ -153,7 +153,7 @@ function MicroPanel({ title, fields, values, onChange, accent, expanded, onToggl
         <div style={{ padding: "0.75rem", background: "#fff", borderTop: "1px solid #e2e8f0" }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0.6rem" }}>
             {fields.map(f => (
-              <FieldRow key={f.key} label={f.label}>
+              <Field key={f.key} label={f.label}>
                 <div style={{ display: "flex", gap: "4px" }}>
                   <NumInput value={values[f.key]?.amount || ""} onChange={v => onChange(f.key, "amount", v)} style={{ flex: 1 }} />
                   <select value={values[f.key]?.unit || "mEq"} onChange={e => onChange(f.key, "unit", e.target.value)}
@@ -165,7 +165,7 @@ function MicroPanel({ title, fields, values, onChange, accent, expanded, onToggl
                     {constant.RATE_UNITS.map(u => <option key={u}>{u}</option>)}
                   </select>
                 </div>
-              </FieldRow>
+              </Field>
             ))}
           </div>
         </div>
@@ -196,9 +196,9 @@ function D31Oral({ dietary, setDietary }: D31OralProps) {
         <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1rem" }}>
           <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#718096", marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Estimated Oral Nutrient Intake</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
-            <FieldRow label="Calories (kcal/day)"><NumInput value={dietary.oralCalories || ""} onChange={v => handleUpdate("oralCalories", v)} placeholder="e.g. 1800" /></FieldRow>
-            <FieldRow label="Protein (g/day)"><NumInput value={dietary.oralProtein || ""} onChange={v => handleUpdate("oralProtein", v)} placeholder="e.g. 75" /></FieldRow>
-            <FieldRow label="Water / Fluid (mL/day)"><NumInput value={dietary.oralWater || ""} onChange={v => handleUpdate("oralWater", v)} placeholder="e.g. 1500" /></FieldRow>
+            <Field label="Calories (kcal/day)"><NumInput value={dietary.oralCalories || ""} onChange={v => handleUpdate("oralCalories", v)} placeholder="e.g. 1800" /></Field>
+            <Field label="Protein (g/day)"><NumInput value={dietary.oralProtein || ""} onChange={v => handleUpdate("oralProtein", v)} placeholder="e.g. 75" /></Field>
+            <Field label="Water / Fluid (mL/day)"><NumInput value={dietary.oralWater || ""} onChange={v => handleUpdate("oralWater", v)} placeholder="e.g. 1500" /></Field>
           </div>
         </div>
       </div>
@@ -227,8 +227,8 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
       {isExpanded && (
         <div style={{ padding: "1rem", borderTop: "1px solid #e2e8f0", background: "#fff" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "0.75rem", marginBottom: "1rem" }}>
-            <FieldRow label="Feed Label"><input type="text" value={feed.label} onChange={e => update("label", e.target.value)} placeholder={`Feed ${idx + 1}`} style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} /></FieldRow>
-            <FieldRow label="Route & Access"><Sel value={feed.route} onChange={v => update("route", v)} options={constant.EN_ROUTES} placeholder="Select route..." /></FieldRow>
+            <Field label="Feed Label"><input type="text" value={feed.label} onChange={e => update("label", e.target.value)} placeholder={`Feed ${idx + 1}`} style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} /></Field>
+            <Field label="Route & Access"><Sel value={feed.route} onChange={v => update("route", v)} options={constant.EN_ROUTES} placeholder="Select route..." /></Field>
           </div>
           <div style={{ marginBottom: "1rem" }}>
             <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#34495e", marginBottom: "6px" }}>Delivery Type</div>
@@ -241,38 +241,38 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
             </div>
           </div>
           <div style={{ marginBottom: "1rem" }}>
-             <FieldRow label="Formula">
+             <Field label="Formula">
               <select value={feed.formula} onChange={e => handleFormulaChange(e.target.value)} style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem", width: "100%" }}>
                 <option value="">Select or add formula...</option>
                 <option value="__add__">+ Add new formula...</option>
                 {savedFormulas.map(f => <option key={f} value={f}>{f}</option>)}
               </select>
-            </FieldRow>
+            </Field>
           </div>
           {feed.type === "bolus" ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "1rem" }}>
-              <FieldRow label="mL per bolus"><NumInput value={feed.bolusMl} onChange={v => update("bolusMl", v)} /></FieldRow>
-              <FieldRow label="Times per day"><NumInput value={feed.bolusTimesPerDay} onChange={v => update("bolusTimesPerDay", v)} /></FieldRow>
-              <FieldRow label="Every (hrs)"><NumInput value={feed.bolusEveryHrs} onChange={v => update("bolusEveryHrs", v)} /></FieldRow>
+              <Field label="mL per bolus"><NumInput value={feed.bolusMl} onChange={v => update("bolusMl", v)} /></Field>
+              <Field label="Times per day"><NumInput value={feed.bolusTimesPerDay} onChange={v => update("bolusTimesPerDay", v)} /></Field>
+              <Field label="Every (hrs)"><NumInput value={feed.bolusEveryHrs} onChange={v => update("bolusEveryHrs", v)} /></Field>
             </div>
           ) : (
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
-              <FieldRow label="Rate (mL/hr)"><NumInput value={feed.continuousRate} onChange={v => update("continuousRate", v)} /></FieldRow>
-              <FieldRow label="Hours per day"><NumInput value={feed.continuousHrs} onChange={v => update("continuousHrs", v)} /></FieldRow>
+              <Field label="Rate (mL/hr)"><NumInput value={feed.continuousRate} onChange={v => update("continuousRate", v)} /></Field>
+              <Field label="Hours per day"><NumInput value={feed.continuousHrs} onChange={v => update("continuousHrs", v)} /></Field>
             </div>
           )}
           <div style={{ background: "#f8fafc", borderRadius: "6px", padding: "0.75rem", marginBottom: "1rem" }}>
             <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#718096", marginBottom: "0.5rem" }}>Flushes</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem" }}>
-              <FieldRow label="mL per flush"><NumInput value={feed.flushMl} onChange={v => update("flushMl", v)} /></FieldRow>
-              <FieldRow label="Times per day"><NumInput value={feed.flushTimesPerDay} onChange={v => update("flushTimesPerDay", v)} /></FieldRow>
-              <FieldRow label="Every (hrs)"><NumInput value={feed.flushEveryHrs} onChange={v => update("flushEveryHrs", v)} /></FieldRow>
+              <Field label="mL per flush"><NumInput value={feed.flushMl} onChange={v => update("flushMl", v)} /></Field>
+              <Field label="Times per day"><NumInput value={feed.flushTimesPerDay} onChange={v => update("flushTimesPerDay", v)} /></Field>
+              <Field label="Every (hrs)"><NumInput value={feed.flushEveryHrs} onChange={v => update("flushEveryHrs", v)} /></Field>
             </div>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "1rem" }}>
-            <FieldRow label="Cal/mL" hint="e.g. 1.0, 1.5, 2.0"><NumInput value={feed.calPerMl} onChange={v => update("calPerMl", v)} placeholder="1.0" /></FieldRow>
-            <FieldRow label="Protein (g/L)" hint="from formula label"><NumInput value={feed.protGPerL} onChange={v => update("protGPerL", v)} placeholder="44" /></FieldRow>
-            <FieldRow label="Free Water (%)" hint="0–100"><NumInput value={feed.fwPct} onChange={v => update("fwPct", v)} placeholder="85" /></FieldRow>
+            <Field label="Cal/mL" hint="e.g. 1.0, 1.5, 2.0"><NumInput value={feed.calPerMl} onChange={v => update("calPerMl", v)} placeholder="1.0" /></Field>
+            <Field label="Protein (g/L)" hint="from formula label"><NumInput value={feed.protGPerL} onChange={v => update("protGPerL", v)} placeholder="44" /></Field>
+            <Field label="Free Water (%)" hint="0–100"><NumInput value={feed.fwPct} onChange={v => update("fwPct", v)} placeholder="85" /></Field>
           </div>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", paddingTop: "0.75rem", borderTop: "1px solid #f0f0f0" }}>
             <NutrientChip label="Volume" value={nutrients.totalMl} unit="mL/day" color="#3498db" />
@@ -378,26 +378,26 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
 
           {/* Label + Indication */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
-            <FieldRow label="Bag Label">
+            <Field label="Bag Label">
               <input type="text" value={feed.label} onChange={e => update("label", e.target.value)} placeholder={`PN Bag ${idx + 1}`} style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} />
-            </FieldRow>
-            <FieldRow label="Indication / Reason for PN">
+            </Field>
+            <Field label="Indication / Reason for PN">
               <input type="text" value={feed.indication} onChange={e => update("indication", e.target.value)} placeholder="e.g. GI failure, post-op ileus..." style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} />
-            </FieldRow>
+            </Field>
           </div>
 
           {/* Route / Access / Delivery / Goal */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginBottom: "1rem" }}>
-            <FieldRow label="Route"><Sel value={feed.route} onChange={v => update("route", v)} options={constant.PN_ROUTES} /></FieldRow>
-            <FieldRow label="Access Line"><Sel value={feed.access} onChange={v => update("access", v)} options={constant.PN_ACCESS} /></FieldRow>
-            <FieldRow label="Delivery Method"><Sel value={feed.delivery} onChange={v => update("delivery", v)} options={constant.PN_DELIVERY} /></FieldRow>
-            <FieldRow label="Goal"><Sel value={feed.goal} onChange={v => update("goal", v)} options={constant.PN_GOALS} /></FieldRow>
+            <Field label="Route"><Sel value={feed.route} onChange={v => update("route", v)} options={constant.PN_ROUTES} /></Field>
+            <Field label="Access Line"><Sel value={feed.access} onChange={v => update("access", v)} options={constant.PN_ACCESS} /></Field>
+            <Field label="Delivery Method"><Sel value={feed.delivery} onChange={v => update("delivery", v)} options={constant.PN_DELIVERY} /></Field>
+            <Field label="Goal"><Sel value={feed.goal} onChange={v => update("goal", v)} options={constant.PN_GOALS} /></Field>
           </div>
 
           {/* Start Date / Time */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "1rem" }}>
-            <FieldRow label="Start Date"><input type="date" value={feed.startDate} onChange={e => update("startDate", e.target.value)} style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} /></FieldRow>
-            <FieldRow label="Start Time"><input type="time" value={feed.startTime} onChange={e => update("startTime", e.target.value)} style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} /></FieldRow>
+            <Field label="Start Date"><input type="date" value={feed.startDate} onChange={e => update("startDate", e.target.value)} style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} /></Field>
+            <Field label="Start Time"><input type="time" value={feed.startTime} onChange={e => update("startTime", e.target.value)} style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} /></Field>
           </div>
 
           {/* Macronutrients */}
@@ -464,11 +464,11 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
             />
             {feed.lipidOil !== undefined && (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.5rem" }}>
-                <FieldRow label="Oil"><Sel value={feed.lipidOil} onChange={v => update("lipidOil", v)} options={constant.LIPID_OILS} /></FieldRow>
+                <Field label="Oil"><Sel value={feed.lipidOil} onChange={v => update("lipidOil", v)} options={constant.LIPID_OILS} /></Field>
                 {feed.lipidOil === "Custom (specify)" && (
-                  <FieldRow label="Specify oil blend">
+                  <Field label="Specify oil blend">
                     <input type="text" value={feed.lipidCustomOil} onChange={e => update("lipidCustomOil", e.target.value)} placeholder="e.g. SMOF + fish oil..." style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} />
-                  </FieldRow>
+                  </Field>
                 )}
               </div>
             )}
