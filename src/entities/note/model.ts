@@ -11,7 +11,7 @@ export const [anthro, setAnthro] = useState({
   const [dexaScans, setDexaScans] = useState<any[]>([]);
   const [labs, setLabs] = useState<Record<string, { current: string, historical: string }>>({});
   const [clinical, setClinical] = useState({
-    chiefComplaint: "", medHx: "", temples: "", clavicles: "", shoulders: "", scapula: "", interosseous: "", thighs: "", calves: "",
+    chiefComplaint: "", medHx: "", medications: "", temples: "", clavicles: "", shoulders: "", scapula: "", interosseous: "", thighs: "", calves: "",
     orbital: "", cheek: "", tricepsFat: "", midAxillary: "",
     hair: "", eyes: "", mouthLips: "", tongue: "", teethGums: "", headNeck: "", nails: "", skin: "",
     pittingEdema: "", ascites: "", edemaDescription: "",
@@ -25,7 +25,7 @@ export const [anthro, setAnthro] = useState({
     ],
     macroAdequacy: "", mealPatterns: "", currentDiets: "", fluidIntake: "", eatingEnv: "",
     culturalReligious: "", socialDynamics: "", dietOrder: "Standard Diet, Regular", actualIntake: "", enteralPN: "",
-    drugInteractions: "", otcMeds: "", herbalCAM: "", supplements: "",
+    herbalCAM: "", supplements: "",
     understanding: "", readiness: "5", psychTies: "", mealPrep: "", eatingOut: "", bingePurge: "",
     foodSecurity: "", foodSupplies: "", transport: "", physicalLevel: "", adls: "", feedingTasks: "", perception: "", qolGoals: ""
   });

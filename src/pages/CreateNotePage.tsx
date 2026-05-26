@@ -20,6 +20,7 @@ import {
   DIETARY_CATEGORIES,
   ASSESSMENT_CATEGORIES,
   BIOCHEMICAL_CATEGORIES,
+  CLINICAL_CATEGORIES,
 } from "../shared/constants/adimeSideBarCategories";
 
 // ─── Domain type ──────────────────────────────────────────────────────────────
@@ -291,6 +292,7 @@ export default function CreateNotePage({
     setActiveDomain(nextDomain);
     if (nextDomain === "A") setActiveSubDomain("A1-A5");
     else if (nextDomain === "B") setActiveSubDomain("B1");
+    else if (nextDomain === "C") setActiveSubDomain("C1");
     else if (nextDomain === "D") setActiveSubDomain("D1");
     if (window.innerWidth <= 768) setSidebarOpen(false);
   };
@@ -372,6 +374,15 @@ export default function CreateNotePage({
           <div className={`nav-item ${activeDomain === "C" ? "active" : ""}`} onClick={() => handleDomainSwitch("C")}>
             C. Clinical &amp; NFPE
           </div>
+          {activeDomain === "C" && (
+            <div className="sub-nav">
+              {CLINICAL_CATEGORIES.map(cat => (
+                <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => handleSubDomainSwitch(cat.id)}>
+                  {cat.title}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Domain D */}
           <div className={`nav-item ${activeDomain === "D" ? "active" : ""}`} onClick={() => handleDomainSwitch("D")}>
@@ -449,16 +460,16 @@ export default function CreateNotePage({
 
         <div className="content-area">
           {activeDomain === "A" && (
-            <AnthroDomain anthro={anthro} setAnthro={setAnthro} dexaScans={dexaScans} setDexaScans={setDexaScans} calculatedMetrics={calculatedMetrics} patientData={patientData} activeSubDomain={activeSubDomain} />
+            <AnthroDomain anthro={anthro} setAnthro={setAnthro} dexaScans={dexaScans} setDexaScans={setDexaScans} calculatedMetrics={calculatedMetrics} patientData={patientData} dietary={dietary} activeSubDomain={activeSubDomain} />
           )}
           {activeDomain === "B" && (
             <BiochemicalDomain labs={labs} setLabs={setLabs} activeSubDomain={activeSubDomain} />
           )}
           {activeDomain === "C" && (
-            <ClinicalDomain clinical={clinical} setClinical={setClinical} />
+            <ClinicalDomain clinical={clinical} setClinical={setClinical} activeSubDomain={activeSubDomain} />
           )}
           {activeDomain === "D" && (
-            <DietaryDomain dietary={dietary} setDietary={setDietary} activeSubDomain={activeSubDomain} />
+            <DietaryDomain dietary={dietary} setDietary={setDietary} activeSubDomain={activeSubDomain} clinical={clinical} />
           )}
           {activeDomain === "Dx" && (
             <DiagnosisDomain diagnosis={diagnosis} setDiagnosis={setDiagnosis} anthro={anthro} dietary={dietary} calculatedMetrics={calculatedMetrics} />

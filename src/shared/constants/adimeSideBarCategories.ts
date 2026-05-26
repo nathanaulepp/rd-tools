@@ -2,6 +2,7 @@ export const ASSESSMENT_CATEGORIES = [
   { id: "A1-A5", title: "Body Measurements" },
   { id: "A6-A7", title: "Pediatric Growth" },
   { id: "A8", title: "DEXA" },
+  { id: "A9", title: "Nutrition Standards" },
 ];
 
 export const BIOCHEMICAL_CATEGORIES = [
@@ -15,11 +16,19 @@ export const BIOCHEMICAL_CATEGORIES = [
   { id: "B8", title: "B8: Micronutrient Status" },
 ];
 
+export const CLINICAL_CATEGORIES = [
+  { id: "C1", title: "C1: Medical Context" },
+  { id: "C2", title: "C2: Vital Signs" },
+  { id: "C3", title: "C3: Medications" },
+  { id: "C4", title: "C4: GI & Systemic Function" },
+  { id: "C5", title: "C5: Nutrition Focused Physical Exam (NFPE)" }
+];
+
 export const DIETARY_CATEGORIES = [
   { id: "D1", title: "D1: Food & Nutrient Intake" },
   { id: "D2", title: "D2: Cultural & Social Food Context" },
   { id: "D3", title: "D3: Food & Nutrient Prescription" },
-  { id: "D4", title: "D4: Medication & CAM Use" },
+  { id: "D4", title: "D4: Supplements & DNI" },
   { id: "D5", title: "D5: Knowledge, Beliefs, & Attitudes" },
   { id: "D6", title: "D6: Behavior" },
   { id: "D7", title: "D7: Access Factors" },

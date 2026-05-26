@@ -49,6 +49,7 @@ export const defaultLabs = {} as Record<string, { current: string; historical: s
 export const defaultClinical = {
   chiefComplaint: "",
   medHx: "",
+  medications: "",
   temples: "",
   clavicles: "",
   shoulders: "",
@@ -98,8 +99,6 @@ export const defaultDietary = {
   oralCalories: "",
   oralProtein: "",
   oralWater: "",
-  drugInteractions: "",
-  otcMeds: "",
   herbalCAM: "",
   supplements: "",
   understanding: "",

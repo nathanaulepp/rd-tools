@@ -1,15 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { AlertBanner } from '../../../shared/ui/AlertBanner';
 import D3NutritionAdmin from '../admin-dietary/D3NutritionAdmin';
 import { DIETARY_CATEGORIES } from '../../../shared/constants/adimeSideBarCategories.ts';
+import DrugNutrientInteractionTable from "./DrugNutrientInteractionTable";
 
 import { DomainHeader } from '../../../shared/ui/DomainHeader';
 
-export default function DietaryDomain({ dietary, setDietary, activeSubDomain }: any) {
+export default function DietaryDomain({ dietary, setDietary, activeSubDomain, clinical }: any) {
   const [recallStep, setRecallStep] = useState(0);
 
   const handleUpdate = (field: string, val: any) =>
     setDietary({ ...dietary, [field]: val });
+
+  const drugs = useMemo(() => {
+    try {
+      const parsed = JSON.parse(clinical?.medications || "[]");
+      if (Array.isArray(parsed)) return parsed.map((d: any) => d.name).filter(Boolean);
+    } catch {
+      // Fallback for legacy plain text if any
+      return (clinical?.medications || "").split(/[,;\n]+/).map((s: string) => s.trim()).filter(Boolean);
+    }
+    return [];
+  }, [clinical?.medications]);
+
+  const supplements = useMemo(() => {
+    const list = [
+      ...(dietary?.herbalCAM || "").split(/[,;\n]+/),
+      ...(dietary?.supplements || "").split(/[,;\n]+/),
+    ];
+    return list.map(s => s.trim()).filter(Boolean);
+  }, [dietary?.herbalCAM, dietary?.supplements]);
 
   const updateRecallMeal = (index: number, updates: any) => {
     const newRecall = [...(dietary.recall || [])];
@@ -118,13 +138,32 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain }: 
       case "D4":
         return (
           <div className="card">
-            <AlertBanner type="warning" message="Check Domain B for potential Drug-Nutrient Interactions related to Potassium." />
+            <AlertBanner
+              type="warning"
+              message="Check Domain B for potential Drug-Nutrient Interactions related to Potassium."
+            />
+      
             <div className="grid-2-col">
-              <div className="input-group"><label>D41: Drug-Nutrient Interactions</label><textarea value={dietary?.drugInteractions || ""} onChange={e => handleUpdate("drugInteractions", e.target.value)} /></div>
-              <div className="input-group"><label>D42: OTC Medication Usage</label><textarea value={dietary?.otcMeds || ""} onChange={e => handleUpdate("otcMeds", e.target.value)} /></div>
-              <div className="input-group"><label>D43: Herbal/CAM Products</label><textarea value={dietary?.herbalCAM || ""} onChange={e => handleUpdate("herbalCAM", e.target.value)} /></div>
-              <div className="input-group"><label>D44: Vitamin & Mineral Supplements</label><textarea value={dietary?.supplements || ""} onChange={e => handleUpdate("supplements", e.target.value)} /></div>
+              <div className="input-group">
+                <label>D43: Supplement Products</label>
+                <textarea
+                  value={dietary?.herbalCAM || ""}
+                  onChange={e => handleUpdate("herbalCAM", e.target.value)}
+                />
+              </div>
+              <div className="input-group">
+                <label>D44: Vitamin & Mineral Supplements</label>
+                <textarea
+                  value={dietary?.supplements || ""}
+                  onChange={e => handleUpdate("supplements", e.target.value)}
+                />
+              </div>
             </div>
+
+            <DrugNutrientInteractionTable
+              drugs={drugs}
+              supplements={supplements}
+            />
           </div>
         );
 

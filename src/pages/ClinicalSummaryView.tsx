@@ -107,6 +107,33 @@ export default function ClinicalSummaryView({
     ));
   };
 
+  const renderMedList = (raw: string | undefined) => {
+    if (!raw) return null;
+    try {
+      const entries: Array<{ name: string; dose: string; route: string; frequency: string; notes: string }> =
+        JSON.parse(raw);
+      if (!Array.isArray(entries) || entries.length === 0) return null;
+      return (
+        <ul style={{ margin: "0.25rem 0 0", paddingLeft: "1.1rem", fontSize: "0.88rem" }}>
+          {entries
+            .filter(e => e.name.trim())
+            .map((e, i) => (
+              <li key={i} style={{ marginBottom: "3px" }}>
+                <strong>{e.name}</strong>
+                {e.dose && ` · ${e.dose}`}
+                {e.route && ` · ${e.route}`}
+                {e.frequency && ` · ${e.frequency}`}
+                {e.notes && <em style={{ color: "#64748b" }}> — {e.notes}</em>}
+              </li>
+            ))}
+        </ul>
+      );
+    } catch {
+      // Legacy plain string
+      return <span style={{ fontSize: "0.88rem" }}>{raw}</span>;
+    }
+  };
+
   // ── Phase 6: PES summary ──────────────────────────────────────────────────
   const renderDiagnosis = () => {
     if (!diagnosis?.problem && !(diagnosis?.additionalDiagnoses?.length)) {
@@ -226,10 +253,24 @@ export default function ClinicalSummaryView({
         {/* C. Clinical */}
         {renderSection("C. Clinical Findings & Physical Exam", (
           <>
-            {renderRow("Chief Complaint", clinical.chiefComplaint)}
-            {renderRow("Medical History", clinical.medHx)}
+            <div style={styles.grid2}>
+              <div>
+                <h4 style={styles.subTitle}>Medical Context</h4>
+                {renderRow("Chief Complaint", clinical.chiefComplaint)}
+                {renderRow("Medical History", clinical.medHx)}
+                {renderRow("Medications", clinical.medications)}
+              </div>
+              <div>
+                <h4 style={styles.subTitle}>GI & Systemic</h4>
+                {renderRow("GI Distress", clinical.giDistress)}
+                {renderRow("Oral/Chewing", clinical.chewing)}
+                {renderRow("Oral Hygiene", clinical.oralHygiene)}
+                {renderRow("Swallowing", clinical.swallowing)}
+              </div>
+            </div>
+
             <div style={{ marginTop: "1rem" }}>
-              <h4 style={styles.subTitle}>Vitals</h4>
+              <h4 style={styles.subTitle}>Vital Signs</h4>
               <div style={styles.grid5}>
                 {renderVital("Temp", clinical.temp, "°F")}
                 {renderVital("HR", clinical.hr, "bpm")}
@@ -237,6 +278,38 @@ export default function ClinicalSummaryView({
                 {renderVital("BP", clinical.bp, "mmHg")}
                 {renderVital("RR", clinical.rr, "bpm")}
               </div>
+            </div>
+
+            <div style={{ marginTop: "1rem" }}>
+              <h4 style={styles.subTitle}>NFPE Findings</h4>
+              <div style={styles.grid2}>
+                <div>
+                  {renderRow("Muscle Wasting", [
+                    clinical.temples && `Temples (${clinical.temples})`,
+                    clinical.clavicles && `Clavicles (${clinical.clavicles})`,
+                    clinical.shoulders && `Shoulders (${clinical.shoulders})`,
+                    clinical.scapula && `Scapula (${clinical.scapula})`,
+                    clinical.interosseous && `Interosseous (${clinical.interosseous})`,
+                    clinical.thighs && `Thighs (${clinical.thighs})`,
+                    clinical.calves && `Calves (${clinical.calves})`,
+                  ].filter(Boolean).join(", "))}
+                  {renderRow("Fat Loss", [
+                    clinical.orbital && `Orbital (${clinical.orbital})`,
+                    clinical.cheek && `Cheek (${clinical.cheek})`,
+                    clinical.tricepsFat && `Triceps (${clinical.tricepsFat})`,
+                    clinical.midAxillary && `Mid-Axillary (${clinical.midAxillary})`,
+                  ].filter(Boolean).join(", "))}
+                </div>
+                <div>
+                  {renderRow("Fluid", [
+                    clinical.pittingEdema && `Edema (${clinical.pittingEdema})`,
+                    clinical.ascites && `Ascites (${clinical.ascites})`,
+                    clinical.edemaDescription
+                  ].filter(Boolean).join(", "))}
+                  {renderRow("Function", clinical.gripStrength)}
+                </div>
+              </div>
+              {renderRow("Exam Notes", clinical.clinicalNotes)}
             </div>
           </>
         ))}

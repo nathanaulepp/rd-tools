@@ -25,6 +25,7 @@ import {
   defaultIntervention,  // Phase 6
   defaultMonitorEval,   // Phase 6
 } from "../entities/note/defaults";
+import { initDrugSync } from "../features/drugs/DrugLookupTool";
 
 export type ViewState =
   | "LOGIN" | "START" | "PATIENT_GATE" | "VIEW_NOTES"
@@ -37,6 +38,10 @@ export default function App() {
 
   useEffect(() => {
     getDb().catch(err => console.error("Failed to initialize database:", err));
+    initDrugSync().then(r => {
+      if (r.status === "synced") console.log('Drug DB: ${r.count} terms loaded');
+      if (r.status === "error") console.warn("Drug DB sync failed:", r.error);
+    });
   }, []);
 
   const [theme, setTheme] = useState<"light" | "dark">(() => {
