@@ -7,48 +7,14 @@ import React, { useState } from "react";
 import type { Patient, Note } from "../shared/api/db";
 import { autosaveNote } from "../shared/api/db";
 
+import { validateDateBoundaries } from "../shared/utils/dateValidation";
+
 interface PatientHeaderProps {
   patient: Patient | null;
   note: Note | null;
   patientData: any;
   setPatientData: (d: any) => void;
   clinical: any;
-}
-
-// Returns an error string or "" if valid.
-function validateDates(
-  field: "noteDate" | "admissionDate",
-  val: string,
-  dob: string,
-  noteDate: string,
-  admissionDate: string
-): string {
-  if (!val) return "";
-
-  const toMs = (d: string) => new Date(d).getTime();
-  const dobMs = dob ? toMs(dob) : null;
-
-  if (field === "admissionDate") {
-    const admMs = toMs(val);
-    if (dobMs !== null && admMs < dobMs) {
-      return "Admission date cannot be before the patient's date of birth.";
-    }
-    if (noteDate && admMs > toMs(noteDate)) {
-      return "Admission date cannot be after the note date.";
-    }
-  }
-
-  if (field === "noteDate") {
-    // If there's already an admission date, make sure note date stays >= it.
-    if (admissionDate && toMs(val) < toMs(admissionDate)) {
-      return "Note date cannot be before the admission date.";
-    }
-    if (dobMs !== null && toMs(val) < dobMs) {
-      return "Note date cannot be before the patient's date of birth.";
-    }
-  }
-
-  return "";
 }
 
 export default function PatientHeader({
@@ -76,13 +42,13 @@ export default function PatientHeader({
   })();
 
   const handleDateChange = async (field: "noteDate" | "admissionDate", val: string) => {
-    const error = validateDates(
+    const error = validateDateBoundaries({
       field,
-      val,
+      value: val,
       dob,
-      field === "noteDate" ? val : patientData.noteDate,
-      field === "admissionDate" ? val : patientData.admissionDate
-    );
+      noteDate:      field === "noteDate"      ? val : patientData.noteDate,
+      admissionDate: field === "admissionDate" ? val : patientData.admissionDate
+    });
 
     if (error) {
       setDateError(error);

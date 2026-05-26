@@ -2,80 +2,13 @@ import React, { useState } from "react";
 import * as helper from "./helper";
 import * as constant from "./constant";
 import { Dietary, MicroNutrientParams, ENFeed, PNFeed, ENState, PNState } from "../../../shared/types/index";
+import { Field } from "../../../shared/ui/Field";
+import { NumInput } from "../../../shared/ui/NumInput";
+import { SelectInput as Sel } from "../../../shared/ui/SelectInput";
+import { StatChip as NutrientChip } from "../../../shared/ui/StatChip";
+import { CollapseHeader } from "../../../shared/ui/CollapseHeader";
+import { SectionHeader } from "../../../shared/ui/SectionHeader";
 
-
-// ─── Shared UI primitives ─────────────────────────────────────────────────────
-
-interface SectionHeaderProps { title: string; subtitle?: string; color?: string; }
-function SectionHeader({ title, subtitle, color = "#3498db" }: SectionHeaderProps) {
-  return (
-    <div style={{ borderLeft: `4px solid ${color}`, paddingLeft: "12px", marginBottom: "1.25rem" }}>
-      <div style={{ fontWeight: 700, fontSize: "1rem", color: "var(--primary, #2c3e50)" }}>{title}</div>
-      {subtitle && <div style={{ fontSize: "0.8rem", color: "#718096", marginTop: "2px" }}>{subtitle}</div>}
-    </div>
-  );
-}
-
-interface NutrientChipProps { label: string; value: string | number; unit: string; color?: string; }
-function NutrientChip({ label, value, unit, color = "#3498db" }: NutrientChipProps) {
-  return (
-    <div style={{ background: `${color}12`, border: `1px solid ${color}40`, borderRadius: "8px", padding: "8px 14px", textAlign: "center", minWidth: "100px" }}>
-      <div style={{ fontSize: "0.7rem", color: "#718096", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</div>
-      <div style={{ fontSize: "1.1rem", fontWeight: 700, color, marginTop: "2px" }}>
-        {value}<span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>{unit}</span>
-      </div>
-    </div>
-  );
-}
-
-interface CollapseHeaderProps { label: string; expanded: boolean; onToggle: () => void; accent?: string; badge?: string | null; }
-function CollapseHeader({ label, expanded, onToggle, accent = "#3498db", badge = null }: CollapseHeaderProps) {
-  return (
-    <div onClick={onToggle} style={{
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      cursor: "pointer", userSelect: "none", padding: "10px 14px",
-      background: `${accent}08`, border: `1px solid ${accent}30`,
-      borderRadius: expanded ? "8px 8px 0 0" : "8px",
-      marginBottom: expanded ? 0 : "0.5rem",
-    }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <span style={{ fontSize: "0.9rem", fontWeight: 600, color: accent }}>{label}</span>
-        {badge && <span style={{ fontSize: "0.75rem", background: `${accent}20`, color: accent, borderRadius: "12px", padding: "2px 10px" }}>{badge}</span>}
-      </div>
-      <span style={{ color: accent, fontSize: "0.75rem" }}>{expanded ? "▲" : "▼"}</span>
-    </div>
-  );
-}
-
-interface FieldRowProps { label: string; children: React.ReactNode; hint?: string; }
-function FieldRow({ label, children, hint }: FieldRowProps) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-      <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#34495e" }}>{label}</label>
-      {children}
-      {hint && <span style={{ fontSize: "0.7rem", color: "#a0aec0" }}>{hint}</span>}
-    </div>
-  );
-}
-
-interface NumInputProps { value: string | number; onChange: (val: string) => void; placeholder?: string; style?: React.CSSProperties; }
-function NumInput({ value, onChange, placeholder = "", style = {} }: NumInputProps) {
-  return (
-    <input type="number" value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-      style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box", ...style }} />
-  );
-}
-
-interface SelProps { value: string; onChange: (val: string) => void; options: string[]; placeholder?: string; }
-function Sel({ value, onChange, options, placeholder = "Select..." }: SelProps) {
-  return (
-    <select value={value} onChange={e => onChange(e.target.value)}
-      style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }}>
-      <option value="">{placeholder}</option>
-      {options.map(o => <option key={o} value={o}>{o}</option>)}
-    </select>
-  );
-}
 
 // Small inline derived-value display
 function DerivedBadge({ g, kcal, unit, color }: { g: number; kcal: number; unit: string; color: string }) {
@@ -132,21 +65,21 @@ function MacroSection({
     <div style={{ background: "#fff", border: `1px solid ${color}30`, borderRadius: "8px", padding: "0.85rem", marginBottom: "0.75rem" }}>
       <div style={{ fontSize: "0.82rem", fontWeight: 700, color, marginBottom: "0.7rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
       <div style={{ display: "grid", gridTemplateColumns: cols.join(" "), gap: "0.55rem", alignItems: "end" }}>
-        <FieldRow label="Type">
+        <Field label="Type">
           <Sel value={macroType} onChange={onMacroType} options={constant.MACRO_TYPES} placeholder="Select..." />
-        </FieldRow>
-        <FieldRow label="Hours">
+        </Field>
+        <Field label="Hours">
           <NumInput value={hrs} onChange={onHrs} placeholder="24" />
-        </FieldRow>
-        <FieldRow label="Duration Plan">
+        </Field>
+        <Field label="Duration Plan">
           <Sel value={duration} onChange={onDuration} options={constant.PN_DURATIONS} placeholder="Select..." />
-        </FieldRow>
+        </Field>
         {showRate && (
-          <FieldRow label={rateLabel}>
+          <Field label={rateLabel}>
             <NumInput value={rate} onChange={onRate} placeholder="mL/hr" />
-          </FieldRow>
+          </Field>
         )}
-        <FieldRow label={`Amount (${amountUnit || "g"})`}>
+        <Field label={`Amount (${amountUnit || "g"})`}>
           <div style={{ display: "flex", gap: "3px" }}>
             <NumInput 
               value={amount} 
@@ -159,7 +92,7 @@ function MacroSection({
               {constant.AMOUNT_UNITS.map(u => <option key={u}>{u}</option>)}
             </select>
           </div>
-        </FieldRow>
+        </Field>
         {showConc && (
           <FieldRow label="Conc (%)">
             <select value={conc} onChange={e => onConc(e.target.value)}

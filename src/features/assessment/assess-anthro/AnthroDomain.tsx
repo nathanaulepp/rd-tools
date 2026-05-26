@@ -4,6 +4,8 @@ import GrowthStandardsTable from '../assess-anthro/GrowthStandardsTable';
 import { ASSESSMENT_CATEGORIES } from '../../../shared/constants/adimeSideBarCategories';
 import GrowthVelocityTable from '../assess-anthro/GrowthVelocityTable';
 
+import { DomainHeader } from '../../../shared/ui/DomainHeader';
+
 export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScans, calculatedMetrics, patientData, activeSubDomain }: any) {
   const handleUpdate = (field: string, val: string) => setAnthro({ ...anthro, [field]: val });
 
@@ -211,9 +213,7 @@ export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScan
 
   return (
     <div className="fade-in">
-      <h2 className="section-title">
-        {ASSESSMENT_CATEGORIES.find(c => c.id === activeSubDomain)?.title || "Anthropometrics"} Detail
-      </h2>
+      <DomainHeader title={ASSESSMENT_CATEGORIES.find(c => c.id === activeSubDomain)?.title || "Anthropometrics"} />
       {renderContent()}
     </div>
   );

@@ -199,6 +199,15 @@ export default function CreateNotePage({
   clinicalRef.current = clinical;
   dietaryRef.current  = dietary;
 
+  // ── DRY Architecture: Domain Save Map ───────────────────────────────────────
+  const DOMAIN_SAVE_MAP = [
+    { domain: "A", noteKey: "anthro",     ref: anthroRef },
+    { domain: "A", noteKey: "dexa_scans", ref: dexaRef   },
+    { domain: "B", noteKey: "labs",       ref: labsRef   },
+    { domain: "C", noteKey: "clinical",   ref: clinicalRef },
+    { domain: "D", noteKey: "dietary",    ref: dietaryRef  },
+  ] as const;
+
   // ── Toast helper ──────────────────────────────────────────────────────────────
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -212,20 +221,9 @@ export default function CreateNotePage({
 
       setIsSaving(true);
       try {
-        switch (domain) {
-          case "A":
-            await autosaveNote(noteId, "anthro",     anthroRef.current);
-            await autosaveNote(noteId, "dexa_scans", dexaRef.current);
-            break;
-          case "B":
-            await autosaveNote(noteId, "labs",     labsRef.current);
-            break;
-          case "C":
-            await autosaveNote(noteId, "clinical", clinicalRef.current);
-            break;
-          case "D":
-            await autosaveNote(noteId, "dietary",  dietaryRef.current);
-            break;
+        const targets = DOMAIN_SAVE_MAP.filter(d => d.domain === domain);
+        for (const target of targets) {
+          await autosaveNote(noteId, target.noteKey, target.ref.current);
         }
         return true;
       } catch (e) {
@@ -244,11 +242,9 @@ export default function CreateNotePage({
     if (!noteId) return true;
     setIsSaving(true);
     try {
-      await autosaveNote(noteId, "anthro",     anthroRef.current);
-      await autosaveNote(noteId, "dexa_scans", dexaRef.current);
-      await autosaveNote(noteId, "labs",       labsRef.current);
-      await autosaveNote(noteId, "clinical",   clinicalRef.current);
-      await autosaveNote(noteId, "dietary",    dietaryRef.current);
+      for (const target of DOMAIN_SAVE_MAP) {
+        await autosaveNote(noteId, target.noteKey, target.ref.current);
+      }
       return true;
     } catch (e) {
       console.error("Full save failed:", e);

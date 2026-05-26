@@ -3,6 +3,8 @@ import { AlertBanner } from '../../../shared/ui/AlertBanner';
 import D3NutritionAdmin from '../admin-dietary/D3NutritionAdmin';
 import { DIETARY_CATEGORIES } from '../../../shared/constants/adimeSideBarCategories.ts';
 
+import { DomainHeader } from '../../../shared/ui/DomainHeader';
+
 export default function DietaryDomain({ dietary, setDietary, activeSubDomain }: any) {
   const [recallStep, setRecallStep] = useState(0);
 
@@ -202,9 +204,7 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain }: 
 
   return (
     <div className="fade-in">
-      <h2 className="section-title">
-        {DIETARY_CATEGORIES.find(c => c.id === activeSubDomain)?.title || "Dietary"} Detail
-      </h2>
+      <DomainHeader title={DIETARY_CATEGORIES.find(c => c.id === activeSubDomain)?.title || "Dietary"} />
       {renderContent()}
     </div>
   );

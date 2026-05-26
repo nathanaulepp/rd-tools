@@ -2,6 +2,8 @@ import React from 'react';
 import { LAB_CATEGORIES } from '../../../shared/constants/labCategories';
 import { BIOCHEMICAL_CATEGORIES } from '../../../shared/constants/adimeSideBarCategories';
 
+import { DomainHeader } from '../../../shared/ui/DomainHeader';
+
 export default function BiochemicalDomain({ labs, setLabs, activeSubDomain }: any) {
   const updateLab = (field: string, type: 'current' | 'historical', val: string) => {
     setLabs({
@@ -64,9 +66,7 @@ export default function BiochemicalDomain({ labs, setLabs, activeSubDomain }: an
 
   return (
     <div className="fade-in">
-      <h2 className="section-title">
-        {BIOCHEMICAL_CATEGORIES.find(c => c.id === activeSubDomain)?.title || "Biochemical Data"} Detail
-      </h2>
+      <DomainHeader title={BIOCHEMICAL_CATEGORIES.find(c => c.id === activeSubDomain)?.title || "Biochemical Data"} />
       {renderContent()}
     </div>
   );

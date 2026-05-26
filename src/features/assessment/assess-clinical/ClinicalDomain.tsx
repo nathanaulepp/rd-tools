@@ -1,6 +1,8 @@
 import React from 'react';
 import { ChipGroup } from '../../../shared/ui/ChipGroup';
 
+import { DomainHeader } from '../../../shared/ui/DomainHeader';
+
 export default function ClinicalDomain({ clinical, setClinical }: any) {
   const handleUpdate = (field: string, val: string | string[]) =>
     setClinical({ ...clinical, [field]: val });
@@ -26,7 +28,7 @@ export default function ClinicalDomain({ clinical, setClinical }: any) {
 
   return (
     <div className="fade-in">
-      <h2 className="section-title">C. Clinical Findings & NFPE</h2>
+      <DomainHeader title="C. Clinical Findings & NFPE" />
 
       <div className="card">
         <h4 className="mb-1">C3: Medical Context</h4>
