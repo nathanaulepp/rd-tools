@@ -306,9 +306,9 @@ export default function CreateNotePage({
 
   // ── Sidebar nav items (Phase 6 appended) ────────────────────────────────
   const singleDomains: { key: DomainKey; label: string; badge?: string }[] = [
-    { key: "Dx", label: "Dx. Nutrition Diagnosis", badge: "NEW" },
-    { key: "I",  label: "I. Intervention",         badge: "NEW" },
-    { key: "ME", label: "ME. Monitor & Evaluate",  badge: "NEW" },
+    { key: "Dx", label: "Dx. Nutrition Diagnosis" },
+    { key: "I",  label: "I. Intervention" },
+    { key: "ME", label: "ME. Monitor & Evaluate" },
   ];
 
   return (
@@ -320,6 +320,9 @@ export default function CreateNotePage({
           <button className="close-sidebar-btn" onClick={() => setSidebarOpen(false)}>×</button>
         </div>
 
+        <div style={{ margin: "0.5rem 0.75rem 0.25rem", fontSize: "0.62rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>
+            Assessment
+          </div>
         <div className="nav-section">
           {/* Domain A */}
           <div className={`nav-item ${activeDomain === "A" ? "active" : ""}`} onClick={() => handleDomainSwitch("A")}>
@@ -368,7 +371,6 @@ export default function CreateNotePage({
             </div>
           )}
 
-          {/* ── Phase 6: New domains ── */}
           <div style={{ margin: "0.5rem 0.75rem 0.25rem", fontSize: "0.62rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Diagnosis & Planning
           </div>
@@ -442,7 +444,6 @@ export default function CreateNotePage({
           {activeDomain === "D" && (
             <DietaryDomain dietary={dietary} setDietary={setDietary} activeSubDomain={activeSubDomain} />
           )}
-          {/* Phase 6 new domains */}
           {activeDomain === "Dx" && (
             <DiagnosisDomain diagnosis={diagnosis} setDiagnosis={setDiagnosis} />
           )}
