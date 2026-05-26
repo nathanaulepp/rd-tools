@@ -63,6 +63,16 @@ export default function ClinicalSummaryView({
     );
   };
 
+  const renderVital = (label: string, value: any, unit: string = "") => {
+    if (!value || value === "" || value === "--") return null;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", marginBottom: "0.4rem" }}>
+        <span style={{ fontWeight: 600, color: "#64748b", fontSize: "0.8rem", textTransform: "uppercase" }}>{label}</span>
+        <span style={{ color: "#1e293b", fontSize: "0.95rem", fontWeight: 500 }}>{value} {unit}</span>
+      </div>
+    );
+  };
+
   const renderLabTable = () => {
     const activeLabs = LAB_CATEGORIES.filter(cat =>
       cat.fields.some(f => labs[f]?.current || labs[f]?.historical)
@@ -221,11 +231,11 @@ export default function ClinicalSummaryView({
             <div style={{ marginTop: "1rem" }}>
               <h4 style={styles.subTitle}>Vitals</h4>
               <div style={styles.grid5}>
-                {renderRow("Temp", clinical.temp, "°F")}
-                {renderRow("HR", clinical.hr, "bpm")}
-                {renderRow("SpO2", clinical.spo2, "%")}
-                {renderRow("BP", clinical.bp, "mmHg")}
-                {renderRow("RR", clinical.rr, "bpm")}
+                {renderVital("Temp", clinical.temp, "°F")}
+                {renderVital("HR", clinical.hr, "bpm")}
+                {renderVital("SpO2", clinical.spo2, "%")}
+                {renderVital("BP", clinical.bp, "mmHg")}
+                {renderVital("RR", clinical.rr, "bpm")}
               </div>
             </div>
           </>
@@ -288,7 +298,7 @@ const styles: Record<string, CSSProperties> = {
   dataLabel: { width: "180px", fontWeight: 600, color: "#64748b" },
   dataValue: { flex: 1, color: "#1e293b" },
   grid2: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" },
-  grid5: { display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "1rem" },
+  grid5: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: "1rem" },
   table: { width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", marginBottom: "0.5rem" },
   th: { textAlign: "left", padding: "0.5rem", borderBottom: "1px solid #e2e8f0", color: "#94a3b8", fontWeight: 600 },
   td: { padding: "0.5rem", borderBottom: "1px solid #f1f5f9" },
