@@ -88,15 +88,16 @@ export const CreatePatientForm = ({
               required
             />
           </Field>
-          <Field label="Sex" id="sex">
+          <Field label="Sex *" id="sex">
             <select
               id="sex"
               name="sex"
               style={styles.input}
               value={form.sex}
               onChange={(e) => updateField("sex", e.target.value as "" | "M" | "F")}
+              required
             >
-              <option value="">—</option>
+              <option value="">— Select —</option>
               <option value="M">M</option>
               <option value="F">F</option>
             </select>

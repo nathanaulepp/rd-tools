@@ -38,7 +38,7 @@ function buildPatient(n: NoteWithPatient): Patient {
     first_name: n.first_name,
     last_name:  n.last_name,
     dob:        n.dob,
-    sex:        "",
+    sex:        n.sex || "",
     mrn:        n.mrn,
     languages:  "",
     created_at: "",

@@ -4,12 +4,11 @@ import { AlertBanner } from '../../../shared/ui/AlertBanner';
 import GrowthStandardsTable from '../assess-anthro/GrowthStandardsTable';
 import { ASSESSMENT_CATEGORIES } from '../../../shared/constants/adimeSideBarCategories';
 import GrowthVelocityTable from '../assess-anthro/GrowthVelocityTable';
-import NutritionStandardsDomain from '../assess-standards/NutritionStandardsDomain';
 
 import { DomainHeader } from '../../../shared/ui/DomainHeader';
 import { formatAge } from '../../../shared/utils/date';
 
-export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScans, calculatedMetrics, patientData, dietary, activeSubDomain }: any) {
+export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScans, calculatedMetrics, patientData, activeSubDomain }: any) {
   const handleUpdate = (field: string, val: string) => setAnthro({ ...anthro, [field]: val });
 
   const addDexaScan = () => setDexaScans([...dexaScans, { id: Date.now(), date: "", bmd: "", fatMass: "", leanMass: "", bodyFatPct: "" }]);
@@ -209,15 +208,6 @@ export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScan
               <button className="btn-outline" onClick={addDexaScan}>+ Add DEXA Scan</button>
             </div>
           </div>
-        );
-      case "A9":
-        return (
-          <NutritionStandardsDomain 
-            anthro={anthro} 
-            patientData={patientData} 
-            calculatedMetrics={calculatedMetrics} 
-            dietary={dietary} 
-          />
         );
       default:
         return <div>Select a sub-domain from the sidebar.</div>;

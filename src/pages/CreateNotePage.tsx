@@ -15,6 +15,7 @@ import DiagnosisDomain from "../features/diagnosis/DiagnosisDomain";
 import { processNoteEtiologies } from "../features/diagnosis/etiologyData";
 import InterventionDomain from "../features/intervention/InterventionDomain";
 import MonitorEvalDomain from "../features/monitor-evalue/MonitorEvalDomain";
+import NutritionStandardsDomain from "../features/assessment/assess-standards/NutritionStandardsDomain";
 
 import {
   DIETARY_CATEGORIES,
@@ -24,7 +25,7 @@ import {
 } from "../shared/constants/adimeSideBarCategories";
 
 // ─── Domain type ──────────────────────────────────────────────────────────────
-type DomainKey = "A" | "B" | "C" | "D" | "Dx" | "I" | "ME";
+type DomainKey = "A" | "B" | "C" | "D" | "S" | "Dx" | "I" | "ME";
 
 interface CreateNotePageProps {
   patientId: string | null;
@@ -62,6 +63,7 @@ const DOMAIN_LABELS: Record<DomainKey, string> = {
   B:  "Biochemical",
   C:  "Clinical",
   D:  "Dietary",
+  S:  "Nutrition Standards",
   Dx: "Nutrition Diagnosis",
   I:  "Intervention",
   ME: "Monitor & Evaluate",
@@ -294,6 +296,7 @@ export default function CreateNotePage({
     else if (nextDomain === "B") setActiveSubDomain("B1");
     else if (nextDomain === "C") setActiveSubDomain("C1");
     else if (nextDomain === "D") setActiveSubDomain("D1");
+    else setActiveSubDomain(""); // Reset for S, Dx, I, ME
     if (window.innerWidth <= 768) setSidebarOpen(false);
   };
 
@@ -398,6 +401,11 @@ export default function CreateNotePage({
             </div>
           )}
 
+          {/* Nutrition Standards (S) */}
+          <div className={`nav-item ${activeDomain === "S" ? "active" : ""}`} onClick={() => handleDomainSwitch("S")}>
+            Comparative Standards
+          </div>
+
           <div style={{ margin: "0.5rem 0.75rem 0.25rem", fontSize: "0.62rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Diagnosis & Planning
           </div>
@@ -470,6 +478,14 @@ export default function CreateNotePage({
           )}
           {activeDomain === "D" && (
             <DietaryDomain dietary={dietary} setDietary={setDietary} activeSubDomain={activeSubDomain} clinical={clinical} />
+          )}
+          {activeDomain === "S" && (
+            <NutritionStandardsDomain 
+              anthro={anthro} 
+              patientData={patientData} 
+              calculatedMetrics={calculatedMetrics} 
+              dietary={dietary} 
+            />
           )}
           {activeDomain === "Dx" && (
             <DiagnosisDomain diagnosis={diagnosis} setDiagnosis={setDiagnosis} anthro={anthro} dietary={dietary} calculatedMetrics={calculatedMetrics} />

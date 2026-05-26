@@ -11,6 +11,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { DomainHeader } from "../../shared/ui/DomainHeader";
 import { SectionHeader } from "../../shared/ui/SectionHeader";
 import { Field } from "../../shared/ui/Field";
+import { formatAge } from "../../shared/utils/date";
 
 // ── Import the generated dictionary ──────────────────────────────────────────
 // Adjust the relative path to wherever you place etiologyData.ts in your project.
@@ -234,10 +235,10 @@ function SearchableCombobox({ value, onChange, placeholder, options, groupedOpti
 interface EtiologySuggestionsProps {
   problem: string;
   currentEtiology: string;
-  onSelect: (text: string) => void;
+  onAppend: (text: string) => void;
 }
 
-function EtiologySuggestions({ problem, currentEtiology, onSelect }: EtiologySuggestionsProps) {
+function EtiologySuggestions({ problem, currentEtiology, onAppend }: EtiologySuggestionsProps) {
   const etiologies = getAllEtiologiesForProblem(problem);
   if (etiologies.length === 0) return null;
 
@@ -291,7 +292,7 @@ function EtiologySuggestions({ problem, currentEtiology, onSelect }: EtiologySug
                 return (
                   <button
                     key={etio}
-                    onClick={() => !used && onSelect(`${etio} (${cat})`)}
+                    onClick={() => !used && onAppend(`${etio} (${cat})`)}
                     title={used ? "Already in etiology field" : `Select: "${etio}"`}
                     style={{
                       padding: "3px 9px",

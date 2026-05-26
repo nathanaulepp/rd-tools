@@ -145,6 +145,7 @@ export interface NoteWithPatient extends Note {
   first_name: string;
   last_name: string;
   dob: string;
+  sex: string;
   mrn: string;
 }
 
@@ -392,6 +393,7 @@ export async function getAllNotes(): Promise<NoteWithPatient[]> {
        p.first_name,
        p.last_name,
        p.dob,
+       p.sex,
        p.mrn
      FROM notes n
      JOIN patients p ON p.id = n.patient_id

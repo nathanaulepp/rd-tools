@@ -2,7 +2,6 @@ export const ASSESSMENT_CATEGORIES = [
   { id: "A1-A5", title: "Body Measurements" },
   { id: "A6-A7", title: "Pediatric Growth" },
   { id: "A8", title: "DEXA" },
-  { id: "A9", title: "Nutrition Standards" },
 ];
 
 export const BIOCHEMICAL_CATEGORIES = [
