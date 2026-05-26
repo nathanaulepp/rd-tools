@@ -12,12 +12,9 @@ Therefore, your true (and perceived) value as a dietitian increases as you repla
 meaningful tasks.
 
 
-
-
 List of to do:
 
 **RD Workstation**
-
 --add keyboard shortcuts
 
 *assessment*
