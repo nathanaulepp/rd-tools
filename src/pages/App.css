@@ -32,13 +32,14 @@ body, html {
 /* Dark Theme Overrides */
 body.dark-theme {
   --primary: #ecf0f1;
-  --secondary: #2c3e50;
+  --secondary: #bdc3c7; /* Lighter secondary text for dark mode */
   --accent: #3498db;
   --bg-color: #121212;
   --text-main: #e2e8f0;
   --text-muted: #a0aec0;
   --border: #2d3748;
   --white: #1e1e1e;
+  --bg-alt: #1a1a1a; /* New variable for alternating backgrounds */
 }
 
 body.dark-theme .sidebar {
@@ -48,8 +49,13 @@ body.dark-theme .sidebar {
 
 body.dark-theme .top-nav, 
 body.dark-theme .patient-header,
-body.dark-theme .card {
-  background: #1e1e1e;
+body.dark-theme .card,
+body.dark-theme .start-card,
+body.dark-theme .patient-card,
+body.dark-theme .panel {
+  background: #1e1e1e !important;
+  color: var(--text-main);
+  border-color: var(--border) !important;
 }
 
 body.dark-theme input, 
@@ -66,28 +72,118 @@ body.dark-theme .sub-nav {
 
 body.dark-theme .lab-table th {
   background: #2d3748;
+  color: var(--text-muted);
 }
 
 body.dark-theme .lab-table tr:hover td {
   background: #2d3748;
 }
 
-body.dark-theme .start-page-wrapper {
-  background-color: #121212;
+body.dark-theme .start-page-wrapper,
+body.dark-theme .overlay,
+body.dark-theme .note-list-container {
+  background-color: #121212 !important;
 }
 
-body.dark-theme .start-card {
-  background: #1e1e1e;
-  border-color: #2d3748;
+body.dark-theme .start-card h3,
+body.dark-theme .title,
+body.dark-theme .choiceLabel,
+body.dark-theme .patient-header span,
+body.dark-theme .note-date-text {
+  color: #e2e8f0 !important;
 }
 
-body.dark-theme .start-card h3 {
-  color: #e2e8f0;
+body.dark-theme .start-header h1,
+body.dark-theme .header h2 {
+  color: #f7fafc !important;
 }
 
-body.dark-theme .start-header h1 {
-  color: #f7fafc;
+body.dark-theme .subtitle,
+body.dark-theme .choiceDesc,
+body.dark-theme .confirmText,
+body.dark-theme .text-muted {
+  color: #a0aec0 !important;
 }
+
+body.dark-theme .choiceCard {
+  background: #1a1a1a !important;
+  border-color: #2d3748 !important;
+}
+
+body.dark-theme .choiceCard:hover {
+  border-color: var(--accent) !important;
+}
+
+body.dark-theme .note-row,
+body.dark-theme .table-row-alt {
+  background: #1a1a1a !important;
+}
+
+body.dark-theme .note-row:hover,
+body.dark-theme .table-row:hover {
+  background: #2d3748 !important;
+}
+
+body.dark-theme .toggleWrap {
+  background: #2d3748 !important;
+}
+
+body.dark-theme .toggleBtn {
+  color: #a0aec0 !important;
+}
+
+body.dark-theme .toggleBtnActive {
+  background: #4a5568 !important;
+  color: #fff !important;
+}
+
+body.dark-theme .header {
+  background: #1e1e1e !important;
+  border-bottom-color: #2d3748 !important;
+}
+
+body.dark-theme .badge-draft {
+  background: #2c2301 !important;
+  color: #fbbf24 !important;
+  border-color: #453006 !important;
+}
+
+body.dark-theme .badge-submitted {
+  background: #064e3b !important;
+  color: #6ee7b7 !important;
+  border-color: #065f46 !important;
+}
+
+body.dark-theme .emptyState {
+  background: #1e1e1e !important;
+  border-color: #2d3748 !important;
+}
+
+body.dark-theme .note-table {
+  background: #1e1e1e !important;
+  border-color: #2d3748 !important;
+}
+
+body.dark-theme .note-table th {
+  background: #1a1a1a !important;
+  color: #a0aec0 !important;
+  border-bottom-color: #2d3748 !important;
+}
+
+body.dark-theme .note-table td {
+  border-bottom-color: #1a1a1a !important;
+}
+
+body.dark-theme .btn-secondary {
+  background: #2d3748 !important;
+  color: #e2e8f0 !important;
+  border-color: #4a5568 !important;
+}
+
+body.dark-theme .btn-secondary:hover {
+  background: #4a5568 !important;
+}
+
 
 /* =========================================
    APP COMMAND CENTER LAYOUT
