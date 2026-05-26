@@ -132,6 +132,7 @@ export interface NoteWithPatient extends Note {
   first_name: string;
   last_name: string;
   dob: string;
+  mrn: string;
 }
 
 export interface SubmissionRequirement {
@@ -397,7 +398,8 @@ export async function getAllNotes(): Promise<NoteWithPatient[]> {
        n.*,
        p.first_name,
        p.last_name,
-       p.dob
+       p.dob,
+       p.mrn
      FROM notes n
      JOIN patients p ON p.id = n.patient_id
      ORDER BY n.note_date DESC, n.created_at DESC`
@@ -416,6 +418,14 @@ export async function getNoteById(noteId: string): Promise<Note | null> {
     [noteId]
   );
   return rows[0] ?? null;
+}
+
+/**
+ * Delete a single note by id.
+ */
+export async function deleteNote(noteId: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(`DELETE FROM notes WHERE id = ?`, [noteId]);
 }
 
 /**

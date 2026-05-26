@@ -10,8 +10,9 @@ import NoteListPage from "./NoteListPage";
 import CreateNotePage from "./CreateNotePage";
 import ToolsHomePage from "./ToolsHomePage";
 import PatientGatePage from "./PatientGatePage";
+import ClinicalSummaryView from "./ClinicalSummaryView";
 
-export type ViewState = "LOGIN" | "START" | "PATIENT_GATE" | "VIEW_NOTES" | "CREATE_NOTE" | "TOOLS";
+export type ViewState = "LOGIN" | "START" | "PATIENT_GATE" | "VIEW_NOTES" | "CREATE_NOTE" | "VIEW_SUMMARY" | "TOOLS";
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -70,14 +71,20 @@ export default function App() {
   const [activePatient,   setActivePatient]   = useState<Patient | null>(null);
   const [activeNote,      setActiveNote]      = useState<Note | null>(null);   // Phase 2
 
-  /** Called by PatientGatePage when patient + note are ready. */
-  const handleEnterWorkspace = (patientId: string, noteId: string, patient: Patient, note: Note) => {
+  /** Called by PatientGatePage or NoteListPage when patient + note are ready. */
+  const handleOpenNote = (patientId: string, noteId: string, patient: Patient, note: Note) => {
     setActivePatientId(patientId);
     setActiveNoteId(noteId);
     setActivePatient(patient);
     setActiveNote(note);
     resetNoteState(patient, note);
-    setCurrentView("CREATE_NOTE");
+    
+    // If note is already submitted, show the summary view. Otherwise, open workspace.
+    if (note.status === "submitted") {
+      setCurrentView("VIEW_SUMMARY");
+    } else {
+      setCurrentView("CREATE_NOTE");
+    }
   };
 
   // ── Domain state ───────────────────────────────────────────────────────────
@@ -131,10 +138,11 @@ export default function App() {
   });
 
   /**
-   * Reset all domain state when entering a new note.
-   * Pre-fills patientData from the patient + note records.
+   * Reset or load all domain state when entering a note.
+   * If note contains JSON strings, they are parsed and loaded.
    */
   const resetNoteState = (patient: Patient, note: Note) => {
+    // 1. Patient Metadata
     setPatientData({
       lastName:      patient.last_name,
       firstName:     patient.first_name,
@@ -146,44 +154,73 @@ export default function App() {
       languages:     patient.languages  ?? "",
     });
 
-    setAnthro({
-      ht: "", htUnit: "cm", wt: "", wtUnit: "kg",
-      ubw: "", ubwTime_amount1: "", ubwTime_unit1: "mo", ubwTime_amount2: "", ubwTime_unit2: "mo",
-      waist: "", mac: "", calf: "", head: "", circUnit: "cm",
-      triceps: "", subscapular: "", suprailiac: "", thigh: "", skinfoldUnit: "mm",
-      past_ht: "", past_htUnit: "cm", past_wt: "", past_wtUnit: "kg",
-      past_head: "", past_headUnit: "cm",
-      past_htDate: "", past_wtDate: "", past_headDate: "",
-    });
-    setDexaScans([]);
-    setLabs({});
-    setClinical({
-      chiefComplaint: "", medHx: "",
-      temples: "", clavicles: "", shoulders: "", scapula: "",
-      interosseous: "", thighs: "", calves: "",
-      orbital: "", cheek: "", tricepsFat: "", midAxillary: "",
-      hair: [], eyes: [], mouthLips: [],
-      tongue: [], teethGums: [], headNeck: [],
-      nails: [], skin: [],
-      pittingEdema: "", ascites: "", edemaDescription: "",
-      temp: "", hr: "", spo2: "", bp: "", rr: "",
-      gripStrength: "",
-      giDistress: "", chewing: "", oralHygiene: "", swallowing: "",
-      clinicalNotes: "",
-    });
-    setDietary({
-      recall: [{ label: "Meal 1", value: "" }],
-      macroAdequacy: "", mealPatterns: "", currentDiets: "", fluidIntake: "", eatingEnv: "",
-      culturalReligious: "", socialDynamics: "",
-      dietOrder: "Standard Diet, Regular", actualIntake: "",
-      oralCalories: "", oralProtein: "", oralWater: "",
-      drugInteractions: "", otcMeds: "", herbalCAM: "", supplements: "",
-      understanding: "", readiness: "5", psychTies: "",
-      mealPrep: "", eatingOut: "", bingePurge: "",
-      foodSecurity: "", foodSupplies: "", transport: "",
-      physicalLevel: "", adls: "", feedingTasks: "",
-      perception: "", qolGoals: "",
-    });
+    // 2. Anthropometrics
+    if (note.anthro) {
+      try { setAnthro(JSON.parse(note.anthro)); } catch(e) { console.error("Anthro parse failed", e); }
+    } else {
+      setAnthro({
+        ht: "", htUnit: "cm", wt: "", wtUnit: "kg",
+        ubw: "", ubwTime_amount1: "", ubwTime_unit1: "mo", ubwTime_amount2: "", ubwTime_unit2: "mo",
+        waist: "", mac: "", calf: "", head: "", circUnit: "cm",
+        triceps: "", subscapular: "", suprailiac: "", thigh: "", skinfoldUnit: "mm",
+        past_ht: "", past_htUnit: "cm", past_wt: "", past_wtUnit: "kg",
+        past_head: "", past_headUnit: "cm",
+        past_htDate: "", past_wtDate: "", past_headDate: "",
+      });
+    }
+
+    // 3. DEXA Scans
+    if (note.dexa_scans) {
+      try { setDexaScans(JSON.parse(note.dexa_scans)); } catch(e) { console.error("DEXA parse failed", e); }
+    } else {
+      setDexaScans([]);
+    }
+
+    // 4. Labs (Biochemical)
+    if (note.labs) {
+      try { setLabs(JSON.parse(note.labs)); } catch(e) { console.error("Labs parse failed", e); }
+    } else {
+      setLabs({});
+    }
+
+    // 5. Clinical / NFPE
+    if (note.clinical) {
+      try { setClinical(JSON.parse(note.clinical)); } catch(e) { console.error("Clinical parse failed", e); }
+    } else {
+      setClinical({
+        chiefComplaint: "", medHx: "",
+        temples: "", clavicles: "", shoulders: "", scapula: "",
+        interosseous: "", thighs: "", calves: "",
+        orbital: "", cheek: "", tricepsFat: "", midAxillary: "",
+        hair: [] as string[], eyes: [] as string[], mouthLips: [] as string[],
+        tongue: [] as string[], teethGums: [] as string[], headNeck: [] as string[],
+        nails: [] as string[], skin: [] as string[],
+        pittingEdema: "", ascites: "", edemaDescription: "",
+        temp: "", hr: "", spo2: "", bp: "", rr: "",
+        gripStrength: "",
+        giDistress: "", chewing: "", oralHygiene: "", swallowing: "",
+        clinicalNotes: "",
+      });
+    }
+
+    // 6. Dietary
+    if (note.dietary) {
+      try { setDietary(JSON.parse(note.dietary)); } catch(e) { console.error("Dietary parse failed", e); }
+    } else {
+      setDietary({
+        recall: [{ label: "Meal 1", value: "" }],
+        macroAdequacy: "", mealPatterns: "", currentDiets: "", fluidIntake: "", eatingEnv: "",
+        culturalReligious: "", socialDynamics: "",
+        dietOrder: "Standard Diet, Regular", actualIntake: "",
+        oralCalories: "", oralProtein: "", oralWater: "",
+        drugInteractions: "", otcMeds: "", herbalCAM: "", supplements: "",
+        understanding: "", readiness: "5", psychTies: "",
+        mealPrep: "", eatingOut: "", bingePurge: "",
+        foodSecurity: "", foodSupplies: "", transport: "",
+        physicalLevel: "", adls: "", feedingTasks: "",
+        perception: "", qolGoals: "",
+      });
+    }
   };
 
   // ── Derived metrics ────────────────────────────────────────────────────────
@@ -234,14 +271,28 @@ export default function App() {
     case "PATIENT_GATE":
       return (
         <PatientGatePage
-          onEnterWorkspace={handleEnterWorkspace}
+          onEnterWorkspace={handleOpenNote}
           onCancel={() => setCurrentView("START")}
         />
       );
     case "VIEW_NOTES":
-      return <NoteListPage handleExitToStart={handleExitToStart} />;
+      return (
+        <NoteListPage
+          handleExitToStart={handleExitToStart}
+          onOpenNote={handleOpenNote}
+        />
+      );
     case "CREATE_NOTE":
       return <CreateNotePage {...sharedNoteProps} />;
+    case "VIEW_SUMMARY":
+      if (!activePatient || !activeNote) return null;
+      return (
+        <ClinicalSummaryView
+          {...sharedNoteProps}
+          patient={activePatient}
+          note={activeNote}
+        />
+      );
     case "TOOLS":
       return <ToolsHomePage handleExitToStart={handleExitToStart} />;
     default:
