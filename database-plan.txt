@@ -1,57 +1,5 @@
 ---
 
-## Phase 2: PatientHeader Cleanup
-
-With the gate screen handling patient creation/selection, PatientHeader becomes simpler:
-
-- Receives `patient` and `note` objects as props (no more internal state or mock data)
-- Displays demographic info as read-only (name, DOB, sex, MRN, languages)
-- Note date and admission date remain editable (they belong to the note, not the patient)
-- Changes to note date / admission date trigger `autosave_note`
-- Vital signs display stays as-is
-
----
-
-## Phase 3: Auto-Save Wiring
-
-In `CreateNotePage`, sub-domain switches currently just show a toast. Extend that:
-
-```
-On sub-domain switch:
-  1. Identify which domain is being left (A/B/C/D)
-  2. Call autosave_note(noteId, domain, currentDomainState)
-  3. Show "Saved" toast (already exists)
-  4. Switch sub-domain
-```
-
-Each domain maps to one column:
-```
-A → anthro + dexa_scans
-B → labs
-C → clinical
-D → dietary
-```
-
----
-
-## Phase 4: Note Submission Flow
-
-Add a "Submit Note" button in `CreateNotePage`:
-
-```
-On click:
-  1. Call get_submission_requirements() 
-  2. Check current state against required fields
-  3. If missing fields → show specific error list ("Missing: DOB, Note Date")
-  4. If all present → autosave all domains first, then submit_note(noteId)
-  5. Set note status to submitted in UI
-  6. Return user to StartPage or NoteListPage
-```
-
-Submitted notes are read-only when opened from NoteListPage, with a "Revise Note" button that calls `create_revision(noteId)` and opens the ADIME workspace with the cloned draft.
-
----
-
 ## Phase 5: NoteListPage
 
 Two views, toggleable:
@@ -84,6 +32,3 @@ Both views support:
 - Export to PDF can be added later as a Tauri command that reads a submitted note and renders it
 
 ---
-
-**Suggested order of execution:**
-Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6
