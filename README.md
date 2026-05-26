@@ -16,52 +16,35 @@ meaningful tasks.
 
 List of to do:
 **RD Workstation**
+
+--add keyboard shortcuts
+
 *assessment*
 anthro
-pediatric growth chart automated calculations for z scores and percentiles
-pediatric growth velocity automated calculations based on past measures with current
-calendar mapping safeguards
-DEXA scan functionality mapped and coded
+--DEXA scan functionality mapped and coded
 
-*clinical*
-import drug database
-add drug lookup
-automated drug nutrient interactions
-automated malnutrition chart
-automated refeeding risk chart
+clinical
+--automated drug nutrient interactions
+--automated malnutrition chart
+--automated refeeding risk chart
 
-*dietary*
-add current nutrition prescription
-add PN macro concentrations (unit/volume)
-FIX FORMULA NAME submissions FOR EN
-create functionality for en modulars (right now, only mL/hr or per bolus doesn't cut)
-D31 automated estimated oral intake
-incorporate a formulary database
-GIR check (timeline layout, with a dynamic number of points because a point is assigned to each unique GIR interval from 0:00 to 23:59) 
+dietary
+--D31 automated estimated oral intake
+--incorporate a formulary database
+--GIR check (timeline layout, with a dynamic number of points because a point is assigned to each unique GIR interval from 0:00 to 23:59) 
 
 
-*standards*
-automate comparative standards (een, epn, efn)
-
---predictive equation dropdown + activity factors (1.2-1.9 options based on condition) for MSJ energy formula
---include indirect calorimetry option for een with different activity factors based on condition
-
---protein range (g/kg) [dropdown or custom]
-
-compare to current nutrition rx: (kcal, pro, fluid --> low | WNL | high? )
+standards
+--improve user flow of UI
 
 *diagnosis*
-differentials to guide continued/ordered assessment
-PES statement builder + smart suggestions
-allow for creation of new PES blocks and saved ADIMEs automatically parse P,E,Ss into PES dataset
+--differentials to guide continued/ordered assessment
 
 *intervention*
-oral/EN/PN calculations
-basic renal adjustments
-
-
+--oral/EN/PN calculations
+--basic renal adjustments
 
 
 *dietitian tools*
-if you want a better activity factor to estimate patient calories:
+--if you want a better activity factor to estimate patient calories:
 daily activity METs calorie estimator (sums up all daily activities [with time est.] then calculates average MET) formula is TDEE = MSJ_RMR * SUM of 0_24 hours of (activity * MET / 24)
