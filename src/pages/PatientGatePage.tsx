@@ -9,6 +9,8 @@ import {
 import { CreatePatientForm, CreatePatientData } from "../features/patient/CreatePatientForm";
 import { PatientSearch } from "../features/patient/PatientSearch";
 
+import { getLocalIsoDate } from "../shared/utils/date";
+
 interface PatientGatePageProps {
   onEnterWorkspace: (patientId: string, noteId: string, patient: Patient, note: Note) => void;
   onCancel: () => void;
@@ -17,7 +19,7 @@ interface PatientGatePageProps {
 type GateMode = "choose" | "new" | "existing";
 
 function today() {
-  return new Date().toISOString().split("T")[0];
+  return getLocalIsoDate();
 }
 
 export default function PatientGatePage({ onEnterWorkspace, onCancel }: PatientGatePageProps) {

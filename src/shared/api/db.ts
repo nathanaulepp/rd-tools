@@ -5,6 +5,7 @@
 // lib.rs requires no changes.
 
 import Database from "@tauri-apps/plugin-sql";
+import { getLocalIsoDate } from "../utils/date";
 
 // ─── Singleton connection ─────────────────────────────────────────────────────
 // We open the database once and reuse the connection throughout the app lifetime.
@@ -237,7 +238,7 @@ export async function createNote(payload: {
   admission_date?: string;
 }): Promise<Note> {
   const db = await getDb();
-  const today = new Date().toISOString().split("T")[0];
+  const today = getLocalIsoDate();
 
   const note: Note = {
     id:             uuid(),

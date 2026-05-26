@@ -1,3 +1,4 @@
+import { getLocalIsoDate } from "../../shared/utils/date";
 import { useState } from 'react';
 
 export const [anthro, setAnthro] = useState({ 
@@ -35,6 +36,6 @@ export const [patientData, setPatientData] = useState({
     dob: '',
     sex: '',
     mrn: '',
-    admissionDate: new Date().toISOString().split('T')[0],
-    noteDate: new Date().toISOString().split('T')[0],
+    admissionDate: getLocalIsoDate(),
+    noteDate: getLocalIsoDate(),
     languages: ''});

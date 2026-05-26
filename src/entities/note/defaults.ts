@@ -1,13 +1,15 @@
 // src/entities/note/defaults.ts
 
+import { getLocalIsoDate } from "../../shared/utils/date";
+
 export const defaultPatientData = {
   lastName: "",
   firstName: "",
   dob: "",
   sex: "",
   mrn: "",
-  admissionDate: new Date().toISOString().split("T")[0],
-  noteDate: new Date().toISOString().split("T")[0],
+  admissionDate: getLocalIsoDate(),
+  noteDate: getLocalIsoDate(),
   languages: "",
 };
 
