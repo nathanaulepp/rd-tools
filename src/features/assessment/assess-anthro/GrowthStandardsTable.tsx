@@ -1,5 +1,6 @@
 // src/components/create_adime/assessment/GrowthStandardsTable.tsx
 import React, { useState } from 'react';
+import { formatAge } from '../../../shared/utils/date';
 
 // WHO (0-730 Days)
 import wfaBoysRaw from '../../../shared/assets/datafiles_cleaned_csv/0_730_days/weight_for_age-boys-zscore-expanded-tables.csv?raw';
@@ -95,26 +96,6 @@ const formatImperial = (measure: string, val: number) => {
 export default function GrowthStandardsTable({ anthro, patientData, calculatedMetrics }: any) {
   const [results, setResults] = useState<any[]>([]);
   const [showTable, setShowTable] = useState(false);
-
-  const formatAge = (ageDays: number) => {
-    if (ageDays < 7) {
-      return `${ageDays} day${ageDays !== 1 ? 's' : ''}`;
-    } else if (ageDays < 30) {
-      const weeks = Math.floor(ageDays / 7);
-      const days = ageDays % 7;
-      return `${weeks} week${weeks !== 1 ? 's' : ''}${days > 0 ? `, ${days} day${days !== 1 ? 's' : ''}` : ''}`;
-    } else if (ageDays < 366) {
-      const months = Math.floor(ageDays / 30.4375);
-      const remainingDays = ageDays % 30.4375;
-      const weeks = Math.floor(remainingDays / 7);
-      return `${months} month${months !== 1 ? 's' : ''}${weeks > 0 ? `, ${weeks} week${weeks !== 1 ? 's' : ''}` : ''}`;
-    } else {
-      const years = Math.floor(ageDays / 365.25);
-      const remainingDays = ageDays % 365.25;
-      const months = Math.floor(remainingDays / 30.4375);
-      return `${years} year${years !== 1 ? 's' : ''}${months > 0 ? `, ${months} month${months !== 1 ? 's' : ''}` : ''}`;
-    }
-  };
 
   const handleGenerate = () => {
     // Pull from the global Patient Header state via calculatedMetrics

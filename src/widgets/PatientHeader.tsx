@@ -8,6 +8,7 @@ import type { Patient, Note } from "../shared/api/db";
 import { autosaveNote } from "../shared/api/db";
 
 import { validateDateBoundaries } from "../shared/utils/dateValidation";
+import { formatAge } from "../shared/utils/date";
 
 interface PatientHeaderProps {
   patient: Patient | null;
@@ -31,14 +32,12 @@ export default function PatientHeader({
   const dob = patient.dob;
   const age = (() => {
     if (!dob || !patientData.noteDate) return "--";
-    const ms = new Date(patientData.noteDate).getTime() - new Date(dob).getTime();
+    const dDob = new Date(dob);
+    const dNote = new Date(patientData.noteDate);
+    const ms = dNote.getTime() - dDob.getTime();
     if (isNaN(ms) || ms < 0) return "--";
-    const days = ms / (1000 * 60 * 60 * 24);
-    if (days < 730) {
-      const mo = Math.floor(days / 30.4375);
-      return `${mo} mo`;
-    }
-    return `${Math.floor(days / 365.25)} yr`;
+    const days = Math.floor(ms / (1000 * 60 * 60 * 24));
+    return formatAge(days);
   })();
 
   const handleDateChange = async (field: "noteDate" | "admissionDate", val: string) => {
