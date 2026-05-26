@@ -89,6 +89,7 @@ async function initSchema(db: Database): Promise<void> {
     { field_key: "last_name",  label: "Last Name"  },
     { field_key: "dob",        label: "Date of Birth" },
     { field_key: "note_date",  label: "Note Date"  },
+    { field_key: "diagnosis",  label: "Nutrition Diagnosis (PES)" },
   ];
 
   for (const req of defaultRequirements) {
@@ -290,6 +291,10 @@ export async function autosaveNote(
   );
 }
 
+import { validatePES } from "../../features/diagnosis/etiologyData";
+
+// ... (rest of imports)
+
 /**
  * Run submission validation, then mark the note as submitted if it passes.
  */
@@ -320,13 +325,42 @@ export async function submitNote(
     dob:            patient.dob,
     note_date:      note.note_date,
     admission_date: note.admission_date,
+    diagnosis:      note.diagnosis,
   };
 
   const missingFields: string[] = [];
+  
+  // 1. Basic field validation
   for (const req of requirements) {
     const val = fieldValues[req.field_key];
-    if (!val || val.trim() === "") {
+    
+    // Special handling for the JSON diagnosis field
+    if (req.field_key === "diagnosis") {
+      try {
+        const diagData = val ? JSON.parse(val) : null;
+        if (!diagData || !diagData.problem || diagData.problem.trim() === "") {
+          missingFields.push(req.label);
+          continue;
+        }
+      } catch (e) {
+        missingFields.push(req.label);
+        continue;
+      }
+    } else if (!val || val.trim() === "") {
       missingFields.push(req.label);
+    }
+  }
+
+  // 2. Deep PES / Etiology Domain validation
+  // We run this even if diagnosis wasn't explicitly "required" in the loop above,
+  // as long as some diagnosis data exists.
+  if (note.diagnosis) {
+    try {
+      const diagData = JSON.parse(note.diagnosis);
+      const pesErrors = validatePES(diagData);
+      missingFields.push(...pesErrors);
+    } catch (e) {
+      console.error("Failed to parse diagnosis for validation", e);
     }
   }
 

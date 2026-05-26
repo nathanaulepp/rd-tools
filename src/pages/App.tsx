@@ -173,8 +173,15 @@ export default function App() {
       ageDays = Math.floor((dNote.getTime() - dDob.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    return { bmi, ageDays };
-  }, [anthro.ht, anthro.htUnit, anthro.wt, anthro.wtUnit, patientData.dob, patientData.noteDate]);
+    let ubwTimeframeDays: number | null = null;
+    if (anthro.ubwDate && patientData.noteDate) {
+      const dUbw = new Date(anthro.ubwDate);
+      const dNote = new Date(patientData.noteDate);
+      ubwTimeframeDays = Math.floor((dNote.getTime() - dUbw.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    return { bmi, ageDays, ubwTimeframeDays };
+  }, [anthro.ht, anthro.htUnit, anthro.wt, anthro.wtUnit, anthro.ubwDate, patientData.dob, patientData.noteDate]);
 
   // ── Shared props ───────────────────────────────────────────────────────────
   const sharedNoteProps = {

@@ -1,3 +1,4 @@
+// src/features/assessment/assess-anthro/AnthroDomain.tsx
 import React, { useMemo } from 'react';
 import { AlertBanner } from '../../../shared/ui/AlertBanner';
 import GrowthStandardsTable from '../assess-anthro/GrowthStandardsTable';
@@ -5,6 +6,7 @@ import { ASSESSMENT_CATEGORIES } from '../../../shared/constants/adimeSideBarCat
 import GrowthVelocityTable from '../assess-anthro/GrowthVelocityTable';
 
 import { DomainHeader } from '../../../shared/ui/DomainHeader';
+import { formatAge } from '../../../shared/utils/date';
 
 export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScans, calculatedMetrics, patientData, activeSubDomain }: any) {
   const handleUpdate = (field: string, val: string) => setAnthro({ ...anthro, [field]: val });
@@ -14,27 +16,31 @@ export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScan
     setDexaScans(dexaScans.map((scan:any) => scan.id === id ? { ...scan, [field]: val } : scan));
   };
 
-// --- NEW: Dynamic Weight Loss Percentage Calculation ---
-  const wtLossDetails = useMemo(() => {
-    // We need both weights to run the math
+// --- NEW: Dynamic Weight Change Percentage Calculation ---
+  const wtChangeDetails = useMemo(() => {
     if (!anthro.wt || !anthro.ubw) return null;
     
     const current = Number(anthro.wt);
     const usual = Number(anthro.ubw);
-    
-    // If there's no weight loss (or if values are 0), don't show the chip
-    if (usual <= 0 || current >= usual) return null; 
-    
-    const pct = ((usual - current) / usual) * 100;
-    const isSevere = pct >= 5.0; // Flags red if weight loss is >= 5%
+    if (usual <= 0) return null; 
+
+    const diff = current - usual;
+    const pct = (diff / usual) * 100;
+    const isLoss = diff < 0;
+    const isSevere = isLoss && Math.abs(pct) >= 5.0; // Flags red if weight loss is >= 5%
+
+    const timeStr = calculatedMetrics?.ubwTimeframeDays !== null 
+      ? formatAge(calculatedMetrics.ubwTimeframeDays)
+      : null;
     
     return {
       pctString: pct.toFixed(1),
+      absPctString: Math.abs(pct).toFixed(1),
+      isLoss,
       isSevere,
-      timeAmount: anthro.ubwTime_amount1 || "1",
-      timeUnit: anthro.ubwTime_unit1 || "mo"
+      timeStr
     };
-  }, [anthro.wt, anthro.ubw, anthro.ubwTime_amount1, anthro.ubwTime_unit1]);
+  }, [anthro.wt, anthro.ubw, calculatedMetrics?.ubwTimeframeDays]);
 
   const renderContent = () => {
     switch (activeSubDomain) {
@@ -50,9 +56,15 @@ export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScan
                     BMI: {calculatedMetrics?.bmi || "--"}
                   </span>
                   
-                  {wtLossDetails && (
-                    <span className={`chip ${wtLossDetails.isSevere ? "active-danger" : "active-warning"}`}>
-                      Wt Loss: {wtLossDetails.pctString}% ({wtLossDetails.timeAmount} {wtLossDetails.timeUnit})
+                  {wtChangeDetails && (
+                    <span className="chip active">
+                      Δ Wt: {wtChangeDetails.pctString}%
+                    </span>
+                  )}
+                  
+                  {wtChangeDetails?.isLoss && (
+                    <span className={`chip ${wtChangeDetails.isSevere ? "active-danger" : "active-warning"}`}>
+                      Wt Loss: {wtChangeDetails.absPctString}% {wtChangeDetails.timeStr ? `(${wtChangeDetails.timeStr})` : ""}
                     </span>
                   )}
                 </div>
@@ -86,21 +98,12 @@ export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScan
                 </div>
 
                 <div className="input-group">
-                  <label>UBW Timeframe</label>
-                  <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                    <div className="input-group-row">
-                      <input type="number" value={anthro.ubwTime_amount1} onChange={e => handleUpdate("ubwTime_amount1", e.target.value)} style={{width: '60px'}} />
-                      <select value={anthro.ubwTime_unit1} onChange={e => handleUpdate("ubwTime_unit1", e.target.value)} style={{flex: 1}}>
-                        <option value="d">d</option><option value="wk">wk</option><option value="mo">mo</option><option value="yr">yr</option>
-                      </select>
-                    </div>
-                    <div className="input-group-row">
-                      <input type="number" value={anthro.ubwTime_amount2} onChange={e => handleUpdate("ubwTime_amount2", e.target.value)} style={{width: '60px'}} />
-                      <select value={anthro.ubwTime_unit2} onChange={e => handleUpdate("ubwTime_unit2", e.target.value)} style={{flex: 1}}>
-                        <option value="d">d</option><option value="wk">wk</option><option value="mo">mo</option><option value="yr">yr</option>
-                      </select>
-                    </div>
-                  </div>
+                  <label>UBW Date (for timeframe)</label>
+                  <input 
+                    type="date" 
+                    value={anthro.ubwDate} 
+                    onChange={e => handleUpdate("ubwDate", e.target.value)} 
+                  />
                 </div>
               </div>
             </div>

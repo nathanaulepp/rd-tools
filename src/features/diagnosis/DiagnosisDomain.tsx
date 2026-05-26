@@ -7,7 +7,7 @@
 //  - Signs & Symptoms surfaces contextual evidence chips built from anthro/dietary state
 //  - etiologyData.ts must be placed alongside this file (or at the correct import path)
 
-import React, { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { DomainHeader } from "../../shared/ui/DomainHeader";
 import { SectionHeader } from "../../shared/ui/SectionHeader";
 import { Field } from "../../shared/ui/Field";
@@ -15,7 +15,7 @@ import { Field } from "../../shared/ui/Field";
 // ── Import the generated dictionary ──────────────────────────────────────────
 // Adjust the relative path to wherever you place etiologyData.ts in your project.
 // Example: if it lives at src/shared/constants/etiologyData.ts, change the path below.
-import { ETIOLOGY_MAP, DIAGNOSIS_GROUPS } from "./etiologyData";
+import { DIAGNOSIS_GROUPS, getAllEtiologiesForProblem } from "./etiologyData";
 
 // ─── Contextual S-suggestion builder ─────────────────────────────────────────
 // Reads live app state (anthro, dietary) to produce ready-made evidence strings.
@@ -23,7 +23,8 @@ import { ETIOLOGY_MAP, DIAGNOSIS_GROUPS } from "./etiologyData";
 function buildContextualSuggestions(
   problem: string,
   anthro: any,
-  dietary: any
+  dietary: any,
+  calculatedMetrics?: any
 ): string[] {
   const hints: string[] = [];
   if (!problem) return hints;
@@ -38,8 +39,8 @@ function buildContextualSuggestions(
     if (wt > 0 && ubw > 0 && ubw > wt) {
       const loss = (ubw - wt).toFixed(1);
       const pct = (((ubw - wt) / ubw) * 100).toFixed(1);
-      const timeStr = anthro.ubwTime_amount1
-        ? `over ${anthro.ubwTime_amount1} ${anthro.ubwTime_unit1 || "mo"}`
+      const timeStr = (calculatedMetrics?.ubwTimeframeDays !== undefined && calculatedMetrics?.ubwTimeframeDays !== null)
+        ? `over ${formatAge(calculatedMetrics.ubwTimeframeDays)}`
         : "";
       hints.push(`Unintentional weight loss of ${loss} ${wtUnit} (${pct}%) ${timeStr}`.trim());
     }
@@ -91,17 +92,17 @@ interface ComboboxProps {
   value: string;
   onChange: (val: string) => void;
   placeholder?: string;
+  options?: string[];
+  groupedOptions?: { group: string; items: string[] }[];
 }
 
-function DiagnosisCombobox({ value, onChange, placeholder = "Search or select diagnosis…" }: ComboboxProps) {
+function SearchableCombobox({ value, onChange, placeholder, options, groupedOptions }: ComboboxProps) {
   const [query, setQuery] = useState(value);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
-  // Sync external value changes
   useEffect(() => { setQuery(value); }, [value]);
 
-  // Close on outside click
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
@@ -110,18 +111,26 @@ function DiagnosisCombobox({ value, onChange, placeholder = "Search or select di
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const filtered = useMemo(() => {
+  const filteredGrouped = useMemo(() => {
+    if (!groupedOptions) return [];
     const q = query.toLowerCase();
-    if (!q) return DIAGNOSIS_GROUPS;
-    return DIAGNOSIS_GROUPS.map(g => ({
+    if (!q) return groupedOptions;
+    return groupedOptions.map(g => ({
       ...g,
-      diagnoses: g.diagnoses.filter(d => d.toLowerCase().includes(q)),
-    })).filter(g => g.diagnoses.length > 0);
-  }, [query]);
+      items: g.items.filter(d => d.toLowerCase().includes(q)),
+    })).filter(g => g.items.length > 0);
+  }, [query, groupedOptions]);
 
-  const handleSelect = (dx: string) => {
-    setQuery(dx);
-    onChange(dx);
+  const filteredOptions = useMemo(() => {
+    if (!options) return [];
+    const q = query.toLowerCase();
+    if (!q) return options;
+    return options.filter(o => o.toLowerCase().includes(q));
+  }, [query, options]);
+
+  const handleSelect = (val: string) => {
+    setQuery(val);
+    onChange(val);
     setOpen(false);
   };
 
@@ -138,7 +147,7 @@ function DiagnosisCombobox({ value, onChange, placeholder = "Search or select di
           type="text"
           value={query}
           onFocus={() => setOpen(true)}
-          onChange={e => { setQuery(e.target.value); setOpen(true); }}
+          onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
           placeholder={placeholder}
           style={{
             flex: 1,
@@ -162,14 +171,14 @@ function DiagnosisCombobox({ value, onChange, placeholder = "Search or select di
         )}
       </div>
 
-      {open && filtered.length > 0 && (
+      {open && (
         <div style={{
           position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
           background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px",
           boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 300,
           maxHeight: "300px", overflowY: "auto",
         }}>
-          {filtered.map(g => (
+          {groupedOptions && filteredGrouped.map(g => (
             <div key={g.group}>
               <div style={{
                 padding: "6px 12px", fontSize: "0.65rem", fontWeight: 800,
@@ -178,24 +187,41 @@ function DiagnosisCombobox({ value, onChange, placeholder = "Search or select di
               }}>
                 {g.group}
               </div>
-              {g.diagnoses.map(dx => (
+              {g.items.map(item => (
                 <button
-                  key={dx}
-                  onClick={() => handleSelect(dx)}
+                  key={item}
+                  onClick={() => handleSelect(item)}
                   style={{
                     display: "block", width: "100%", textAlign: "left",
                     padding: "7px 14px", background: "none", border: "none",
                     fontSize: "0.84rem", cursor: "pointer", color: "#1e293b",
                     borderBottom: "1px solid #f8fafc",
-                    fontWeight: dx === value ? 700 : 400,
+                    fontWeight: item === value ? 700 : 400,
                   }}
                   onMouseEnter={e => (e.currentTarget.style.background = "#f0f7ff")}
                   onMouseLeave={e => (e.currentTarget.style.background = "none")}
                 >
-                  {dx}
+                  {item}
                 </button>
               ))}
             </div>
+          ))}
+          {options && filteredOptions.map(item => (
+            <button
+              key={item}
+              onClick={() => handleSelect(item)}
+              style={{
+                display: "block", width: "100%", textAlign: "left",
+                padding: "7px 14px", background: "none", border: "none",
+                fontSize: "0.84rem", cursor: "pointer", color: "#1e293b",
+                borderBottom: "1px solid #f8fafc",
+                fontWeight: item === value ? 700 : 400,
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "#f0f7ff")}
+              onMouseLeave={e => (e.currentTarget.style.background = "none")}
+            >
+              {item}
+            </button>
           ))}
         </div>
       )}
@@ -208,16 +234,16 @@ function DiagnosisCombobox({ value, onChange, placeholder = "Search or select di
 interface EtiologySuggestionsProps {
   problem: string;
   currentEtiology: string;
-  onAppend: (text: string) => void;
+  onSelect: (text: string) => void;
 }
 
-function EtiologySuggestions({ problem, currentEtiology, onAppend }: EtiologySuggestionsProps) {
-  const entry = ETIOLOGY_MAP[problem];
-  if (!entry || entry.etiologies.length === 0) return null;
+function EtiologySuggestions({ problem, currentEtiology, onSelect }: EtiologySuggestionsProps) {
+  const etiologies = getAllEtiologiesForProblem(problem);
+  if (etiologies.length === 0) return null;
 
   // Group by category
   const grouped: Record<string, string[]> = {};
-  for (const e of entry.etiologies) {
+  for (const e of etiologies) {
     if (!grouped[e.category]) grouped[e.category] = [];
     grouped[e.category].push(e.etiology);
   }
@@ -247,7 +273,7 @@ function EtiologySuggestions({ problem, currentEtiology, onAppend }: EtiologySug
       padding: "10px 12px",
     }}>
       <div style={{ fontSize: "0.68rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>
-        Suggested Etiologies — click to insert
+        Suggested Etiologies — click to select
       </div>
       {Object.entries(grouped).map(([cat, etiologies]) => {
         const color = CAT_COLORS[cat] || "#64748b";
@@ -265,8 +291,8 @@ function EtiologySuggestions({ problem, currentEtiology, onAppend }: EtiologySug
                 return (
                   <button
                     key={etio}
-                    onClick={() => !used && onAppend(etio)}
-                    title={used ? "Already in etiology field" : `Insert: "${etio}"`}
+                    onClick={() => !used && onSelect(`${etio} (${cat})`)}
+                    title={used ? "Already in etiology field" : `Select: "${etio}"`}
                     style={{
                       padding: "3px 9px",
                       borderRadius: "12px",
@@ -295,6 +321,7 @@ function EtiologySuggestions({ problem, currentEtiology, onAppend }: EtiologySug
   );
 }
 
+
 // ─── Signs & Symptoms Suggestions ────────────────────────────────────────────
 
 interface SSignsSuggestionsProps {
@@ -302,13 +329,14 @@ interface SSignsSuggestionsProps {
   currentSigns: string;
   anthro: any;
   dietary: any;
+  calculatedMetrics?: any;
   onAppend: (text: string) => void;
 }
 
-function SignsSuggestions({ problem, currentSigns, anthro, dietary, onAppend }: SSignsSuggestionsProps) {
+function SignsSuggestions({ problem, currentSigns, anthro, dietary, calculatedMetrics, onAppend }: SSignsSuggestionsProps) {
   const suggestions = useMemo(
-    () => buildContextualSuggestions(problem, anthro, dietary),
-    [problem, anthro?.wt, anthro?.ubw, anthro?.ht, dietary?.oralCalories, dietary?.oralProtein, dietary?.readiness]
+    () => buildContextualSuggestions(problem, anthro, dietary, calculatedMetrics),
+    [problem, anthro?.wt, anthro?.ubw, anthro?.ht, dietary?.oralCalories, dietary?.oralProtein, dietary?.readiness, calculatedMetrics?.ubwTimeframeDays]
   );
 
   if (suggestions.length === 0) return null;
@@ -368,11 +396,26 @@ interface PESCardProps {
   onRemove?: () => void;
   anthro?: any;
   dietary?: any;
+  calculatedMetrics?: any;
 }
 
-function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary }: PESCardProps) {
+const ETIOLOGY_DOMAINS = [
+  "Physiologic-Metabolic",
+  "Beliefs & Attitudes",
+  "Knowledge",
+  "Behavior",
+  "Treatment",
+  "Psychological",
+  "Cultural",
+  "Access",
+  "Social-Personal",
+  "Physical function",
+];
+
+function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, calculatedMetrics }: PESCardProps) {
   const [showEtiologySuggestions, setShowEtiologySuggestions] = useState(true);
   const [showSignsSuggestions, setShowSignsSuggestions] = useState(true);
+  const [customEtiologyDomain, setCustomEtiologyDomain] = useState(ETIOLOGY_DOMAINS[0]);
 
   const accentColor = isPrimary ? "#3498db" : "#8e44ad";
   const label = isPrimary ? "Primary Nutrition Diagnosis" : `Additional Diagnosis ${index}`;
@@ -384,6 +427,35 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary }
     onChange("etiology", next);
   };
 
+  // Manual etiology domain appender - Smart Replace
+  const handleAddDomain = (domain: string) => {
+    if (!domain) return;
+    let existing = data.etiology.trim();
+    if (!existing) return;
+    
+    // Split by segments (semicolon)
+    const segments = existing.split(";").map(s => s.trim()).filter(Boolean);
+    if (segments.length === 0) return;
+
+    let lastSegment = segments[segments.length - 1];
+
+    // Regex to see if it already ends with a domain in parentheses
+    // Group 1: The text before the final parentheses
+    // Group 2: The content inside the final parentheses
+    const match = lastSegment.match(/^(.*)\s*\(([^)]+)\)$/);
+    
+    if (match && ETIOLOGY_DOMAINS.includes(match[2].trim())) {
+      // Smart Replace: swap the existing domain for the new one
+      lastSegment = `${match[1].trim()} (${domain})`;
+    } else {
+      // Normal Append: just add the domain to the end
+      lastSegment = `${lastSegment} (${domain})`;
+    }
+
+    segments[segments.length - 1] = lastSegment;
+    onChange("etiology", segments.join("; "));
+  };
+
   // Append to signsSymptoms field
   const handleSignsAppend = (s: string) => {
     const existing = data.signsSymptoms.trim();
@@ -391,11 +463,15 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary }
     onChange("signsSymptoms", next);
   };
 
-  const hasEtiologySuggestions = !!ETIOLOGY_MAP[data.problem]?.etiologies?.length;
+  const hasEtiologySuggestions = !!getAllEtiologiesForProblem(data.problem).length;
   const contextualHints = useMemo(
-    () => buildContextualSuggestions(data.problem, anthro, dietary),
-    [data.problem, anthro, dietary]
+    () => buildContextualSuggestions(data.problem, anthro, dietary, calculatedMetrics),
+    [data.problem, anthro, dietary, calculatedMetrics?.ubwTimeframeDays]
   );
+
+  // Domain adder visibility: show if there is any text in the etiology field
+  // This allows the user to append or change a domain at any time.
+  const showDomainAdder = data.etiology.trim().length > 0;
 
   return (
     <div style={{
@@ -420,9 +496,11 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary }
 
       {/* P — Problem */}
       <Field label="P — Problem (Nutrition Diagnosis)">
-        <DiagnosisCombobox
+        <SearchableCombobox
           value={data.problem}
           onChange={v => onChange("problem", v)}
+          placeholder="Search or select diagnosis…"
+          groupedOptions={DIAGNOSIS_GROUPS.map(g => ({ group: g.group, items: g.diagnoses }))}
         />
       </Field>
 
@@ -468,16 +546,42 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary }
               </button>
             )}
           </div>
-          <textarea
-            value={data.etiology}
-            onChange={e => onChange("etiology", e.target.value)}
-            placeholder="Related to…"
-            style={{
-              padding: "7px 9px", border: "1px solid #e2e8f0", borderRadius: "6px",
-              fontSize: "0.85rem", minHeight: "72px", resize: "vertical",
-              width: "100%", boxSizing: "border-box", fontFamily: "inherit",
-            }}
-          />
+          
+          <div style={{ position: "relative", width: "100%" }}>
+            <textarea
+              value={data.etiology}
+              onChange={e => onChange("etiology", e.target.value)}
+              placeholder="Related to…"
+              style={{
+                padding: showDomainAdder ? "7px 110px 7px 9px" : "7px 9px", 
+                border: "1px solid #e2e8f0", borderRadius: "6px",
+                fontSize: "0.85rem", minHeight: "72px", resize: "vertical",
+                width: "100%", boxSizing: "border-box", fontFamily: "inherit",
+                transition: "padding 0.2s",
+              }}
+            />
+            {showDomainAdder && (
+              <div style={{
+                position: "absolute", top: "8px", right: "8px",
+                zIndex: 10,
+              }}>
+                <select
+                  value=""
+                  onChange={e => handleAddDomain(e.target.value)}
+                  style={{
+                    fontSize: "0.65rem", padding: "4px 8px", borderRadius: "6px",
+                    border: "1px solid #cbd5e1", background: accentColor, color: "#fff",
+                    cursor: "pointer", outline: "none", fontWeight: 700,
+                    width: "100px", appearance: "none", textAlign: "center",
+                  }}
+                >
+                  <option value="" disabled>Add Domain...</option>
+                  {ETIOLOGY_DOMAINS.map(d => <option key={d} value={d} style={{ color: "#1e293b", background: "#fff" }}>{d}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
           {showEtiologySuggestions && data.problem && (
             <EtiologySuggestions
               problem={data.problem}
@@ -486,6 +590,7 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary }
             />
           )}
         </div>
+
 
         {/* S — Signs & Symptoms */}
         <div>
@@ -518,6 +623,7 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary }
               currentSigns={data.signsSymptoms}
               anthro={anthro}
               dietary={dietary}
+              calculatedMetrics={calculatedMetrics}
               onAppend={handleSignsAppend}
             />
           )}
@@ -536,6 +642,7 @@ interface DiagnosisDomainProps {
   anthro?: any;
   /** Pass live dietary state from App.tsx for contextual S-suggestions */
   dietary?: any;
+  calculatedMetrics?: any;
 }
 
 let _nextId = 2;
@@ -543,7 +650,7 @@ function newDx() {
   return { id: _nextId++, problem: "", etiology: "", signsSymptoms: "" };
 }
 
-export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dietary }: DiagnosisDomainProps) {
+export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dietary, calculatedMetrics }: DiagnosisDomainProps) {
   const update = (field: string, val: any) => setDiagnosis({ ...diagnosis, [field]: val });
 
   const addDx = () => {
@@ -600,6 +707,7 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
           onChange={(field, val) => update(field, val)}
           anthro={anthro}
           dietary={dietary}
+          calculatedMetrics={calculatedMetrics}
         />
 
         {/* Additional PES */}
@@ -613,6 +721,7 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
             onRemove={() => removeAdditional(dx.id)}
             anthro={anthro}
             dietary={dietary}
+            calculatedMetrics={calculatedMetrics}
           />
         ))}
       </div>

@@ -12,6 +12,7 @@ import BiochemicalDomain from "../features/assessment/assess-biochemical/Biochem
 import ClinicalDomain from "../features/assessment/assess-clinical/ClinicalDomain";
 import DietaryDomain from "../features/assessment/assess-dietary/DietaryDomain";
 import DiagnosisDomain from "../features/diagnosis/DiagnosisDomain";
+import { processNoteEtiologies } from "../features/diagnosis/etiologyData";
 import InterventionDomain from "../features/intervention/InterventionDomain";
 import MonitorEvalDomain from "../features/monitor-evalue/MonitorEvalDomain";
 
@@ -253,6 +254,7 @@ export default function CreateNotePage({
     setModalState("saving");
     const saved = await saveAllDomains();
     if (!saved) { setModalOpen(false); return; }
+
     try {
       const result = await submitNote(noteId, patientId);
       if (!result.valid) {
@@ -278,6 +280,12 @@ export default function CreateNotePage({
 
   const handleDomainSwitch = async (nextDomain: DomainKey) => {
     if (nextDomain === activeDomain) return;
+
+    // Phase 7: If leaving Dx domain, process etiologies before switching
+    if (activeDomain === "Dx") {
+      processNoteEtiologies(diagnosisRef.current);
+    }
+
     const ok = await saveDomain(activeDomain);
     if (ok) showToast(`${DOMAIN_LABELS[activeDomain]} saved ✓`);
     setActiveDomain(nextDomain);
@@ -330,11 +338,19 @@ export default function CreateNotePage({
           </div>
           {activeDomain === "A" && (
             <div className="sub-nav">
-              {ASSESSMENT_CATEGORIES.map(cat => (
-                <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => handleSubDomainSwitch(cat.id)}>
-                  {cat.title}
-                </div>
-              ))}
+              {ASSESSMENT_CATEGORIES
+                .filter(cat => {
+                  if (cat.id === "A6-A7") {
+                    const isAdult = (calculatedMetrics?.ageDays ?? 0) >= 7305;
+                    return !isAdult;
+                  }
+                  return true;
+                })
+                .map(cat => (
+                  <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => handleSubDomainSwitch(cat.id)}>
+                    {cat.title}
+                  </div>
+                ))}
             </div>
           )}
 
@@ -445,7 +461,7 @@ export default function CreateNotePage({
             <DietaryDomain dietary={dietary} setDietary={setDietary} activeSubDomain={activeSubDomain} />
           )}
           {activeDomain === "Dx" && (
-            <DiagnosisDomain diagnosis={diagnosis} setDiagnosis={setDiagnosis} />
+            <DiagnosisDomain diagnosis={diagnosis} setDiagnosis={setDiagnosis} anthro={anthro} dietary={dietary} calculatedMetrics={calculatedMetrics} />
           )}
           {activeDomain === "I" && (
             <InterventionDomain intervention={intervention} setIntervention={setIntervention} />

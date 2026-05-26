@@ -11,6 +11,132 @@ export interface DiagnosisEntry {
   etiologies: EtiologyEntry[];
 }
 
+// ── Persistence & Custom Etiologies ───────────────────────────────────────────
+const CUSTOM_ETIOLOGIES_KEY = "rd-tools-custom-etiologies";
+
+export function getCustomEtiologies(): Record<string, EtiologyEntry[]> {
+  if (typeof localStorage === "undefined") return {};
+  const stored = localStorage.getItem(CUSTOM_ETIOLOGIES_KEY);
+  if (!stored) return {};
+  try {
+    return JSON.parse(stored);
+  } catch (e) {
+    console.error("Failed to parse custom etiologies", e);
+    return {};
+  }
+}
+
+export function addCustomEtiology(problem: string, etiology: string, category: string) {
+  const allCustom = getCustomEtiologies();
+  if (!allCustom[problem]) {
+    allCustom[problem] = [];
+  }
+  // Avoid duplicates
+  if (!allCustom[problem].some((e) => e.etiology === etiology)) {
+    allCustom[problem].push({ etiology, category });
+    localStorage.setItem(CUSTOM_ETIOLOGIES_KEY, JSON.stringify(allCustom));
+  }
+}
+
+export function getAllEtiologiesForProblem(problem: string): EtiologyEntry[] {
+  const premade = ETIOLOGY_MAP[problem]?.etiologies || [];
+  const custom = getCustomEtiologies()[problem] || [];
+  return [...premade, ...custom];
+}
+
+export const ETIOLOGY_DOMAINS = [
+  "Physiologic-Metabolic",
+  "Beliefs & Attitudes",
+  "Knowledge",
+  "Behavior",
+  "Treatment",
+  "Psychological",
+  "Cultural",
+  "Access",
+  "Social-Personal",
+  "Physical function",
+];
+
+/**
+ * Scans diagnosis data and adds any "new" etiologies to the custom store.
+ * Assumes etiologies are formatted as "Some text (Category Name)".
+ * Only stores if the category matches one of the official ETIOLOGY_DOMAINS.
+ */
+export function processNoteEtiologies(diagnosisData: any) {
+  if (!diagnosisData) return;
+  const processStr = (problem: string, etioStr: string) => {
+    if (!problem || !etioStr) return;
+    const premade = ETIOLOGY_MAP[problem]?.etiologies || [];
+
+    // Regex to match "Text (Category)" where (Category) is at the very end
+    const match = etioStr.trim().match(/^(.*)\s*\(([^)]+)\)$/);
+    if (match) {
+      const etiology = match[1].trim();
+      const category = match[2].trim();
+
+      // Only add if category is recognized AND it's not already premade
+      if (ETIOLOGY_DOMAINS.includes(category) && !premade.some((p) => p.etiology === etiology)) {
+        addCustomEtiology(problem, etiology, category);
+      }
+    }
+  };
+
+  // Primary
+  processStr(diagnosisData.problem, diagnosisData.etiology);
+
+  // Additional
+  if (Array.isArray(diagnosisData.additionalDiagnoses)) {
+    for (const dx of diagnosisData.additionalDiagnoses) {
+      processStr(dx.problem, dx.etiology);
+    }
+  }
+}
+
+/**
+ * Validates that every PES statement has an etiology with a recognized domain
+ * at the very end of the string.
+ * Returns an array of error messages (empty if valid).
+ */
+export function validatePES(diagnosisData: any): string[] {
+  const errors: string[] = [];
+  if (!diagnosisData) return errors;
+
+  const check = (problem: string, etiology: string, label: string) => {
+    if (!problem) return; // Skip if no diagnosis entered
+    const trimmed = etiology.trim();
+    
+    if (!trimmed) {
+      errors.push(`${label}: Missing etiology statement`);
+      return;
+    }
+
+    // This regex captures:
+    // Group 1: Everything before the last parentheses
+    // Group 2: The content inside the LAST parentheses at the end of the string
+    const match = trimmed.match(/^(.*)\s*\(([^)]+)\)$/);
+    
+    if (!match) {
+      errors.push(`${label}: Etiology statement is missing a category domain in parentheses at the end.`);
+      return;
+    }
+
+    const category = match[2].trim();
+    if (!ETIOLOGY_DOMAINS.includes(category)) {
+      errors.push(`${label}: "${category}" is not a recognized etiology domain.`);
+    }
+  };
+
+  check(diagnosisData.problem, diagnosisData.etiology || "", "Primary Diagnosis");
+
+  if (Array.isArray(diagnosisData.additionalDiagnoses)) {
+    diagnosisData.additionalDiagnoses.forEach((dx: any, i: number) => {
+      check(dx.problem, dx.etiology || "", `Additional Diagnosis ${i + 1}`);
+    });
+  }
+
+  return errors;
+}
+
 export const ETIOLOGY_MAP: Record<string, DiagnosisEntry> = {
   "Altered GI function (NC-1.4)": {
     group: "Clinical Nutrition",
@@ -814,7 +940,7 @@ export const ETIOLOGY_MAP: Record<string, DiagnosisEntry> = {
     ],
   },
   "Inadequate energy intake (NI-1.2)": {
-    group: "Other",
+    group: "Intake Nutrition",
     etiologies: [
       { category: "Cultural", etiology: "Cultural beliefs that may affect ability to and receptivity to: Access to food, fluid, nutrients" },
       { category: "Knowledge", etiology: "Food and nutrition knowledge deficit" },
@@ -1426,25 +1552,6 @@ export const ETIOLOGY_MAP: Record<string, DiagnosisEntry> = {
       { category: "Physiologic-Metabolic", etiology: "Physiological causes increasing nutrient needs due to: Prolonged catabolic illness" },
       { category: "Psychological", etiology: "Psychological causes such as depression and disordered eating" },
       { category: "Access", etiology: "Limited access to: Food or artificial nutrition" },
-    ],
-  },
-  "Inadequate protein-energy intake (NI-5.2)": {
-    group: "Other",
-    etiologies: [
-      { category: "Cultural", etiology: "Cultural beliefs that may affect ability to and receptivity to: Access to food, fluid, nutrients" },
-      { category: "Knowledge", etiology: "Food and nutrition knowledge deficit" },
-      { category: "Knowledge", etiology: "Food and nutrition knowledge deficit concerning: Appropriate amount or types of dietary protein or amino acids" },
-      { category: "Knowledge", etiology: "Food and nutrition knowledge deficit concerning: Appropriate amount or type of dietary fat" },
-    ],
-  },
-  "Inadequate protein–energy intake (NI-5.2)": {
-    group: "Other",
-    etiologies: [
-      { category: "Physiologic-Metabolic", etiology: "Decreased ability to consume sufficient energy, nutrients" },
-      { category: "Physiologic-Metabolic", etiology: "Physiological causes increasing nutrient needs due to: Altered absorption or metabolism" },
-      { category: "Physiologic-Metabolic", etiology: "Physiological causes increasing nutrient needs due to: Disease/condition" },
-      { category: "Physiologic-Metabolic", etiology: "Physiological causes increasing nutrient needs due to: Prolonged catabolic illness" },
-      { category: "Psychological", etiology: "Psychological causes such as depression and disordered eating" },
     ],
   },
   "Inconsistent carbohydrate intake (NI-5.8.4)": {
