@@ -1,16 +1,16 @@
 // src-tauri/src/lib.rs
 // Phase 6: Added export_note_pdf command — triggers the system print dialog
-// on the current window, which Tauri/Wry exposes via WebView's print() API.
+// via eval() on the WebviewWindow.
 
 use tauri::Manager;
 
 #[tauri::command]
-async fn export_note_pdf(window: tauri::Window) -> Result<(), String> {
-    // Trigger the WebView's native print dialog.
+async fn export_note_pdf(webview: tauri::WebviewWindow) -> Result<(), String> {
+    // Evaluate JavaScript on the frontend to trigger the native print dialog.
     // The frontend's print-optimised CSS (see App.css @media print) takes over
     // from here — the ClinicalSummaryView already applies print styles.
-    window
-        .print()
+    webview
+        .eval("window.print()")
         .map_err(|e| format!("Print failed: {}", e))
 }
 
