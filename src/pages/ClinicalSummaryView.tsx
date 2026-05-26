@@ -163,7 +163,7 @@ export default function ClinicalSummaryView({
   };
 
   return (
-    <div style={styles.container}>
+    <div style={styles.container} className="print-safe-container">
       <div style={styles.noPrint}>
         <button style={styles.backBtn} onClick={handleExitToStart}>← Back to Home</button>
         <button style={styles.printBtn} onClick={invokePdfExport}>Export / Print Note</button>

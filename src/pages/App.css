@@ -25,7 +25,7 @@ body, html {
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   background-color: var(--bg-color);
   color: var(--text-main);
-  overflow: hidden;
+  overflow: auto;
   /* Font-size scaling is handled via JS on documentElement */
 }
 
@@ -799,4 +799,46 @@ input[type=range]::-webkit-slider-runnable-track {
 
 .primary-card:hover, .primary-card:focus-visible {
   border-color: #2563eb;
+}
+
+/* =========================================
+   PRINT STYLES
+   ========================================= */
+@media print {
+  /* 1. Remove global overflow locks so the document flows naturally */
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    background-color: white !important;
+  }
+
+  /* 2. Remove the custom scroll constraints specifically for printing */
+  .print-safe-container {
+    height: auto !important;
+    overflow: visible !important;
+    background: transparent !important;
+    padding: 0 !important;
+  }
+
+  /* 3. Hide all UI controls (buttons, navigation) */
+  .noPrint, .sidebar, .top-nav, .hamburger-btn, .close-sidebar-btn {
+    display: none !important;
+  }
+
+  /* 4. Ensure the printable note spans the entire width and removes shadows */
+  .printable-note {
+    box-shadow: none !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+  }
+
+  /* 5. Ensure internal app layouts expand completely */
+  .app-layout, .main-workspace, .content-area {
+    height: auto !important;
+    overflow: visible !important;
+    display: block !important;
+  }
 }

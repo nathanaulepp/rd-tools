@@ -1,9 +1,0 @@
----
-
-## Phase 6: Future-Proofing Hooks (do last, no rush)
-
-- Diagnosis, Intervention, Monitor-Evaluate domains slot in as new `jsonb` columns on `notes` — schema change is one `ALTER TABLE`, no data migration needed
-- `submission_requirements` table already exists so tightening required fields is a UI settings page, not a code change
-- Export to PDF can be added later as a Tauri command that reads a submitted note and renders it
-
----
