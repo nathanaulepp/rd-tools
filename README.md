@@ -22,6 +22,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 
 ### RD Workstation
 - [ ] Add keyboard shortcuts
+- [ ] Split panes function
 
 ### Assessment
 #### Anthro

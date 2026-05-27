@@ -1,7 +1,9 @@
 // src/features/assessment/assess-standards/NutritionStandardsDomain.tsx
 // Condition-driven Nutrition Rx Evaluator
+// UPDATED: Replaced NutrientScorecardItem with NutrientBarChart (grouped bars + whiskers)
+// IC logic: IC trumps weight-based for kcal note; protein note never references IC
 
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import {
   evaluateNutritionRx,
   calcIBW,
@@ -44,57 +46,310 @@ function CompactStatus({ status }: { status: EvalStatus }) {
   return (
     <span style={{
       background: t.bg, color: t.color,
-      borderRadius: "4px", padding: "1px 6px",
-      fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase",
+      borderRadius: "4px", padding: "2px 8px",
+      fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const,
+      letterSpacing: "0.04em", whiteSpace: "nowrap" as const,
     }}>
       {t.label}
     </span>
   );
 }
 
-// ─── Scorecard Item ───────────────────────────────────────────────────────────
+// ─── Grouped Bar Chart with Whiskers ──────────────────────────────────────────
+// One chart covering ALL results. Each nutrient = a pair of horizontal bars:
+//   Bar A (TEAL):  Target range midpoint, with error whiskers to low/high
+//   Bar B (STATUS-colored): Current intake value
+// X-axis is shared across all nutrients (normalized 0–maxVal per nutrient group)
 
-function NutrientScorecardItem({ result }: { result: EvalResult }) {
-  const theme = STATUS_THEME[result.status];
-  
-  // Parse target range for a simple progress visualization if possible
-  const rangeMatch = result.target.match(/(\d+)(?:–(\d+))?/);
-  let low = 0, high = 0;
-  if (rangeMatch) {
-    low = parseInt(rangeMatch[1]);
-    high = rangeMatch[2] ? parseInt(rangeMatch[2]) : low;
-  }
+interface NutrientBarChartProps {
+  results: EvalResult[];
+  icUsedForKcal: boolean;
+}
+
+function NutrientBarChart({ results, icUsedForKcal }: NutrientBarChartProps) {
+  if (!results.length) return null;
+
+  // Colors
+  const TARGET_COLOR = "#2ab3a3";   // teal — always the "needs" bar
+  const TARGET_FILL  = "#c8f2ee";
+  const STATUS_COLORS: Record<EvalStatus, { bar: string; fill: string; label: string }> = {
+    LOW:   { bar: "#3b82f6", fill: "#dbeafe", label: "Low" },
+    WNL:   { bar: "#22c55e", fill: "#dcfce7", label: "WNL" },
+    HIGH:  { bar: "#ef4444", fill: "#fee2e2", label: "High" },
+    "N/A": { bar: "#94a3b8", fill: "#f1f5f9", label: "—" },
+  };
+
+  const BAR_HEIGHT = 22;
+  const BAR_GAP = 8;        // gap between the two bars in a group
+  const GROUP_GAP = 28;     // gap between nutrient groups
+  const LEFT_LABEL = 90;    // px reserved for nutrient label
+  const RIGHT_PAD = 50;     // px after the longest bar
+  const CHART_W = 560;      // total chart content width
+  const BAR_AREA = CHART_W - LEFT_LABEL - RIGHT_PAD;
+  const TOP_PAD = 12;
+  const TICK_LINES = 5;
+
+  // Build per-nutrient data
+  const groups = results.map((r) => {
+    const rangeMatch = r.target.match(/([\d.]+)(?:–([\d.]+))?/);
+    const lo = rangeMatch ? parseFloat(rangeMatch[1]) : 0;
+    const hi = rangeMatch && rangeMatch[2] ? parseFloat(rangeMatch[2]) : lo;
+    const mid = (lo + hi) / 2;
+    const maxVal = Math.max(r.current * 1.25, hi * 1.25, 1);
+    return { result: r, lo, hi, mid, maxVal };
+  });
+
+  // Layout: compute Y positions
+  const rowHeight = BAR_HEIGHT * 2 + BAR_GAP;
+  let y = TOP_PAD + 32; // leave room for legend at top
+  const rows = groups.map((g) => {
+    const yStart = y;
+    y += rowHeight + GROUP_GAP;
+    return { ...g, yStart };
+  });
+
+  const totalH = y + 8;
+
+  // X scale per nutrient (each has its own maxVal for clarity)
+  const xScale = (val: number, maxVal: number) =>
+    Math.min((val / maxVal) * BAR_AREA, BAR_AREA);
+
+  // Whisker cap height
+  const WHISKER_CAP = 6;
 
   return (
-    <div style={{
-      padding: "0.85rem",
-      borderLeft: `4px solid ${theme.color}`,
-      background: "#fff",
-      borderRadius: "6px",
-      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-      border: "1px solid #e2e8f0",
-      borderLeftWidth: "4px",
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "4px" }}>
-        <span style={{ fontWeight: 700, fontSize: "0.82rem", color: "#475569" }}>{result.label}</span>
-        <CompactStatus status={result.status} />
-      </div>
-      
-      <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
-        <span style={{ fontSize: "1.1rem", fontWeight: 800, color: "#1e293b" }}>{Math.round(result.current)}</span>
-        <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 500 }}>{result.unit}</span>
-      </div>
-
-      <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: "4px", display: "flex", gap: "4px" }}>
-        <span>Target:</span>
-        <span style={{ fontWeight: 700, color: "#475569" }}>{result.target}</span>
-      </div>
-
-      {result.note && (
-        <div style={{ fontSize: "0.62rem", color: "#94a3b8", fontStyle: "italic", marginTop: "4px", borderTop: "1px solid #f1f5f9", paddingTop: "4px" }}>
-          {result.note}
+    <div>
+      {/* Legend */}
+      <div style={{ display: "flex", gap: "20px", marginBottom: "12px", flexWrap: "wrap" as const, alignItems: "center" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", fontWeight: 600, color: "#475569" }}>
+          <div style={{ width: 14, height: 14, borderRadius: 3, background: TARGET_COLOR }} />
+          <span>Target range (midpoint ± bounds)</span>
         </div>
-      )}
+        {Object.entries(STATUS_COLORS).filter(([k]) => k !== "N/A").map(([status, theme]) => (
+          <div key={status} style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "0.75rem", fontWeight: 600, color: "#475569" }}>
+            <div style={{ width: 14, height: 14, borderRadius: 3, background: theme.bar }} />
+            <span>Current intake ({theme.label})</span>
+          </div>
+        ))}
+      </div>
+
+      {/* SVG Chart */}
+      <svg
+        width="100%"
+        viewBox={`0 0 ${CHART_W} ${totalH}`}
+        style={{ overflow: "visible" }}
+        role="img"
+        aria-label={`Grouped bar chart comparing target nutrition ranges to current intake for ${results.map(r => r.label).join(", ")}`}
+      >
+        {rows.map((row) => {
+          const { result, lo, hi, mid, maxVal, yStart } = row;
+          const statusTheme = STATUS_COLORS[result.status];
+          const xMid = xScale(mid, maxVal);
+          const xLo = xScale(lo, maxVal);
+          const xHi = xScale(hi, maxVal);
+          const xCurrent = xScale(result.current, maxVal);
+          const yTarget = yStart;
+          const yCurrent = yStart + BAR_HEIGHT + BAR_GAP;
+
+          // Tick positions (5 ticks across bar area)
+          const ticks = Array.from({ length: TICK_LINES + 1 }, (_, i) => ({
+            x: LEFT_LABEL + (i / TICK_LINES) * BAR_AREA,
+            val: Math.round((maxVal * i) / TICK_LINES),
+          }));
+
+          return (
+            <g key={result.label}>
+              {/* Nutrient label */}
+              <text
+                x={LEFT_LABEL - 8}
+                y={yStart + BAR_HEIGHT}
+                textAnchor="end"
+                dominantBaseline="middle"
+                fontSize="12"
+                fontWeight="600"
+                fill="#334155"
+              >
+                {result.label}
+              </text>
+
+              {/* Gridlines (subtle) */}
+              {ticks.map((t, i) => (
+                <line
+                  key={i}
+                  x1={t.x}
+                  y1={yStart - 4}
+                  x2={t.x}
+                  y2={yCurrent + BAR_HEIGHT + 2}
+                  stroke="#e2e8f0"
+                  strokeWidth="0.5"
+                />
+              ))}
+
+              {/* ── TARGET BAR (teal) with whisker ── */}
+              {/* Full range as a lighter background band */}
+              <rect
+                x={LEFT_LABEL + xLo}
+                y={yTarget}
+                width={Math.max(xHi - xLo, 1)}
+                height={BAR_HEIGHT}
+                fill={TARGET_FILL}
+                rx="2"
+              />
+              {/* Midpoint bar */}
+              <rect
+                x={LEFT_LABEL}
+                y={yTarget}
+                width={xMid}
+                height={BAR_HEIGHT}
+                fill={TARGET_COLOR}
+                rx="2"
+              />
+              {/* Whisker line */}
+              <line
+                x1={LEFT_LABEL + xLo}
+                y1={yTarget + BAR_HEIGHT / 2}
+                x2={LEFT_LABEL + xHi}
+                y2={yTarget + BAR_HEIGHT / 2}
+                stroke={TARGET_COLOR}
+                strokeWidth="2"
+              />
+              {/* Whisker caps */}
+              <line x1={LEFT_LABEL + xLo} y1={yTarget + BAR_HEIGHT / 2 - WHISKER_CAP / 2} x2={LEFT_LABEL + xLo} y2={yTarget + BAR_HEIGHT / 2 + WHISKER_CAP / 2} stroke={TARGET_COLOR} strokeWidth="2" />
+              <line x1={LEFT_LABEL + xHi} y1={yTarget + BAR_HEIGHT / 2 - WHISKER_CAP / 2} x2={LEFT_LABEL + xHi} y2={yTarget + BAR_HEIGHT / 2 + WHISKER_CAP / 2} stroke={TARGET_COLOR} strokeWidth="2.5" />
+              {/* Target range label */}
+              <text
+                x={LEFT_LABEL + xHi + 6}
+                y={yTarget + BAR_HEIGHT / 2}
+                dominantBaseline="middle"
+                fontSize="10"
+                fill="#64748b"
+                fontWeight="500"
+              >
+                {result.target}
+              </text>
+              {/* "Target" micro-label */}
+              <text
+                x={LEFT_LABEL + 4}
+                y={yTarget + BAR_HEIGHT / 2}
+                dominantBaseline="middle"
+                fontSize="9"
+                fill="white"
+                fontWeight="700"
+              >
+                TARGET
+              </text>
+
+              {/* ── CURRENT INTAKE BAR (status-colored) ── */}
+              <rect
+                x={LEFT_LABEL}
+                y={yCurrent}
+                width={xCurrent}
+                height={BAR_HEIGHT}
+                fill={statusTheme.bar}
+                rx="2"
+              />
+              {/* Value label at end */}
+              <text
+                x={LEFT_LABEL + xCurrent + 6}
+                y={yCurrent + BAR_HEIGHT / 2}
+                dominantBaseline="middle"
+                fontSize="11"
+                fill={statusTheme.bar}
+                fontWeight="700"
+              >
+                {Math.round(result.current)}
+              </text>
+              {/* "Current" micro-label inside bar */}
+              {xCurrent > 55 && (
+                <text
+                  x={LEFT_LABEL + 4}
+                  y={yCurrent + BAR_HEIGHT / 2}
+                  dominantBaseline="middle"
+                  fontSize="9"
+                  fill="white"
+                  fontWeight="700"
+                >
+                  CURRENT
+                </text>
+              )}
+
+              {/* Status badge (foreignObject for HTML rendering) */}
+              <foreignObject
+                x={CHART_W - RIGHT_PAD + 2}
+                y={yCurrent + 2}
+                width={RIGHT_PAD - 4}
+                height={BAR_HEIGHT - 4}
+              >
+                <div
+                  style={{
+                    background: statusTheme.fill,
+                    color: statusTheme.bar,
+                    borderRadius: 3,
+                    fontSize: "0.6rem",
+                    fontWeight: 700,
+                    textTransform: "uppercase" as const,
+                    letterSpacing: "0.04em",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    height: "100%",
+                    width: "100%",
+                  }}
+                >
+                  {statusTheme.label}
+                </div>
+              </foreignObject>
+
+              {/* Separator line between groups */}
+              <line
+                x1={LEFT_LABEL - 85}
+                y1={yCurrent + BAR_HEIGHT + GROUP_GAP / 2}
+                x2={CHART_W - 2}
+                y2={yCurrent + BAR_HEIGHT + GROUP_GAP / 2}
+                stroke="#f1f5f9"
+                strokeWidth="1"
+              />
+            </g>
+          );
+        })}
+
+        {/* Bottom X-axis tick labels (for the last group) */}
+        {rows.length > 0 && (() => {
+          const lastRow = rows[rows.length - 1];
+          const { maxVal, yStart } = lastRow;
+          const bottomY = yStart + BAR_HEIGHT * 2 + BAR_GAP + 4;
+          const unit = lastRow.result.unit.split("/")[0];
+          return Array.from({ length: TICK_LINES + 1 }, (_, i) => (
+            <text
+              key={i}
+              x={LEFT_LABEL + (i / TICK_LINES) * BAR_AREA}
+              y={bottomY + 14}
+              textAnchor="middle"
+              fontSize="9"
+              fill="#94a3b8"
+            >
+              {Math.round((maxVal * i) / TICK_LINES)}
+            </text>
+          ));
+        })()}
+      </svg>
+
+      {/* Per-nutrient "based on" notes */}
+      <div style={{ marginTop: "8px", display: "flex", flexDirection: "column" as const, gap: "4px" }}>
+        {results.map((r) => {
+          // IC trumps any other kcal note; protein note never references IC
+          const isKcal = r.label.toLowerCase().includes("energy");
+          const noteText = isKcal && icUsedForKcal
+            ? `⚡ IC override: ${r.note}`
+            : r.note || null;
+          return noteText ? (
+            <div key={r.label} style={{ fontSize: "0.7rem", color: "#64748b", display: "flex", gap: "6px", alignItems: "flex-start" }}>
+              <span style={{ fontWeight: 700, color: "#334155", minWidth: 52 }}>{r.label}:</span>
+              <span>{noteText}</span>
+            </div>
+          ) : null;
+        })}
+      </div>
     </div>
   );
 }
@@ -166,7 +421,6 @@ export default function NutritionStandardsDomain({
 }: NutritionStandardsDomainProps) {
   if (!standards) return <div>Loading standards...</div>;
   
-  // ── Derived patient base values ───────────────────────────────────────────
   const wtKg = useMemo(() => toKg(parseFloat(anthro.wt) || 0, anthro.wtUnit || "kg"), [anthro.wt, anthro.wtUnit]);
   const htCm = useMemo(() => toCm(parseFloat(anthro.ht) || 0, anthro.htUnit || "cm"), [anthro.ht, anthro.htUnit]);
   const sexRaw: "M" | "F" | "" = patientData?.sex || "";
@@ -174,7 +428,6 @@ export default function NutritionStandardsDomain({
   const ageYears = useMemo(() => Math.floor((calculatedMetrics?.ageDays ?? 0) / 365.25), [calculatedMetrics?.ageDays]);
   const bmi = useMemo(() => parseFloat(calculatedMetrics?.bmi) || 0, [calculatedMetrics?.bmi]);
 
-  // ── State synced with props ───────────────────────────────────────────────
   const [condition, setCondition] = useState<ConditionKey | "">(standards.condition || "");
   const [variant, setVariant] = useState(standards.variant || "");
   const [currentKcal, setCurrentKcal] = useState(standards.currentKcal || "");
@@ -187,7 +440,6 @@ export default function NutritionStandardsDomain({
   
   const [evaluation, setEvaluation] = useState<NutritionEvaluation | null>(null);
 
-  // Sync back to parent for persistence
   const syncToParent = () => {
     setStandards({
       condition, variant, currentKcal, currentProtein, currentFluid,
@@ -195,7 +447,6 @@ export default function NutritionStandardsDomain({
     });
   };
 
-  // ── Effects: Pre-fill Rx from dietary domain ──────────────────────────────
   useEffect(() => {
     if (!currentKcal && dietary?.oralCalories) {
       const val = String(Math.round(parseFloat(dietary.oralCalories) || 0) || "");
@@ -207,40 +458,21 @@ export default function NutritionStandardsDomain({
     }
   }, [dietary]);
 
-  // ── Logic: Calculate Effective Weight (ABW) ──────────────────────────────
   const { effectiveWeight, weightBasis, nfpeWarning } = useMemo(() => {
-    // 1. Prioritize Renal Dry Weight (for dialysis)
     if (renalDryWeight) {
-      return { 
-        effectiveWeight: parseFloat(renalDryWeight), 
-        weightBasis: "Renal Dry Weight",
-        nfpeWarning: false 
-      };
+      return { effectiveWeight: parseFloat(renalDryWeight), weightBasis: "Renal Dry Weight", nfpeWarning: false };
     }
-
-    // 2. Fallback to Manual Dry Weight
     if (dryWt) {
-      return { 
-        effectiveWeight: parseFloat(dryWt), 
-        weightBasis: "Dry Weight",
-        nfpeWarning: false 
-      };
+      return { effectiveWeight: parseFloat(dryWt), weightBasis: "Dry Weight", nfpeWarning: false };
     }
-
-    // 3. Calculate based on NFPE findings (Cirrhosis/Fluid context)
     let reduction = 0;
     if (clinical.ascites === "Mild") reduction += 0.05;
     else if (clinical.ascites === "Moderate") reduction += 0.10;
     else if (clinical.ascites === "Severe") reduction += 0.15;
-    
-    if (clinical.pedalEdema === "Yes") {
-      reduction += 0.05;
-    }
-
+    if (clinical.pedalEdema === "Yes") reduction += 0.05;
     const calculatedWeight = wtKg * (1 - reduction);
     const isCirrhosis = condition === "cirrhosis";
     const missingNfpe = isCirrhosis && !clinical.ascites && !clinical.pedalEdema;
-
     return {
       effectiveWeight: calculatedWeight,
       weightBasis: reduction > 0 ? `Estimated Dry Weight (Actual - ${Math.round(reduction * 100)}%)` : "Actual Weight",
@@ -248,7 +480,6 @@ export default function NutritionStandardsDomain({
     };
   }, [renalDryWeight, dryWt, wtKg, condition, clinical]);
 
-  // ── Logic: Check Readiness ───────────────────────────────────────────────
   const missingAnthro = useMemo(() => {
     const fields = [];
     if (!sexRaw) fields.push("Sex");
@@ -260,7 +491,6 @@ export default function NutritionStandardsDomain({
 
   const isReady = missingAnthro.length === 0 && !!condition;
 
-  // ── Action: Run Evaluation ────────────────────────────────────────────────
   const runEvaluation = () => {
     if (!isReady) return;
     const result = evaluateNutritionRx({
@@ -276,16 +506,17 @@ export default function NutritionStandardsDomain({
         dryWtKg: dryWt ? parseFloat(dryWt) : undefined, 
         icMeasuredKcal: icKcal ? parseFloat(icKcal) : undefined 
       },
-      currentRx: { kcalPerDay: parseFloat(currentKcal) || 0, proteinGPerDay: parseFloat(currentProtein) || 0, fluidMlPerDay: currentFluid ? parseFloat(currentFluid) : undefined },
+      currentRx: {
+        kcalPerDay: parseFloat(currentKcal) || 0,
+        proteinGPerDay: parseFloat(currentProtein) || 0,
+        fluidMlPerDay: currentFluid ? parseFloat(currentFluid) : undefined
+      },
       extraInputs: Object.fromEntries(Object.entries(extraInputs).map(([k, v]) => [k, parseFloat(v) || v])),
     });
-    
-    // Inject weight basis
     (result as any).weightBasis = weightBasis;
     setEvaluation(result);
   };
 
-  // Auto-run evaluation and sync to parent when inputs change
   useEffect(() => { 
     if (isReady) runEvaluation(); 
     syncToParent();
@@ -294,10 +525,13 @@ export default function NutritionStandardsDomain({
   const variants = condition ? (CONDITION_VARIANTS[condition] || []) : [];
   const extraFields = condition ? (CONDITION_EXTRA_INPUTS[condition] || []) : [];
 
+  // Determine if IC was used for kcal
+  const icUsedForKcal = !!icKcal && parseFloat(icKcal) > 0;
+
   return (
     <div className="fade-in" style={{ padding: "0.25rem 0", position: "relative" }}>
 
-      {/* ── HEADER: Minimalist & High-Signal ── */}
+      {/* ── HEADER ── */}
       <div style={{
         display: "flex", justifyContent: "space-between", alignItems: "flex-end",
         borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem", marginBottom: "1.5rem",
@@ -383,9 +617,27 @@ export default function NutritionStandardsDomain({
 
           <div className="card" style={{ padding: "1rem", background: "#f8fafc" }}>
             <label style={subHeaderStyle}>Advanced Overrides</label>
+            {/* IC input with prominent label */}
             <div className="input-group">
-              <label style={tinyLabelStyle}>Indirect Calorimetry (mREE)</label>
-              <input type="number" value={icKcal} onChange={e => setIcKcal(e.target.value)} style={inputStyle} placeholder="Measured kcal" />
+              <label style={{ ...tinyLabelStyle, color: icUsedForKcal ? "#b45309" : "#94a3b8" }}>
+                {icUsedForKcal ? "⚡ Indirect Calorimetry (mREE) — ACTIVE" : "Indirect Calorimetry (mREE)"}
+              </label>
+              <input
+                type="number"
+                value={icKcal}
+                onChange={e => setIcKcal(e.target.value)}
+                style={{
+                  ...inputStyle,
+                  border: icUsedForKcal ? "1.5px solid #f59e0b" : inputStyle.border,
+                  background: icUsedForKcal ? "#fffbeb" : "#fff",
+                }}
+                placeholder="Measured kcal"
+              />
+              {icUsedForKcal && (
+                <span style={{ fontSize: "0.62rem", color: "#92400e", marginTop: 2 }}>
+                  Overrides weight-based kcal calculation
+                </span>
+              )}
             </div>
             <div className="input-group">
               <label style={tinyLabelStyle}>Renal Dry Weight (kg)</label>
@@ -400,14 +652,14 @@ export default function NutritionStandardsDomain({
           </div>
         </div>
 
-        {/* ── RIGHT COLUMN: EVALUATION SCORECARD ── */}
+        {/* ── RIGHT COLUMN: CHART ── */}
         <div>
           {evaluation ? (
             <div className="fade-in">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-                <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1e293b" }}>Evaluation Results</div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#1e293b" }}>Evaluation Results</div>
                 <div style={{ fontSize: "0.65rem", color: "#94a3b8" }}>
-                   Basis: {evaluation.eeSource} · {weightBasis} ({effectiveWeight.toFixed(1)}kg)
+                  Basis: {evaluation.eeSource} · {weightBasis} ({effectiveWeight.toFixed(1)}kg)
                 </div>
               </div>
 
@@ -420,12 +672,13 @@ export default function NutritionStandardsDomain({
                 </div>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px", marginBottom: "1.5rem" }}>
-                {evaluation.results.map((r, i) => <NutrientScorecardItem key={i} result={r} />)}
-              </div>
+              <NutrientBarChart
+                results={evaluation.results}
+                icUsedForKcal={icUsedForKcal}
+              />
 
               {evaluation.flags.length > 0 && (
-                <div style={{ background: "#fffbeb", border: "1px solid #fef3c7", borderRadius: "8px", padding: "1rem" }}>
+                <div style={{ background: "#fffbeb", border: "1px solid #fef3c7", borderRadius: "8px", padding: "1rem", marginTop: "1rem" }}>
                   <div style={{ fontSize: "0.68rem", fontWeight: 800, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>
                     Clinical Guidance
                   </div>
@@ -439,13 +692,13 @@ export default function NutritionStandardsDomain({
               )}
             </div>
           ) : (
-             <div style={{ height: "100%", border: "2px dashed #e2e8f0", borderRadius: "12px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem", textAlign: "center", color: "#94a3b8" }}>
-               <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⚖️</div>
-               <div style={{ fontWeight: 600 }}>Awaiting Inputs</div>
-               <div style={{ fontSize: "0.75rem", maxWidth: "250px", marginTop: "4px" }}>
-                 Complete the clinical setting and prescription on the left to see live evaluation.
-               </div>
-             </div>
+            <div style={{ height: "100%", border: "2px dashed #e2e8f0", borderRadius: "12px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem", textAlign: "center", color: "#94a3b8" }}>
+              <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⚖️</div>
+              <div style={{ fontWeight: 600 }}>Awaiting Inputs</div>
+              <div style={{ fontSize: "0.75rem", maxWidth: "250px", marginTop: "4px" }}>
+                Complete the clinical setting and prescription on the left to see live evaluation.
+              </div>
+            </div>
           )}
         </div>
       </div>
@@ -469,4 +722,4 @@ function QuickStat({ label, value }: { label: string, value: string }) {
 const subHeaderStyle = { display: "block", fontSize: "0.72rem", fontWeight: 900, color: "#1e3a5f", textTransform: "uppercase" as any, letterSpacing: "0.06em", marginBottom: "10px" };
 const tinyLabelStyle = { fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" as any, marginBottom: "4px", display: "block" };
 const selectStyle = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box" as any, background: "#fff", color: "#1e293b" };
-const inputStyle = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box" as any };
+const inputStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box" };
