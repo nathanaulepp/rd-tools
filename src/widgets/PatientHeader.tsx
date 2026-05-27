@@ -155,7 +155,7 @@ export default function PatientHeader({
             {isSubmitted && (
               <span style={{ fontSize: "0.7rem", fontWeight: 700, background: "#d4edda", color: "#155724", border: "1px solid #c3e6cb", borderRadius: "10px", padding: "2px 8px" }}>✓ Submitted</span>
             )}
-            {onExit && <button className="btn-outline" onClick={onExit}>Exit</button>}
+            {onExit && <button className="btn-outline-danger" onClick={onExit}>Exit</button>}
             {onSubmit && !isSubmitted && <button className="btn-primary" onClick={onSubmit}>Submit</button>}
           </div>
         )}

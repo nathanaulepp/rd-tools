@@ -187,7 +187,7 @@ const s: Record<string, CSSProperties> = {
   container: { minHeight: "100vh", paddingBottom: "3rem" },
   header: { padding: "1.5rem 2rem" },
   headerInner: { maxWidth: "800px", margin: "0 auto" },
-  backBtn: { background: "none", border: "none", color: "#3498db", cursor: "pointer", fontSize: "0.85rem", fontWeight: 700, padding: 0, marginBottom: "0.75rem", display: "block" },
+  backBtn: { background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "0.85rem", fontWeight: 700, padding: 0, marginBottom: "0.75rem", display: "block" },
   title: { margin: "0 0 0.25rem", fontSize: "1.5rem", fontWeight: 800 },
   subtitle: { margin: 0, fontSize: "0.9rem", color: "var(--text-muted)" },
 

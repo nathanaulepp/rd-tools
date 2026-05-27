@@ -373,7 +373,7 @@ const styles: Record<string, CSSProperties> = {
   container: { background: "#f1f5f9", minHeight: "100vh", padding: "2rem 1rem" },
   page: { background: "#fff", maxWidth: "850px", margin: "0 auto", padding: "3rem", boxShadow: "0 4px 20px rgba(0,0,0,0.08)", borderRadius: "8px", fontFamily: "'Inter', system-ui, sans-serif", color: "#0f172a", lineHeight: 1.5 },
   noPrint: { maxWidth: "850px", margin: "0 auto 1.5rem", display: "flex", justifyContent: "space-between" },
-  backBtn: { background: "none", border: "none", color: "#3498db", cursor: "pointer", fontWeight: 700 },
+  backBtn: { background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontWeight: 700 },
   printBtn: { background: "#0f172a", color: "#fff", border: "none", padding: "0.5rem 1.25rem", borderRadius: "6px", cursor: "pointer", fontWeight: 700 },
   header: { display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" },
   patientName: { margin: "0 0 0.5rem", fontSize: "1.75rem", fontWeight: 800, letterSpacing: "-0.02em" },
