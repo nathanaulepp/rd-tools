@@ -39,7 +39,8 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [ ] GIR check (timeline layout with dynamic points for unique intervals from 0:00 to 23:59)
 
 #### Standards
-- [ ] Improve user flow of UI
+- [x] Improve user flow of UI
+- [ ] Automate linking patient BMI to comparative standards' clinical context options
 
 ### Diagnosis
 - [ ] Differentials to guide continued/ordered assessment
