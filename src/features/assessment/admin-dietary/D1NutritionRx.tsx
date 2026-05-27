@@ -928,18 +928,20 @@ export default function D1NutritionRx({ dietary = {}, setDietary = () => {} }: D
     setDietary({ ...dietary, savedFormulas: savedFormulas.filter((f: string) => f !== name) } as any);
   };
 
-  // EN / PN lifted state (survives tab switches; not persisted separately — the
-  // feeds are part of dietary and autosaved via the domain save mechanism)
-  const [enState, setEnState] = useState<ENState>({
+  // EN / PN lifted state (fully synced with dietary for autosave)
+  const enState: ENState = (dietary as any).enState || {
     feeds: [helper.makeENFeed(1)],
-    savedFormulas: [],   // kept for backward compat but not used — we use dietary.savedFormulas
+    savedFormulas: [],
     nextId: 2,
-  });
+  };
 
-  const [pnState, setPnState] = useState<PNState>({
+  const pnState: PNState = (dietary as any).pnState || {
     bags: [helper.makePNFeed(1)],
     nextId: 2,
-  });
+  };
+
+  const setEnState = (s: ENState) => setDietary({ ...dietary, enState: s });
+  const setPnState = (s: PNState) => setDietary({ ...dietary, pnState: s });
 
   return (
     <div className="fade-in">
