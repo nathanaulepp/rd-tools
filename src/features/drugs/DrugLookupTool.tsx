@@ -64,7 +64,7 @@ const DB_NAME    = "sqlite:drugs.db";
 const CACHE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 const DOSE_UNITS   = ["mg", "mcg", "g", "mEq", "mmol", "IU", "units", "mL", "%"];
-const ROUTES       = ["Oral", "IV", "IM", "SQ", "SL", "Topical", "Inhaled", "Rectal", "Transdermal", "Other"];
+const ROUTES       = ["Oral", "IV", "SQ", "IM", "SL", "Inhaled", "Topical", "Transdermal", "Rectal", "Other"];
 const FREQUENCIES  = [
   "Once daily", "Twice daily (BID)", "Three times daily (TID)",
   "Four times daily (QID)", "Every 6h", "Every 8h", "Every 12h",

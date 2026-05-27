@@ -49,6 +49,10 @@ export const defaultLabs = {} as Record<string, { current: string; historical: s
 export const defaultClinical = {
   chiefComplaint: "",
   medHx: "",
+  familyHx: "",
+  socialHx: "",
+  allergiesIntolerances: "",
+  medicalDevices: "",
   medications: "",
   temples: "",
   clavicles: "",
@@ -82,6 +86,12 @@ export const defaultClinical = {
   chewing: "",
   oralHygiene: "",
   swallowing: "",
+  imaging_smi: "",
+  imaging_muscleArea: "",
+  imaging_muscleAttenuation: "",
+  imaging_imat: "",
+  imaging_vat: "",
+  imaging_notes: "",
   clinicalNotes: "",
 };
 
@@ -208,4 +218,19 @@ export const defaultMonitorEval = {
   transitionPlan: "",
 
   meNotes: "",
+};
+
+/**
+ * S (Comparative Standards) domain defaults.
+ * Stores settings for evaluation.
+ */
+export const defaultStandards = {
+  condition: "" as any,
+  variant: "",
+  currentKcal: "",
+  currentProtein: "",
+  currentFluid: "",
+  icKcal: "",
+  dryWt: "",
+  extraInputs: {} as Record<string, string>,
 };

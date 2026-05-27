@@ -42,6 +42,22 @@ export default function ClinicalDomain({ clinical, setClinical, activeSubDomain 
                 <label>Medical History</label>
                 <textarea style={{ minHeight: "150px" }} value={clinical.medHx} onChange={e => handleUpdate("medHx", e.target.value)} />
               </div>
+              <div className="input-group">
+                <label>Family History</label>
+                <textarea style={{ minHeight: "150px" }} value={clinical.familyHx} onChange={e => handleUpdate("familyHx", e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label>Social History</label>
+                <textarea style={{ minHeight: "150px" }} value={clinical.socialHx} onChange={e => handleUpdate("socialHx", e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label>Allergies/Intolerances</label>
+                <textarea style={{ minHeight: "150px" }} value={clinical.allergiesIntolerances} onChange={e => handleUpdate("allergiesIntolerances", e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label>Medical Devices/Prosthetics</label>
+                <textarea style={{ minHeight: "150px" }} value={clinical.medicalDevices} onChange={e => handleUpdate("medicalDevices", e.target.value)} placeholder="e.g. hearing aids, pacemaker, dental prosthetics..." />
+              </div>
             </div>
           </div>
         );
@@ -95,7 +111,7 @@ export default function ClinicalDomain({ clinical, setClinical, activeSubDomain 
             <div className="grid-2-col">
               <div className="input-group">
                 <label>GI Distress</label>
-                <input type="text" value={clinical.giDistress} onChange={e => handleUpdate("giDistress", e.target.value)} placeholder="e.g. Nausea, vomiting, diarrhea" />
+                <input type="text" value={clinical.giDistress} onChange={e => handleUpdate("giDistress", e.target.value)} placeholder="e.g. n/v/d/c/bm" />
               </div>
               <div className="input-group">
                 <label>Oral/Chewing</label>
@@ -232,6 +248,44 @@ export default function ClinicalDomain({ clinical, setClinical, activeSubDomain 
                   placeholder="Add nuance for physical findings..."
                 />
               </div>
+            </div>
+          </div>
+        );
+
+      case "C6":
+        return (
+          <div className="card">
+            <h4 className="mb-1">C6: Radiology & Imaging</h4>
+            <div className="grid-2-col">
+              <div className="input-group">
+                <label>Skeletal Muscle Index (SMI)</label>
+                <input type="text" value={clinical.imaging_smi} onChange={e => handleUpdate("imaging_smi", e.target.value)} placeholder="cm²/m²" />
+              </div>
+              <div className="input-group">
+                <label>L3 Muscle Area</label>
+                <input type="text" value={clinical.imaging_muscleArea} onChange={e => handleUpdate("imaging_muscleArea", e.target.value)} placeholder="cm²" />
+              </div>
+              <div className="input-group">
+                <label>Muscle Attenuation</label>
+                <input type="text" value={clinical.imaging_muscleAttenuation} onChange={e => handleUpdate("imaging_muscleAttenuation", e.target.value)} placeholder="Hounsfield Units (HU)" />
+              </div>
+              <div className="input-group">
+                <label>IMAT (Intermuscular Fat)</label>
+                <input type="text" value={clinical.imaging_imat} onChange={e => handleUpdate("imaging_imat", e.target.value)} />
+              </div>
+              <div className="input-group">
+                <label>VAT (Visceral Fat Area)</label>
+                <input type="text" value={clinical.imaging_vat} onChange={e => handleUpdate("imaging_vat", e.target.value)} placeholder="cm²" />
+              </div>
+            </div>
+            <div className="input-group mt-1">
+              <label>Imaging / Radiology Notes</label>
+              <textarea 
+                style={{ minHeight: "100px" }} 
+                value={clinical.imaging_notes} 
+                onChange={e => handleUpdate("imaging_notes", e.target.value)} 
+                placeholder="Details on myosteatosis, sarcopenia severity, or other imaging findings..."
+              />
             </div>
           </div>
         );

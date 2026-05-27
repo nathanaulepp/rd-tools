@@ -24,6 +24,7 @@ import {
   defaultDiagnosis,     // Phase 6
   defaultIntervention,  // Phase 6
   defaultMonitorEval,   // Phase 6
+  defaultStandards,
 } from "../entities/note/defaults";
 import { initDrugSync } from "../features/drugs/DrugLookupTool";
 
@@ -118,6 +119,7 @@ export default function App() {
   const [diagnosis,    setDiagnosis]    = useState<any>(defaultDiagnosis);
   const [intervention, setIntervention] = useState<any>(defaultIntervention);
   const [monitorEval,  setMonitorEval]  = useState<any>(defaultMonitorEval);
+  const [standards,    setStandards]    = useState<any>(defaultStandards);
 
   const resetNoteState = (patient: Patient, note: Note) => {
     setPatientData({
@@ -163,6 +165,11 @@ export default function App() {
     if (note.monitor_evaluate) {
       try { setMonitorEval(JSON.parse(note.monitor_evaluate)); } catch(e) { setMonitorEval(defaultMonitorEval); }
     } else { setMonitorEval(defaultMonitorEval); }
+
+    // Comparative Standards
+    if ((note as any).standards) {
+      try { setStandards(JSON.parse((note as any).standards)); } catch(e) { setStandards(defaultStandards); }
+    } else { setStandards(defaultStandards); }
   };
 
   // ── Derived metrics ────────────────────────────────────────────────────────
@@ -204,6 +211,7 @@ export default function App() {
     diagnosis, setDiagnosis,
     intervention, setIntervention,
     monitorEval, setMonitorEval,
+    standards, setStandards,
     calculatedMetrics,
     handleExitToStart,
   };

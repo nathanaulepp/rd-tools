@@ -1,8 +1,7 @@
 // src/features/assessment/assess-standards/NutritionStandardsDomain.tsx
 // Condition-driven Nutrition Rx Evaluator
-// Lives below A/B/C/D in the assessment sidebar as "A9: Nutrition Standards"
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import {
   evaluateNutritionRx,
   calcIBW,
@@ -33,142 +32,116 @@ function toCm(val: number, unit: string): number {
 
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
-const STATUS_COLORS: Record<EvalStatus, { bg: string; border: string; text: string; label: string }> = {
-  LOW:  { bg: "#eff6ff", border: "#93c5fd", text: "#1d4ed8", label: "↓ LOW" },
-  WNL:  { bg: "#f0fdf4", border: "#86efac", text: "#15803d", label: "✓ WNL" },
-  HIGH: { bg: "#fef2f2", border: "#fca5a5", text: "#dc2626", label: "↑ HIGH" },
-  "N/A": { bg: "#f8fafc", border: "#e2e8f0", text: "#94a3b8", label: "—" },
+const STATUS_THEME: Record<EvalStatus, { color: string; bg: string; label: string }> = {
+  LOW:  { color: "#2563eb", bg: "#dbeafe", label: "Low" },
+  WNL:  { color: "#16a34a", bg: "#dcfce7", label: "WNL" },
+  HIGH: { color: "#dc2626", bg: "#fee2e2", label: "High" },
+  "N/A": { color: "#64748b", bg: "#f1f5f9", label: "—" },
 };
 
-function StatusBadge({ status }: { status: EvalStatus }) {
-  const c = STATUS_COLORS[status];
+function CompactStatus({ status }: { status: EvalStatus }) {
+  const t = STATUS_THEME[status];
   return (
     <span style={{
-      background: c.bg, border: `1.5px solid ${c.border}`,
-      color: c.text, borderRadius: "8px", padding: "3px 12px",
-      fontSize: "0.72rem", fontWeight: 800, letterSpacing: "0.04em",
-      whiteSpace: "nowrap",
+      background: t.bg, color: t.color,
+      borderRadius: "4px", padding: "1px 6px",
+      fontSize: "0.65rem", fontWeight: 700, textTransform: "uppercase",
     }}>
-      {c.label}
+      {t.label}
     </span>
   );
 }
 
-// ─── Result Row ───────────────────────────────────────────────────────────────
+// ─── Scorecard Item ───────────────────────────────────────────────────────────
 
-function ResultRow({ row }: { row: EvalResult }) {
-  const c = STATUS_COLORS[row.status];
+function NutrientScorecardItem({ result }: { result: EvalResult }) {
+  const theme = STATUS_THEME[result.status];
+  
+  // Parse target range for a simple progress visualization if possible
+  const rangeMatch = result.target.match(/(\d+)(?:–(\d+))?/);
+  let low = 0, high = 0;
+  if (rangeMatch) {
+    low = parseInt(rangeMatch[1]);
+    high = rangeMatch[2] ? parseInt(rangeMatch[2]) : low;
+  }
+
   return (
     <div style={{
-      display: "grid",
-      gridTemplateColumns: "110px 1fr 1fr 1fr 110px",
-      gap: "0.5rem",
-      alignItems: "center",
-      padding: "0.75rem 1rem",
-      borderRadius: "8px",
-      background: c.bg,
-      border: `1px solid ${c.border}`,
-      marginBottom: "0.5rem",
+      padding: "0.85rem",
+      borderLeft: `4px solid ${theme.color}`,
+      background: "#fff",
+      borderRadius: "6px",
+      boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+      border: "1px solid #e2e8f0",
+      borderLeftWidth: "4px",
     }}>
-      <span style={{ fontWeight: 700, fontSize: "0.88rem", color: "#1e293b" }}>{row.label}</span>
-      <div>
-        <div style={{ fontSize: "0.72rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Target</div>
-        <div style={{ fontWeight: 700, color: "#334155", fontSize: "0.92rem" }}>{row.target}</div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "4px" }}>
+        <span style={{ fontWeight: 700, fontSize: "0.82rem", color: "#475569" }}>{result.label}</span>
+        <CompactStatus status={result.status} />
       </div>
-      <div>
-        <div style={{ fontSize: "0.72rem", color: "#94a3b8", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Current Rx</div>
-        <div style={{ fontWeight: 700, color: "#334155", fontSize: "0.92rem" }}>{Math.round(row.current)} {row.unit}</div>
+      
+      <div style={{ display: "flex", alignItems: "baseline", gap: "6px" }}>
+        <span style={{ fontSize: "1.1rem", fontWeight: 800, color: "#1e293b" }}>{Math.round(result.current)}</span>
+        <span style={{ fontSize: "0.72rem", color: "#64748b", fontWeight: 500 }}>{result.unit}</span>
       </div>
-      <div>
-        {row.note && <div style={{ fontSize: "0.72rem", color: "#64748b", lineHeight: 1.4, fontStyle: "italic" }}>{row.note}</div>}
-      </div>
-      <div style={{ display: "flex", justifyContent: "flex-end" }}>
-        <StatusBadge status={row.status} />
-      </div>
-    </div>
-  );
-}
 
-// ─── IC Factor Reference Table ────────────────────────────────────────────────
+      <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginTop: "4px", display: "flex", gap: "4px" }}>
+        <span>Target:</span>
+        <span style={{ fontWeight: 700, color: "#475569" }}>{result.target}</span>
+      </div>
 
-function ICFactorTable() {
-  const [open, setOpen] = useState(false);
-  return (
-    <div style={{ marginTop: "0.75rem" }}>
-      <button
-        onClick={() => setOpen(o => !o)}
-        style={{
-          background: "none", border: "1px solid #e2e8f0",
-          borderRadius: "6px", padding: "4px 12px",
-          fontSize: "0.72rem", color: "#64748b", cursor: "pointer",
-          fontWeight: 600,
-        }}
-      >
-        {open ? "▲ Hide" : "▼ Show"} IC / MSJ Activity Factor Reference
-      </button>
-      {open && (
-        <div style={{
-          marginTop: "0.5rem", border: "1px solid #e2e8f0",
-          borderRadius: "8px", overflow: "hidden", fontSize: "0.78rem",
-        }}>
-          <div style={{
-            background: "#f8fafc", padding: "6px 12px",
-            fontWeight: 800, fontSize: "0.68rem", color: "#94a3b8",
-            textTransform: "uppercase", letterSpacing: "0.06em",
-            borderBottom: "1px solid #e2e8f0",
-          }}>
-            IC Clinical Activity Factors (CAF) — used when MSJ is the fallback for IC
-          </div>
-          {IC_ACTIVITY_FACTORS.map((r, i) => (
-            <div key={i} style={{
-              display: "grid", gridTemplateColumns: "2fr 80px 1fr",
-              gap: "0.5rem", padding: "6px 12px",
-              borderBottom: i < IC_ACTIVITY_FACTORS.length - 1 ? "1px solid #f1f5f9" : "none",
-              alignItems: "center",
-            }}>
-              <span style={{ color: "#334155", fontWeight: 600 }}>{r.condition}</span>
-              <span style={{
-                background: "#eff6ff", color: "#1d4ed8",
-                borderRadius: "6px", padding: "2px 8px",
-                fontWeight: 800, textAlign: "center",
-              }}>
-                ×{r.cafLow}–{r.cafHigh}
-              </span>
-              <span style={{ color: "#94a3b8", fontStyle: "italic" }}>{r.note}</span>
-            </div>
-          ))}
-
-          <div style={{
-            background: "#f0fdf4", padding: "6px 12px",
-            fontWeight: 800, fontSize: "0.68rem", color: "#94a3b8",
-            textTransform: "uppercase", letterSpacing: "0.06em",
-            borderTop: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0",
-          }}>
-            MSJ Activity Factors (AF) — Ambulatory / Outpatient
-          </div>
-          {MSJ_ACTIVITY_FACTORS.map((r, i) => (
-            <div key={i} style={{
-              display: "grid", gridTemplateColumns: "1fr 80px 2fr",
-              gap: "0.5rem", padding: "6px 12px",
-              borderBottom: i < MSJ_ACTIVITY_FACTORS.length - 1 ? "1px solid #f1f5f9" : "none",
-              alignItems: "center",
-            }}>
-              <span style={{ color: "#334155", fontWeight: 600 }}>{r.label}</span>
-              <span style={{
-                background: "#f0fdf4", color: "#15803d",
-                borderRadius: "6px", padding: "2px 8px",
-                fontWeight: 800, textAlign: "center",
-              }}>
-                ×{r.af}
-              </span>
-              <span style={{ color: "#94a3b8", fontStyle: "italic" }}>{r.description}</span>
-            </div>
-          ))}
+      {result.note && (
+        <div style={{ fontSize: "0.62rem", color: "#94a3b8", fontStyle: "italic", marginTop: "4px", borderTop: "1px solid #f1f5f9", paddingTop: "4px" }}>
+          {result.note}
         </div>
       )}
     </div>
   );
 }
+
+// ─── Activity Factor Reference ────────────────────────────────────────────────
+
+function ReferenceToggles() {
+  const [open, setOpen] = useState<string | null>(null);
+  const toggle = (key: string) => setOpen(open === key ? null : key);
+
+  return (
+    <div style={{ marginTop: "1rem", display: "flex", gap: "10px" }}>
+      <button onClick={() => toggle('factors')} style={btnRefStyle}>
+        {open === 'factors' ? "Hide" : "Show"} Activity Factors
+      </button>
+      {open === 'factors' && (
+        <div style={refPanelStyle}>
+           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+             <div>
+                <h5 style={refHeaderStyle}>Clinical Activity Factors (CAF)</h5>
+                {IC_ACTIVITY_FACTORS.map((r, i) => (
+                  <div key={i} style={refRowStyle}>
+                    <span style={{ fontWeight: 600 }}>{r.condition}</span>
+                    <span style={{ color: "#2563eb" }}>×{r.cafLow}–{r.cafHigh}</span>
+                  </div>
+                ))}
+             </div>
+             <div>
+                <h5 style={refHeaderStyle}>MSJ Activity Factors (AF)</h5>
+                {MSJ_ACTIVITY_FACTORS.map((r, i) => (
+                  <div key={i} style={refRowStyle}>
+                    <span style={{ fontWeight: 600 }}>{r.label}</span>
+                    <span style={{ color: "#16a34a" }}>×{r.af}</span>
+                  </div>
+                ))}
+             </div>
+           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const btnRefStyle = { background: "none", border: "1px solid #e2e8f0", borderRadius: "6px", padding: "4px 10px", fontSize: "0.7rem", color: "#64748b", cursor: "pointer", fontWeight: 600 };
+const refPanelStyle: React.CSSProperties = { position: "absolute", bottom: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "1rem", boxShadow: "0 -10px 30px rgba(0,0,0,0.1)", zIndex: 100, marginBottom: "10px" };
+const refHeaderStyle = { margin: "0 0 8px", fontSize: "0.68rem", color: "#94a3b8", textTransform: "uppercase" as any, letterSpacing: "0.05em" };
+const refRowStyle = { display: "flex", justifyContent: "space-between", fontSize: "0.75rem", padding: "4px 0", borderBottom: "1px solid #f1f5f9" };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -177,6 +150,8 @@ interface NutritionStandardsDomainProps {
   patientData: any;
   calculatedMetrics: any;
   dietary: any;
+  standards: any;
+  setStandards: (s: any) => void;
 }
 
 export default function NutritionStandardsDomain({
@@ -184,399 +159,245 @@ export default function NutritionStandardsDomain({
   patientData,
   calculatedMetrics,
   dietary,
+  standards,
+  setStandards,
 }: NutritionStandardsDomainProps) {
-  // ── Derived patient base values from anthro/patientData ─────────────────
-  const wtKg = useMemo(() => {
-    const v = parseFloat(anthro.wt) || 0;
-    return toKg(v, anthro.wtUnit || "kg");
-  }, [anthro.wt, anthro.wtUnit]);
-
-  const htCm = useMemo(() => {
-    const v = parseFloat(anthro.ht) || 0;
-    return toCm(v, anthro.htUnit || "cm");
-  }, [anthro.ht, anthro.htUnit]);
-
+  if (!standards) return <div>Loading standards...</div>;
+  
+  // ── Derived patient base values ───────────────────────────────────────────
+  const wtKg = useMemo(() => toKg(parseFloat(anthro.wt) || 0, anthro.wtUnit || "kg"), [anthro.wt, anthro.wtUnit]);
+  const htCm = useMemo(() => toCm(parseFloat(anthro.ht) || 0, anthro.htUnit || "cm"), [anthro.ht, anthro.htUnit]);
   const sexRaw: "M" | "F" | "" = patientData?.sex || "";
   const sex: "M" | "F" = sexRaw === "F" ? "F" : "M";
+  const ageYears = useMemo(() => Math.floor((calculatedMetrics?.ageDays ?? 0) / 365.25), [calculatedMetrics?.ageDays]);
+  const bmi = useMemo(() => parseFloat(calculatedMetrics?.bmi) || 0, [calculatedMetrics?.bmi]);
 
-  const ageYears = useMemo(() => {
-    if (!calculatedMetrics?.ageDays) return 0;
-    return Math.floor(calculatedMetrics.ageDays / 365.25);
-  }, [calculatedMetrics?.ageDays]);
+  // ── State synced with props ───────────────────────────────────────────────
+  const [condition, setCondition] = useState<ConditionKey | "">(standards.condition || "");
+  const [variant, setVariant] = useState(standards.variant || "");
+  const [currentKcal, setCurrentKcal] = useState(standards.currentKcal || "");
+  const [currentProtein, setCurrentProtein] = useState(standards.currentProtein || "");
+  const [currentFluid, setCurrentFluid] = useState(standards.currentFluid || "");
+  const [icKcal, setIcKcal] = useState(standards.icKcal || "");
+  const [dryWt, setDryWt] = useState(standards.dryWt || "");
+  const [extraInputs, setExtraInputs] = useState<Record<string, string>>(standards.extraInputs || {});
+  
+  const [evaluation, setEvaluation] = useState<NutritionEvaluation | null>(null);
 
-  const bmi = useMemo(() => {
-    const b = parseFloat(calculatedMetrics?.bmi);
-    return isNaN(b) ? 0 : b;
-  }, [calculatedMetrics?.bmi]);
+  // Sync back to parent for persistence
+  const syncToParent = () => {
+    setStandards({
+      condition, variant, currentKcal, currentProtein, currentFluid,
+      icKcal, dryWt, extraInputs
+    });
+  };
 
-  const ibwKg = useMemo(() => htCm > 0 ? calcIBW(htCm, sex) : 0, [htCm, sex]);
-  const reeKcal = useMemo(
-    () => wtKg > 0 && htCm > 0 && ageYears > 0 ? calcMSJ(wtKg, htCm, ageYears, sex) : 0,
-    [wtKg, htCm, ageYears, sex]
-  );
+  // ── Effects: Pre-fill Rx from dietary domain ──────────────────────────────
+  useEffect(() => {
+    if (!currentKcal && dietary?.oralCalories) {
+      const val = String(Math.round(parseFloat(dietary.oralCalories) || 0) || "");
+      setCurrentKcal(val);
+    }
+    if (!currentProtein && dietary?.oralProtein) {
+      const val = String(parseFloat(dietary.oralProtein) || "");
+      setCurrentProtein(val);
+    }
+  }, [dietary]);
 
-  // ── Form state ────────────────────────────────────────────────────────────
-  const [condition, setCondition] = useState<ConditionKey | "">("");
-  const [variant, setVariant] = useState("");
-  const [currentKcal, setCurrentKcal] = useState(
-    String(Math.round(parseFloat(dietary?.oralCalories || "") || 0) || "")
-  );
-  const [currentProtein, setCurrentProtein] = useState(
-    String(parseFloat(dietary?.oralProtein || "") || "")
-  );
-  const [currentFluid, setCurrentFluid] = useState("");
-  const [icKcal, setIcKcal] = useState("");
-  const [dryWt, setDryWt] = useState("");
-  const [extraInputs, setExtraInputs] = useState<Record<string, string>>({});
-  const [evaluated, setEvaluated] = useState<NutritionEvaluation | null>(null);
-  const [hasEvaluated, setHasEvaluated] = useState(false);
+  // ── Logic: Check Readiness ───────────────────────────────────────────────
+  const missingAnthro = useMemo(() => {
+    const fields = [];
+    if (!sexRaw) fields.push("Sex");
+    if (!ageYears) fields.push("Age");
+    if (!wtKg) fields.push("Weight");
+    if (!htCm) fields.push("Height");
+    return fields;
+  }, [sexRaw, ageYears, wtKg, htCm]);
+
+  const isReady = missingAnthro.length === 0 && !!condition;
+
+  // ── Action: Run Evaluation ────────────────────────────────────────────────
+  const runEvaluation = () => {
+    if (!isReady) return;
+    const result = evaluateNutritionRx({
+      condition: condition as ConditionKey,
+      variant: variant || undefined,
+      patient: { wtKg, htCm, ageYears, sex, bmi, dryWtKg: dryWt ? parseFloat(dryWt) : undefined, icMeasuredKcal: icKcal ? parseFloat(icKcal) : undefined },
+      currentRx: { kcalPerDay: parseFloat(currentKcal) || 0, proteinGPerDay: parseFloat(currentProtein) || 0, fluidMlPerDay: currentFluid ? parseFloat(currentFluid) : undefined },
+      extraInputs: Object.fromEntries(Object.entries(extraInputs).map(([k, v]) => [k, parseFloat(v) || v])),
+    });
+    setEvaluation(result);
+  };
+
+  // Auto-run evaluation and sync to parent when inputs change
+  useEffect(() => { 
+    if (isReady) runEvaluation(); 
+    syncToParent();
+  }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, dryWt, extraInputs, wtKg, htCm]);
 
   const variants = condition ? (CONDITION_VARIANTS[condition] || []) : [];
   const extraFields = condition ? (CONDITION_EXTRA_INPUTS[condition] || []) : [];
-  const canEvaluate = !!(condition && wtKg > 0 && htCm > 0 && ageYears > 0 && sexRaw);
-
-  const handleEvaluate = () => {
-    if (!condition || !canEvaluate) return;
-    const result = evaluateNutritionRx({
-      condition,
-      variant: variant || undefined,
-      patient: {
-        wtKg,
-        htCm,
-        ageYears,
-        sex,
-        bmi,
-        dryWtKg: dryWt ? parseFloat(dryWt) : undefined,
-        icMeasuredKcal: icKcal ? parseFloat(icKcal) : undefined,
-      },
-      currentRx: {
-        kcalPerDay: parseFloat(currentKcal) || 0,
-        proteinGPerDay: parseFloat(currentProtein) || 0,
-        fluidMlPerDay: currentFluid ? parseFloat(currentFluid) : undefined,
-      },
-      extraInputs: Object.fromEntries(
-        Object.entries(extraInputs).map(([k, v]) => [k, parseFloat(v) || v])
-      ),
-    });
-    setEvaluated(result);
-    setHasEvaluated(true);
-  };
-
-  const handleConditionChange = (c: string) => {
-    setCondition(c as ConditionKey | "");
-    setVariant("");
-    setEvaluated(null);
-    setHasEvaluated(false);
-    setExtraInputs({});
-  };
-
-  // ── Missing data guard ────────────────────────────────────────────────────
-  const missingFields: string[] = [];
-  if (!sexRaw) missingFields.push("Patient Sex (Patient Header)");
-  if (!ageYears) missingFields.push("Age / DOB + Note Date");
-  if (!wtKg) missingFields.push("Current Weight (A1)");
-  if (!htCm) missingFields.push("Height/Length (A1)");
 
   return (
-    <div className="fade-in" style={{ padding: "0.25rem 0" }}>
+    <div className="fade-in" style={{ padding: "0.25rem 0", position: "relative" }}>
 
-      {/* ── Header ── */}
+      {/* ── HEADER: Minimalist & High-Signal ── */}
       <div style={{
-        background: "linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%)",
-        borderRadius: "10px", padding: "1rem 1.25rem",
-        marginBottom: "1rem", color: "#fff",
-        display: "flex", justifyContent: "space-between", alignItems: "flex-start",
+        display: "flex", justifyContent: "space-between", alignItems: "flex-end",
+        borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem", marginBottom: "1.5rem",
       }}>
         <div>
-          <div style={{
-            fontSize: "0.62rem", fontWeight: 800, textTransform: "uppercase",
-            letterSpacing: "0.1em", opacity: 0.7, marginBottom: "2px",
-          }}>
-            Assessment · A9
-          </div>
-          <h3 style={{ margin: 0, fontWeight: 800, fontSize: "1.05rem", letterSpacing: "-0.01em" }}>
-            Nutrition Standards Evaluator
-          </h3>
-          <p style={{ margin: "4px 0 0", fontSize: "0.78rem", opacity: 0.75 }}>
-            Condition-driven Rx vs. evidence-based targets · LOW / WNL / HIGH matrix
-          </p>
+           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+             <h3 style={{ margin: 0, fontWeight: 800, fontSize: "1.1rem", color: "#1e293b" }}>Comparative Standards</h3>
+           </div>
+           <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b" }}>Evaluate nutrition prescription against condition-specific evidence.</p>
         </div>
-        <div style={{ textAlign: "right", fontSize: "0.72rem", opacity: 0.8, lineHeight: 1.8 }}>
-          <div>IBW (Hamwi): <strong>{ibwKg > 0 ? `${ibwKg} kg` : "—"}</strong></div>
-          <div>MSJ REE: <strong>{reeKcal > 0 ? `${Math.round(reeKcal)} kcal` : "—"}</strong></div>
-          <div>BMI: <strong>{bmi > 0 ? bmi.toFixed(1) : "—"}</strong></div>
+        
+        <div style={{ display: "flex", gap: "12px", textAlign: "right" }}>
+          <QuickStat label="IBW" value={htCm > 0 ? `${calcIBW(htCm, sex)}kg` : "—"} />
+          <QuickStat label="MSJ REE" value={wtKg > 0 && ageYears > 0 ? `${Math.round(calcMSJ(wtKg, htCm, ageYears, sex))}kcal` : "—"} />
+          <QuickStat label="BMI" value={bmi > 0 ? bmi.toFixed(1) : "—"} />
         </div>
       </div>
 
-      {/* ── Missing data warning ── */}
-      {missingFields.length > 0 && (
-        <div style={{
-          background: "#fef3c7", border: "1px solid #fcd34d",
-          borderRadius: "8px", padding: "0.65rem 1rem",
-          fontSize: "0.78rem", color: "#92400e",
-          marginBottom: "1rem", fontWeight: 600,
-        }}>
-          ⚠ Complete the following to enable evaluation: {missingFields.join(" · ")}
+      {/* ── READINESS CHECK ── */}
+      {!isReady && (
+        <div style={{ background: "#fefce8", border: "1px solid #fef08a", borderRadius: "8px", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "1.1rem" }}>📋</span>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#854d0e" }}>Evaluation Inactive</div>
+              <div style={{ fontSize: "0.72rem", color: "#a16207" }}>
+                {missingAnthro.length > 0 
+                  ? `Missing: ${missingAnthro.join(", ")} (Update in Header/A1)` 
+                  : "Select a condition to begin evaluation."
+                }
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-
-        {/* ── Left: Condition + Extra inputs ── */}
-        <div className="card">
-          <div style={{ fontWeight: 800, fontSize: "0.85rem", color: "#1e293b", marginBottom: "0.75rem" }}>
-            Clinical Condition
-          </div>
-
-          <div className="input-group">
-            <label>Condition</label>
-            <select
-              value={condition}
-              onChange={e => handleConditionChange(e.target.value)}
-              style={{ padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }}
-            >
-              <option value="">— Select condition —</option>
-              {Object.entries(CONDITION_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
-              ))}
-            </select>
-          </div>
-
-          {variants.length > 0 && (
+      <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "1.5rem" }}>
+        
+        {/* ── LEFT COLUMN: INPUTS ── */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          
+          <div className="card" style={{ padding: "1rem" }}>
+            <label style={subHeaderStyle}>1. Clinical Setting</label>
             <div className="input-group">
-              <label>Sub-type / Variant</label>
-              <select
-                value={variant}
-                onChange={e => { setVariant(e.target.value); setEvaluated(null); }}
-                style={{ padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }}
-              >
-                <option value="">— Select variant —</option>
-                {variants.map(v => (
-                  <option key={v.key} value={v.key}>{v.label}</option>
-                ))}
+              <select value={condition} onChange={e => setCondition(e.target.value as ConditionKey)} style={selectStyle}>
+                <option value="">Select Condition...</option>
+                {Object.entries(CONDITION_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
               </select>
             </div>
-          )}
+            {variants.length > 0 && (
+              <div className="input-group">
+                <select value={variant} onChange={e => setVariant(e.target.value)} style={selectStyle}>
+                  <option value="">Select Sub-type...</option>
+                  {variants.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
+                </select>
+              </div>
+            )}
+            {extraFields.map(f => (
+              <div key={f.key} className="input-group">
+                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b" }}>{f.label}</label>
+                <input type={f.type} value={extraInputs[f.key] || ""} onChange={e => setExtraInputs(prev => ({ ...prev, [f.key]: e.target.value }))} style={inputStyle} />
+              </div>
+            ))}
+          </div>
 
-          {extraFields.map(f => (
-            <div key={f.key} className="input-group">
-              <label>{f.label}</label>
-              <input
-                type={f.type}
-                value={extraInputs[f.key] || ""}
-                onChange={e => setExtraInputs(prev => ({ ...prev, [f.key]: e.target.value }))}
-                placeholder="Enter value…"
-                style={{ padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }}
-              />
+          <div className="card" style={{ padding: "1rem" }}>
+            <label style={subHeaderStyle}>2. Current Prescription</label>
+            <div className="grid-2-col" style={{ gap: "10px" }}>
+              <div className="input-group" style={{ margin: 0 }}>
+                <label style={tinyLabelStyle}>Energy (kcal)</label>
+                <input type="number" value={currentKcal} onChange={e => setCurrentKcal(e.target.value)} style={inputStyle} placeholder="1800" />
+              </div>
+              <div className="input-group" style={{ margin: 0 }}>
+                <label style={tinyLabelStyle}>Protein (g)</label>
+                <input type="number" value={currentProtein} onChange={e => setCurrentProtein(e.target.value)} style={inputStyle} placeholder="75" />
+              </div>
             </div>
-          ))}
+            <div className="input-group" style={{ marginTop: "10px" }}>
+              <label style={tinyLabelStyle}>Fluid (mL/day)</label>
+              <input type="number" value={currentFluid} onChange={e => setCurrentFluid(e.target.value)} style={inputStyle} placeholder="Optional" />
+            </div>
+          </div>
 
-          <div className="input-group">
-            <label>Indirect Calorimetry — mREE (kcal/day)</label>
-            <input
-              type="number"
-              value={icKcal}
-              onChange={e => { setIcKcal(e.target.value); setEvaluated(null); }}
-              placeholder="Measured value — leave blank if unavailable"
-              style={{ padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }}
-            />
-            {!icKcal && (
-              <span style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: "2px" }}>
-                No IC entered → MSJ × AF fallback applied automatically
-              </span>
+          <div className="card" style={{ padding: "1rem", background: "#f8fafc" }}>
+            <label style={subHeaderStyle}>Advanced Overrides</label>
+            <div className="input-group">
+              <label style={tinyLabelStyle}>Indirect Calorimetry (mREE)</label>
+              <input type="number" value={icKcal} onChange={e => setIcKcal(e.target.value)} style={inputStyle} placeholder="Measured kcal" />
+            </div>
+            {(condition === "cirrhosis" || condition === "liver_transplant") && (
+              <div className="input-group">
+                <label style={tinyLabelStyle}>Dry Weight (kg)</label>
+                <input type="number" value={dryWt} onChange={e => setDryWt(e.target.value)} style={inputStyle} />
+              </div>
             )}
           </div>
-
-          {(condition === "cirrhosis" || condition === "liver_transplant") && (
-            <div className="input-group">
-              <label>Dry Weight (kg)</label>
-              <input
-                type="number"
-                value={dryWt}
-                onChange={e => { setDryWt(e.target.value); setEvaluated(null); }}
-                placeholder="Estimated euvolemic / dry weight"
-                style={{ padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }}
-              />
-            </div>
-          )}
         </div>
 
-        {/* ── Right: Current Rx ── */}
-        <div className="card">
-          <div style={{ fontWeight: 800, fontSize: "0.85rem", color: "#1e293b", marginBottom: "0.75rem" }}>
-            Current Nutrition Rx
-          </div>
-          <div style={{ fontSize: "0.72rem", color: "#94a3b8", marginBottom: "0.75rem", fontStyle: "italic" }}>
-            Pre-filled from D3 oral intake when available. Edit to reflect total EN/PN delivery.
-          </div>
-
-          <div className="input-group">
-            <label>Energy (kcal/day)</label>
-            <input
-              type="number"
-              value={currentKcal}
-              onChange={e => { setCurrentKcal(e.target.value); setEvaluated(null); }}
-              placeholder="e.g. 1800"
-              style={{ padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }}
-            />
-          </div>
-
-          <div className="input-group">
-            <label>Protein (g/day)</label>
-            <input
-              type="number"
-              value={currentProtein}
-              onChange={e => { setCurrentProtein(e.target.value); setEvaluated(null); }}
-              placeholder="e.g. 75"
-              style={{ padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }}
-            />
-          </div>
-
-          <div className="input-group">
-            <label>Fluid (mL/day) — optional</label>
-            <input
-              type="number"
-              value={currentFluid}
-              onChange={e => { setCurrentFluid(e.target.value); setEvaluated(null); }}
-              placeholder="e.g. 1500"
-              style={{ padding: "6px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.88rem", width: "100%", boxSizing: "border-box" }}
-            />
-          </div>
-
-          {/* Patient summary strip */}
-          <div style={{
-            marginTop: "1rem", background: "#f8fafc",
-            border: "1px solid #e2e8f0", borderRadius: "8px",
-            padding: "0.65rem 0.85rem",
-          }}>
-            <div style={{
-              fontSize: "0.68rem", fontWeight: 800, color: "#94a3b8",
-              textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px",
-            }}>
-              Patient Summary (from header / A1)
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px", fontSize: "0.78rem", color: "#475569" }}>
-              <span>Actual Wt: <strong>{wtKg > 0 ? `${wtKg.toFixed(1)} kg` : "—"}</strong></span>
-              <span>IBW: <strong>{ibwKg > 0 ? `${ibwKg} kg` : "—"}</strong></span>
-              <span>Ht: <strong>{htCm > 0 ? `${htCm.toFixed(1)} cm` : "—"}</strong></span>
-              <span>Sex: <strong>{sexRaw || "—"}</strong></span>
-              <span>Age: <strong>{ageYears > 0 ? `${ageYears} yr` : "—"}</strong></span>
-              <span>BMI: <strong>{bmi > 0 ? bmi.toFixed(1) : "—"}</strong></span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Evaluate Button ── */}
-      <div style={{ display: "flex", justifyContent: "center", margin: "1rem 0" }}>
-        <button
-          onClick={handleEvaluate}
-          disabled={!canEvaluate || !condition}
-          style={{
-            background: canEvaluate && condition
-              ? "linear-gradient(135deg, #1e3a5f, #2563eb)"
-              : "#e2e8f0",
-            color: canEvaluate && condition ? "#fff" : "#94a3b8",
-            border: "none", borderRadius: "10px",
-            padding: "0.65rem 2.5rem",
-            fontSize: "0.92rem", fontWeight: 800,
-            cursor: canEvaluate && condition ? "pointer" : "not-allowed",
-            letterSpacing: "0.02em",
-            boxShadow: canEvaluate && condition ? "0 4px 14px rgba(37,99,235,0.35)" : "none",
-            transition: "all 0.2s",
-          }}
-        >
-          Calculate Targets & Evaluate →
-        </button>
-      </div>
-
-      {/* ── Results ── */}
-      {hasEvaluated && evaluated && (
+        {/* ── RIGHT COLUMN: EVALUATION SCORECARD ── */}
         <div>
-          {/* Calculation provenance strip */}
-          <div style={{
-            display: "flex", gap: "0.65rem", flexWrap: "wrap",
-            marginBottom: "0.85rem", alignItems: "center",
-          }}>
-            <span style={{
-              fontSize: "0.72rem", fontWeight: 700,
-              background: evaluated.eeSource === "IC" ? "#dcfce7" : "#eff6ff",
-              color: evaluated.eeSource === "IC" ? "#15803d" : "#1d4ed8",
-              border: `1px solid ${evaluated.eeSource === "IC" ? "#86efac" : "#93c5fd"}`,
-              borderRadius: "6px", padding: "3px 10px",
-            }}>
-              {evaluated.eeSource === "IC"
-                ? `IC: ${evaluated.eeKcal} kcal/day (CAF ×${evaluated.cafUsed})`
-                : `MSJ REE: ${evaluated.reeKcal} kcal × AF ${evaluated.afUsed} = ${evaluated.eeKcal} kcal/day`
-              }
-            </span>
-            <span style={{
-              fontSize: "0.72rem", fontWeight: 700,
-              background: "#f8fafc", color: "#64748b",
-              border: "1px solid #e2e8f0",
-              borderRadius: "6px", padding: "3px 10px",
-            }}>
-              Wt used for kcal: {evaluated.weightLabel} ({evaluated.weightUsed} kg)
-            </span>
-            <span style={{
-              fontSize: "0.72rem", fontWeight: 700,
-              background: "#f8fafc", color: "#64748b",
-              border: "1px solid #e2e8f0",
-              borderRadius: "6px", padding: "3px 10px",
-            }}>
-              IBW (Hamwi): {evaluated.ibwKg} kg
-            </span>
-          </div>
-
-          {/* Column headers */}
-          <div style={{
-            display: "grid", gridTemplateColumns: "110px 1fr 1fr 1fr 110px",
-            gap: "0.5rem", padding: "0 1rem 0.4rem",
-            fontSize: "0.62rem", fontWeight: 800, color: "#94a3b8",
-            textTransform: "uppercase", letterSpacing: "0.06em",
-          }}>
-            <span>Measure</span>
-            <span>Target Range</span>
-            <span>Current Rx</span>
-            <span>Basis</span>
-            <span style={{ textAlign: "right" }}>Status</span>
-          </div>
-
-          {evaluated.results.length > 0 ? (
-            evaluated.results.map((row, i) => <ResultRow key={i} row={row} />)
-          ) : (
-            <div style={{ color: "#94a3b8", fontStyle: "italic", fontSize: "0.82rem", padding: "0.75rem 0" }}>
-              No evaluable targets for this condition/variant combination.
-            </div>
-          )}
-
-          {/* Clinical flags */}
-          {evaluated.flags.length > 0 && (
-            <div style={{
-              marginTop: "0.75rem",
-              background: "#fffbeb",
-              border: "1px solid #fcd34d",
-              borderRadius: "8px",
-              padding: "0.75rem 1rem",
-            }}>
-              <div style={{
-                fontSize: "0.68rem", fontWeight: 800, color: "#92400e",
-                textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "6px",
-              }}>
-                Clinical Flags & Notes
-              </div>
-              {evaluated.flags.map((f, i) => (
-                <div key={i} style={{ fontSize: "0.78rem", color: "#78350f", lineHeight: 1.7, marginBottom: "1px" }}>
-                  {f}
+          {evaluation ? (
+            <div className="fade-in">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
+                <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1e293b" }}>Evaluation Results</div>
+                <div style={{ fontSize: "0.65rem", color: "#94a3b8" }}>
+                   Basis: {evaluation.eeSource} · {evaluation.weightLabel} ({evaluation.weightUsed}kg)
                 </div>
-              ))}
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px", marginBottom: "1.5rem" }}>
+                {evaluation.results.map((r, i) => <NutrientScorecardItem key={i} result={r} />)}
+              </div>
+
+              {evaluation.flags.length > 0 && (
+                <div style={{ background: "#fffbeb", border: "1px solid #fef3c7", borderRadius: "8px", padding: "1rem" }}>
+                  <div style={{ fontSize: "0.68rem", fontWeight: 800, color: "#92400e", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "8px" }}>
+                    Clinical Guidance
+                  </div>
+                  {evaluation.flags.map((f, i) => (
+                    <div key={i} style={{ fontSize: "0.78rem", color: "#92400e", marginBottom: "6px", display: "flex", gap: "8px" }}>
+                      <span>•</span>
+                      <span>{f}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
+          ) : (
+             <div style={{ height: "100%", border: "2px dashed #e2e8f0", borderRadius: "12px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "2rem", textAlign: "center", color: "#94a3b8" }}>
+               <div style={{ fontSize: "2rem", marginBottom: "1rem" }}>⚖️</div>
+               <div style={{ fontWeight: 600 }}>Awaiting Inputs</div>
+               <div style={{ fontSize: "0.75rem", maxWidth: "250px", marginTop: "4px" }}>
+                 Complete the clinical setting and prescription on the left to see live evaluation.
+               </div>
+             </div>
           )}
         </div>
-      )}
+      </div>
 
-      {/* ── Activity Factor Reference Table ── */}
-      <ICFactorTable />
+      <ReferenceToggles />
     </div>
   );
 }
+
+// ─── Sub-styles ──────────────────────────────────────────────────────────────
+
+function QuickStat({ label, value }: { label: string, value: string }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column" }}>
+      <span style={{ fontSize: "0.6rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
+      <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#475569" }}>{value}</span>
+    </div>
+  );
+}
+
+const subHeaderStyle = { display: "block", fontSize: "0.72rem", fontWeight: 900, color: "#1e3a5f", textTransform: "uppercase" as any, letterSpacing: "0.06em", marginBottom: "10px" };
+const tinyLabelStyle = { fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" as any, marginBottom: "4px", display: "block" };
+const selectStyle = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box" as any, background: "#fff", color: "#1e293b" };
+const inputStyle = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box" as any };

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { AlertBanner } from '../../../shared/ui/AlertBanner';
-import D3NutritionAdmin from '../admin-dietary/D3NutritionAdmin';
+import D1NutritionRx from '../admin-dietary/D1NutritionRx';
 import { DIETARY_CATEGORIES } from '../../../shared/constants/adimeSideBarCategories.ts';
 import DrugNutrientInteractionTable from "./DrugNutrientInteractionTable";
 
@@ -65,11 +65,14 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain, cl
 
     switch (activeSubDomain) {
       case "D1":
+        return <D1NutritionRx dietary={dietary} setDietary={setDietary} />;
+
+      case "D2":
         return (
           <>
             <div className="card">
               <div className="flex-between mb-1">
-                <h4 style={{ margin: 0 }}>D11: 24-Hour Recall / Intake Journals</h4>
+                <h4 style={{ margin: 0 }}>D21: 24-Hour Recall / Intake Journals</h4>
                 <button className="btn-outline" onClick={addMeal} style={{ fontSize: '0.7rem' }}>+ Add Meal</button>
               </div>
               <div className="stepper-container">
@@ -110,73 +113,39 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain, cl
               </div>
             </div>
             <div className="card">
-              <h4 className="mb-1">Additional D1 Factors</h4>
+              <h4 className="mb-1">Additional D2 Factors</h4>
               <div className="grid-2-col">
-                <div className="input-group"><label>D12: Macro & Micronutrient Adequacy</label><textarea value={dietary?.macroAdequacy || ""} onChange={e => handleUpdate("macroAdequacy", e.target.value)} /></div>
-                <div className="input-group"><label>D13: Meal & Snack Patterns</label><textarea value={dietary?.mealPatterns || ""} onChange={e => handleUpdate("mealPatterns", e.target.value)} /></div>
-                <div className="input-group"><label>D14: Current & Previous Diets</label><textarea value={dietary?.currentDiets || ""} onChange={e => handleUpdate("currentDiets", e.target.value)} /></div>
-                <div className="input-group"><label>D15: Fluid Intake</label><input type="text" value={dietary?.fluidIntake || ""} onChange={e => handleUpdate("fluidIntake", e.target.value)} /></div>
-                <div className="input-group"><label>D16: Eating Environment</label><input type="text" value={dietary?.eatingEnv || ""} onChange={e => handleUpdate("eatingEnv", e.target.value)} /></div>
+                <div className="input-group"><label>D22: Macro & Micronutrient Adequacy</label><textarea value={dietary?.macroAdequacy || ""} onChange={e => handleUpdate("macroAdequacy", e.target.value)} /></div>
+                <div className="input-group"><label>D23: Meal & Snack Patterns</label><textarea value={dietary?.mealPatterns || ""} onChange={e => handleUpdate("mealPatterns", e.target.value)} /></div>
+                <div className="input-group"><label>D24: Current & Previous Diets</label><textarea value={dietary?.currentDiets || ""} onChange={e => handleUpdate("currentDiets", e.target.value)} /></div>
+                <div className="input-group"><label>D25: Fluid Intake</label><input type="text" value={dietary?.fluidIntake || ""} onChange={e => handleUpdate("fluidIntake", e.target.value)} /></div>
+                <div className="input-group"><label>D26: Eating Environment</label><input type="text" value={dietary?.eatingEnv || ""} onChange={e => handleUpdate("eatingEnv", e.target.value)} /></div>
               </div>
             </div>
           </>
         );
 
-      case "D2":
+      case "D3":
         return (
           <div className="card">
-            <div className="grid-2-col">
-              <div className="input-group"><label>D21: Religious & Spiritual Observances</label><textarea style={{ minHeight: "100px" }} value={dietary?.culturalReligious || ""} onChange={e => handleUpdate("culturalReligious", e.target.value)} /></div>
-              <div className="input-group"><label>D22: Social Meal Dynamics</label><textarea style={{ minHeight: "100px" }} value={dietary?.socialDynamics || ""} onChange={e => handleUpdate("socialDynamics", e.target.value)} /></div>
+            <div className="grid-3-col">
+              <div className="input-group"><label>D31: Physical Activity Level</label><textarea style={{ minHeight: "100px" }} value={dietary?.physicalLevel || ""} onChange={e => handleUpdate("physicalLevel", e.target.value)} /></div>
+              <div className="input-group"><label>D32: Functional Status (ADLs)</label><textarea style={{ minHeight: "100px" }} value={dietary?.adls || ""} onChange={e => handleUpdate("adls", e.target.value)} /></div>
+              <div className="input-group"><label>D33: Physiological Feeding Tasks</label><textarea style={{ minHeight: "100px" }} value={dietary?.feedingTasks || ""} onChange={e => handleUpdate("feedingTasks", e.target.value)} /></div>
             </div>
           </div>
         );
-
-      case "D3":
-        return <D3NutritionAdmin dietary={dietary} setDietary={setDietary} />;
 
       case "D4":
         return (
           <div className="card">
-            <AlertBanner
-              type="warning"
-              message="Check Domain B for potential Drug-Nutrient Interactions related to Potassium."
-            />
-      
-            <div className="grid-2-col">
-              <div className="input-group">
-                <label>D43: Supplement Products</label>
-                <textarea
-                  value={dietary?.herbalCAM || ""}
-                  onChange={e => handleUpdate("herbalCAM", e.target.value)}
-                />
-              </div>
-              <div className="input-group">
-                <label>D44: Vitamin & Mineral Supplements</label>
-                <textarea
-                  value={dietary?.supplements || ""}
-                  onChange={e => handleUpdate("supplements", e.target.value)}
-                />
-              </div>
-            </div>
-
-            <DrugNutrientInteractionTable
-              drugs={drugs}
-              supplements={supplements}
-            />
-          </div>
-        );
-
-      case "D5":
-        return (
-          <div className="card">
             <h4 className="mb-1">Knowledge, Beliefs, & Attitudes</h4>
             <div className="grid-2-col">
-              <div className="input-group"><label>D51: Understanding of Condition</label><textarea style={{ minHeight: "100px" }} value={dietary?.understanding || ""} onChange={e => handleUpdate("understanding", e.target.value)} /></div>
-              <div className="input-group"><label>D53: Psychological Ties to Food</label><textarea style={{ minHeight: "100px" }} value={dietary?.psychTies || ""} onChange={e => handleUpdate("psychTies", e.target.value)} /></div>
+              <div className="input-group"><label>D41: Understanding of Condition</label><textarea style={{ minHeight: "100px" }} value={dietary?.understanding || ""} onChange={e => handleUpdate("understanding", e.target.value)} /></div>
+              <div className="input-group"><label>D43: Psychological Ties to Food</label><textarea style={{ minHeight: "100px" }} value={dietary?.psychTies || ""} onChange={e => handleUpdate("psychTies", e.target.value)} /></div>
             </div>
             <div className="input-group" style={{ maxWidth: "400px", marginTop: "1.5rem" }}>
-              <label>D52: Readiness to Change</label>
+              <label>D42: Readiness to Change</label>
               <div className="slider-container">
                 <input
                   type="range" min="1" max="10"
@@ -193,13 +162,24 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain, cl
           </div>
         );
 
+      case "D5":
+        return (
+          <div className="card">
+            <div className="grid-3-col">
+              <div className="input-group"><label>D51: Meal Prep Habits</label><textarea style={{ minHeight: "100px" }} value={dietary?.mealPrep || ""} onChange={e => handleUpdate("mealPrep", e.target.value)} /></div>
+              <div className="input-group"><label>D52: Eating Out Frequency</label><textarea style={{ minHeight: "100px" }} value={dietary?.eatingOut || ""} onChange={e => handleUpdate("eatingOut", e.target.value)} /></div>
+              <div className="input-group"><label>D53: Binge/Purge Tendencies</label><textarea style={{ minHeight: "100px" }} value={dietary?.bingePurge || ""} onChange={e => handleUpdate("bingePurge", e.target.value)} /></div>
+            </div>
+          </div>
+        );
+
       case "D6":
         return (
           <div className="card">
             <div className="grid-3-col">
-              <div className="input-group"><label>D61: Meal Prep Habits</label><textarea style={{ minHeight: "100px" }} value={dietary?.mealPrep || ""} onChange={e => handleUpdate("mealPrep", e.target.value)} /></div>
-              <div className="input-group"><label>D62: Eating Out Frequency</label><textarea style={{ minHeight: "100px" }} value={dietary?.eatingOut || ""} onChange={e => handleUpdate("eatingOut", e.target.value)} /></div>
-              <div className="input-group"><label>D63: Binge/Purge Tendencies</label><textarea style={{ minHeight: "100px" }} value={dietary?.bingePurge || ""} onChange={e => handleUpdate("bingePurge", e.target.value)} /></div>
+              <div className="input-group"><label>D61: Food Security</label><textarea style={{ minHeight: "100px" }} value={dietary?.foodSecurity || ""} onChange={e => handleUpdate("foodSecurity", e.target.value)} /></div>
+              <div className="input-group"><label>D62: Food-Related Supplies</label><textarea style={{ minHeight: "100px" }} value={dietary?.foodSupplies || ""} onChange={e => handleUpdate("foodSupplies", e.target.value)} /></div>
+              <div className="input-group"><label>D63: Transportation Access</label><textarea style={{ minHeight: "100px" }} value={dietary?.transport || ""} onChange={e => handleUpdate("transport", e.target.value)} /></div>
             </div>
           </div>
         );
@@ -207,10 +187,9 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain, cl
       case "D7":
         return (
           <div className="card">
-            <div className="grid-3-col">
-              <div className="input-group"><label>D71: Food Security</label><textarea style={{ minHeight: "100px" }} value={dietary?.foodSecurity || ""} onChange={e => handleUpdate("foodSecurity", e.target.value)} /></div>
-              <div className="input-group"><label>D72: Food-Related Supplies</label><textarea style={{ minHeight: "100px" }} value={dietary?.foodSupplies || ""} onChange={e => handleUpdate("foodSupplies", e.target.value)} /></div>
-              <div className="input-group"><label>D73: Transportation Access</label><textarea style={{ minHeight: "100px" }} value={dietary?.transport || ""} onChange={e => handleUpdate("transport", e.target.value)} /></div>
+            <div className="grid-2-col">
+              <div className="input-group"><label>D71: Religious & Spiritual Observances</label><textarea style={{ minHeight: "100px" }} value={dietary?.culturalReligious || ""} onChange={e => handleUpdate("culturalReligious", e.target.value)} /></div>
+              <div className="input-group"><label>D72: Social Meal Dynamics</label><textarea style={{ minHeight: "100px" }} value={dietary?.socialDynamics || ""} onChange={e => handleUpdate("socialDynamics", e.target.value)} /></div>
             </div>
           </div>
         );
@@ -218,11 +197,32 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain, cl
       case "D8":
         return (
           <div className="card">
-            <div className="grid-3-col">
-              <div className="input-group"><label>D81: Physical Activity Level</label><textarea style={{ minHeight: "100px" }} value={dietary?.physicalLevel || ""} onChange={e => handleUpdate("physicalLevel", e.target.value)} /></div>
-              <div className="input-group"><label>D82: Functional Status (ADLs)</label><textarea style={{ minHeight: "100px" }} value={dietary?.adls || ""} onChange={e => handleUpdate("adls", e.target.value)} /></div>
-              <div className="input-group"><label>D83: Physiological Feeding Tasks</label><textarea style={{ minHeight: "100px" }} value={dietary?.feedingTasks || ""} onChange={e => handleUpdate("feedingTasks", e.target.value)} /></div>
+            <AlertBanner
+              type="warning"
+              message="Check Domain B for potential Drug-Nutrient Interactions related to Potassium."
+            />
+      
+            <div className="grid-2-col">
+              <div className="input-group">
+                <label>D83: Supplement Products</label>
+                <textarea
+                  value={dietary?.herbalCAM || ""}
+                  onChange={e => handleUpdate("herbalCAM", e.target.value)}
+                />
+              </div>
+              <div className="input-group">
+                <label>D84: Vitamin & Mineral Supplements</label>
+                <textarea
+                  value={dietary?.supplements || ""}
+                  onChange={e => handleUpdate("supplements", e.target.value)}
+                />
+              </div>
             </div>
+
+            <DrugNutrientInteractionTable
+              drugs={drugs}
+              supplements={supplements}
+            />
           </div>
         );
 

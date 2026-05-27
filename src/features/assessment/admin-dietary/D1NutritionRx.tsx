@@ -364,23 +364,23 @@ function ENModularPanel({ modulars, nextModularId, onUpdate }: ENModularPanelPro
   );
 }
 
-// ─── D31: Oral Nutrition ──────────────────────────────────────────────────────
-interface D31OralProps { dietary: Dietary; setDietary: (d: Dietary) => void; }
+// ─── D11: Oral Nutrition ──────────────────────────────────────────────────────
+interface D11OralProps { dietary: Dietary; setDietary: (d: Dietary) => void; }
 
-function D31Oral({ dietary, setDietary }: D31OralProps) {
+function D11Oral({ dietary, setDietary }: D11OralProps) {
   const handleUpdate = (field: string, val: string) => setDietary({ ...dietary, [field]: val });
   return (
     <div style={{ marginBottom: "1.5rem" }}>
       <div className="card">
-        <SectionHeader title="D31: Oral Diet Order vs Intake" color="#3498db" />
+        <SectionHeader title="D11: Oral Diet Order vs Intake" color="#3498db" />
         <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
           <div style={{ flex: 1 }} className="input-group">
-            <label>Prescribed Diet Order</label>
+            <label>Rx Diet Order</label>
             <textarea value={dietary.dietOrder || "Standard Diet, Regular"} onChange={e => handleUpdate("dietOrder", e.target.value)} style={{ background: "#edf2f7", minHeight: "90px" }} />
           </div>
           <div style={{ flex: 1 }} className="input-group">
             <label>Actual Intake Documented</label>
-            <textarea value={dietary.actualIntake || ""} onChange={e => handleUpdate("actualIntake", e.target.value)} placeholder="Compare with prescribed..." style={{ minHeight: "90px" }} />
+            <textarea value={dietary.actualIntake || ""} onChange={e => handleUpdate("actualIntake", e.target.value)} placeholder="Compare with Rx..." style={{ minHeight: "90px" }} />
           </div>
         </div>
         <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1rem" }}>
@@ -396,7 +396,7 @@ function D31Oral({ dietary, setDietary }: D31OralProps) {
   );
 }
 
-// ─── D32: Enteral Nutrition ───────────────────────────────────────────────────
+// ─── D12: Enteral Nutrition ───────────────────────────────────────────────────
 
 // Formula name management — stored in dietary.savedFormulas (persists to DB)
 interface FormulaManagerProps {
@@ -633,7 +633,7 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
   );
 }
 
-interface D32EnteralProps {
+interface D12EnteralProps {
   state: ENState;
   setState: (s: ENState) => void;
   // Formula library persisted in dietary
@@ -642,7 +642,7 @@ interface D32EnteralProps {
   onDeleteFormula: (name: string) => void;
 }
 
-function D32Enteral({ state, setState, savedFormulas, onAddFormula, onDeleteFormula }: D32EnteralProps) {
+function D12Enteral({ state, setState, savedFormulas, onAddFormula, onDeleteFormula }: D12EnteralProps) {
   const addFeed = () => setState({ ...state, feeds: [...state.feeds, helper.makeENFeed(state.nextId)], nextId: state.nextId + 1 });
   const updateFeed = (id: number, updated: ENFeed) => setState({ ...state, feeds: state.feeds.map(f => f.id === id ? updated : f) });
   const removeFeed = (id: number) => setState({ ...state, feeds: state.feeds.filter(f => f.id !== id) });
@@ -664,7 +664,7 @@ function D32Enteral({ state, setState, savedFormulas, onAddFormula, onDeleteForm
   return (
     <div className="card" style={{ marginBottom: "1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem" }}>
-        <SectionHeader title="D32: Enteral Nutrition (EN)" subtitle="Add one entry per formula or delivery method" color="#27ae60" />
+        <SectionHeader title="D12: Enteral Nutrition (EN)" subtitle="Add one entry per formula or delivery method" color="#27ae60" />
         <button onClick={addFeed} style={{ background: "#27ae60", color: "#fff", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, whiteSpace: "nowrap" }}>
           + Add Feed
         </button>
@@ -701,7 +701,7 @@ function D32Enteral({ state, setState, savedFormulas, onAddFormula, onDeleteForm
   );
 }
 
-// ─── D33: Parenteral Nutrition ────────────────────────────────────────────────
+// ─── D13: Parenteral Nutrition ────────────────────────────────────────────────
 
 interface PNFeedCardProps { feed: PNFeed; idx: number; onChange: (updated: PNFeed) => void; onRemove: () => void; }
 
@@ -876,9 +876,9 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
   );
 }
 
-interface D33ParenteralProps { state: PNState; setState: (s: PNState) => void; }
+interface D13ParenteralProps { state: PNState; setState: (s: PNState) => void; }
 
-function D33Parenteral({ state, setState }: D33ParenteralProps) {
+function D13Parenteral({ state, setState }: D13ParenteralProps) {
   const addBag    = () => setState({ bags: [...state.bags, helper.makePNFeed(state.nextId)], nextId: state.nextId + 1 });
   const updateBag = (id: number, updated: PNFeed) => setState({ ...state, bags: state.bags.map(b => b.id === id ? updated : b) });
   const removeBag = (id: number) => setState({ ...state, bags: state.bags.filter(b => b.id !== id) });
@@ -886,7 +886,7 @@ function D33Parenteral({ state, setState }: D33ParenteralProps) {
   return (
     <div className="card" style={{ marginBottom: "1.5rem" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.25rem" }}>
-        <SectionHeader title="D33: Parenteral Nutrition (PN)" subtitle="Add one entry per PN bag order" color="#8e44ad" />
+        <SectionHeader title="D13: Parenteral Nutrition (PN)" subtitle="Add one entry per PN bag order" color="#8e44ad" />
         <button onClick={addBag} style={{ background: "#8e44ad", color: "#fff", border: "none", borderRadius: "6px", padding: "8px 16px", cursor: "pointer", fontSize: "0.85rem", fontWeight: 600, whiteSpace: "nowrap" }}>
           + Add PN Bag
         </button>
@@ -903,18 +903,18 @@ function D33Parenteral({ state, setState }: D33ParenteralProps) {
 // This means formula names survive tab switches and page reloads.
 
 const TABS = [
-  { id: "D31", label: "D31 – Oral",       color: "#3498db" },
-  { id: "D32", label: "D32 – Enteral",    color: "#27ae60" },
-  { id: "D33", label: "D33 – Parenteral", color: "#8e44ad" },
+  { id: "D11", label: "D11 – Oral",       color: "#3498db" },
+  { id: "D12", label: "D12 – Enteral",    color: "#27ae60" },
+  { id: "D13", label: "D13 – Parenteral", color: "#8e44ad" },
 ];
 
-interface D3NutritionAdminProps {
+interface D1NutritionRxProps {
   dietary?: Dietary;
   setDietary?: (d: Dietary) => void;
 }
 
-export default function D3NutritionAdmin({ dietary = {}, setDietary = () => {} }: D3NutritionAdminProps) {
-  const [activeTab, setActiveTab] = useState<string>("D31");
+export default function D1NutritionRx({ dietary = {}, setDietary = () => {} }: D1NutritionRxProps) {
+  const [activeTab, setActiveTab] = useState<string>("D11");
 
   // Formula library persisted in dietary prop (hits autosave → DB)
   const savedFormulas: string[] = (dietary as any).savedFormulas || [];
@@ -957,11 +957,11 @@ export default function D3NutritionAdmin({ dietary = {}, setDietary = () => {} }
         ))}
       </div>
 
-      <div style={{ display: activeTab === "D31" ? "block" : "none" }}>
-        <D31Oral dietary={dietary} setDietary={setDietary} />
+      <div style={{ display: activeTab === "D11" ? "block" : "none" }}>
+        <D11Oral dietary={dietary} setDietary={setDietary} />
       </div>
-      <div style={{ display: activeTab === "D32" ? "block" : "none" }}>
-        <D32Enteral
+      <div style={{ display: activeTab === "D12" ? "block" : "none" }}>
+        <D12Enteral
           state={enState}
           setState={setEnState}
           savedFormulas={savedFormulas}
@@ -969,8 +969,8 @@ export default function D3NutritionAdmin({ dietary = {}, setDietary = () => {} }
           onDeleteFormula={handleDeleteFormula}
         />
       </div>
-      <div style={{ display: activeTab === "D33" ? "block" : "none" }}>
-        <D33Parenteral state={pnState} setState={setPnState} />
+      <div style={{ display: activeTab === "D13" ? "block" : "none" }}>
+        <D13Parenteral state={pnState} setState={setPnState} />
       </div>
     </div>
   );

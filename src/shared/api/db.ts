@@ -62,6 +62,7 @@ async function initSchema(db: Database): Promise<void> {
     { name: "diagnosis",        type: "TEXT" },
     { name: "intervention",     type: "TEXT" },
     { name: "monitor_evaluate", type: "TEXT" },
+    { name: "standards",        type: "TEXT" },
   ];
 
   for (const col of newColumns) {
@@ -137,6 +138,7 @@ export interface Note {
   diagnosis: string | null;
   intervention: string | null;
   monitor_evaluate: string | null;
+  standards: string | null;
   created_at: string;
   submitted_at: string | null;
 }
@@ -241,6 +243,7 @@ export async function createNote(payload: {
     diagnosis:        null,
     intervention:     null,
     monitor_evaluate: null,
+    standards:        null,
     created_at:       new Date().toISOString(),
     submitted_at:     null,
   };
@@ -249,14 +252,14 @@ export async function createNote(payload: {
     `INSERT INTO notes
        (id, patient_id, note_date, admission_date, status, version,
         parent_note_id, anthro, labs, clinical, dietary, dexa_scans,
-        diagnosis, intervention, monitor_evaluate,
+        diagnosis, intervention, monitor_evaluate, standards,
         created_at, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       note.id, note.patient_id, note.note_date, note.admission_date,
       note.status, note.version, note.parent_note_id,
       note.anthro, note.labs, note.clinical, note.dietary, note.dexa_scans,
-      note.diagnosis, note.intervention, note.monitor_evaluate,
+      note.diagnosis, note.intervention, note.monitor_evaluate, note.standards,
       note.created_at, note.submitted_at,
     ]
   );
@@ -272,7 +275,7 @@ export async function autosaveNote(
   noteId: string,
   domain:
     | "anthro" | "labs" | "clinical" | "dietary" | "dexa_scans"
-    | "diagnosis" | "intervention" | "monitor_evaluate"
+    | "diagnosis" | "intervention" | "monitor_evaluate" | "standards"
     | "note_date" | "admission_date",
   data: object | string
 ): Promise<void> {
@@ -280,7 +283,7 @@ export async function autosaveNote(
 
   const jsonDomains = [
     "anthro", "labs", "clinical", "dietary", "dexa_scans",
-    "diagnosis", "intervention", "monitor_evaluate",
+    "diagnosis", "intervention", "monitor_evaluate", "standards",
   ];
   const value = jsonDomains.includes(domain)
     ? JSON.stringify(data)
@@ -436,6 +439,7 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
     diagnosis:        original.diagnosis,
     intervention:     original.intervention,
     monitor_evaluate: original.monitor_evaluate,
+    standards:        original.standards,
     created_at:       new Date().toISOString(),
     submitted_at:     null,
   };
@@ -444,14 +448,14 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
     `INSERT INTO notes
        (id, patient_id, note_date, admission_date, status, version,
         parent_note_id, anthro, labs, clinical, dietary, dexa_scans,
-        diagnosis, intervention, monitor_evaluate,
+        diagnosis, intervention, monitor_evaluate, standards,
         created_at, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       revision.id, revision.patient_id, revision.note_date, revision.admission_date,
       revision.status, revision.version, revision.parent_note_id,
       revision.anthro, revision.labs, revision.clinical, revision.dietary, revision.dexa_scans,
-      revision.diagnosis, revision.intervention, revision.monitor_evaluate,
+      revision.diagnosis, revision.intervention, revision.monitor_evaluate, revision.standards,
       revision.created_at, revision.submitted_at,
     ]
   );

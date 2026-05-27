@@ -162,8 +162,8 @@ export default function ClinicalSummaryView({
     if (!intervention) return <p style={styles.emptyText}>No intervention data recorded.</p>;
     return (
       <>
-        {renderRow("Goal", intervention.goalStatement)}
-        {renderRow("Timeframe", intervention.goalTimeframe)}
+        {renderRow("Intervention Goal", intervention.goalStatement)}
+        <div style={{ marginBottom: "0.5rem" }} />
         {renderRow("ND — Meals/Snacks", intervention.nd_mealsSnacks)}
         {renderRow("ND — Supplemental Feeding", intervention.nd_supplementalFeeding)}
         {renderRow("ND — Med Management", intervention.nd_nutritionRelatedMedMgmt)}
@@ -258,6 +258,10 @@ export default function ClinicalSummaryView({
                 <h4 style={styles.subTitle}>Medical Context</h4>
                 {renderRow("Chief Complaint", clinical.chiefComplaint)}
                 {renderRow("Medical History", clinical.medHx)}
+                {renderRow("Family History", clinical.familyHx)}
+                {renderRow("Social History", clinical.socialHx)}
+                {renderRow("Allergies/Intolerances", clinical.allergiesIntolerances)}
+                {renderRow("Medical Devices", clinical.medicalDevices)}
                 {renderRow("Medications", clinical.medications)}
               </div>
               <div>
@@ -311,11 +315,27 @@ export default function ClinicalSummaryView({
               </div>
               {renderRow("Exam Notes", clinical.clinicalNotes)}
             </div>
+
+            <div style={{ marginTop: "1rem" }}>
+              <h4 style={styles.subTitle}>Radiology & Imaging</h4>
+              <div style={styles.grid2}>
+                <div>
+                  {renderRow("SMI", clinical.imaging_smi, "cm²/m²")}
+                  {renderRow("L3 Muscle Area", clinical.imaging_muscleArea, "cm²")}
+                  {renderRow("Muscle Attenuation", clinical.imaging_muscleAttenuation, "HU")}
+                </div>
+                <div>
+                  {renderRow("IMAT", clinical.imaging_imat)}
+                  {renderRow("VAT", clinical.imaging_vat, "cm²")}
+                </div>
+              </div>
+              {renderRow("Imaging Notes", clinical.imaging_notes)}
+            </div>
           </>
         ))}
 
         {/* D. Dietary */}
-        {renderSection("D. Dietary History & Nutrition Support", (
+        {renderSection("D. Dietary Data & Nutrition Support", (
           <div style={styles.grid2}>
             <div>
               <h4 style={styles.subTitle}>Intake Summary</h4>

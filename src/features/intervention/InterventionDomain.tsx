@@ -69,19 +69,14 @@ export default function InterventionDomain({ intervention, setIntervention }: In
       {/* Goals */}
       <div className="card" style={{ marginBottom: "1rem" }}>
         <SectionHeader title="Intervention Goals" color="#27ae60" />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
-          <div className="input-group">
-            <label>Goal Statement</label>
-            <textarea value={i.goalStatement || ""} onChange={e => update("goalStatement", e.target.value)} placeholder="Patient will..." style={{ minHeight: "70px" }} />
-          </div>
-          <div className="input-group">
-            <label>Timeframe</label>
-            <input type="text" value={i.goalTimeframe || ""} onChange={e => update("goalTimeframe", e.target.value)} placeholder="e.g. within 2 weeks, by next visit" />
-          </div>
-          <div className="input-group">
-            <label>Measurable Outcome</label>
-            <textarea value={i.goalMeasurable || ""} onChange={e => update("goalMeasurable", e.target.value)} placeholder="As measured by..." style={{ minHeight: "70px" }} />
-          </div>
+        <div className="input-group">
+          <label>SMART Goals</label>
+          <textarea 
+            value={i.goalStatement || ""} 
+            onChange={e => update("goalStatement", e.target.value)} 
+            placeholder="Consolidate SMART goals here (Statement, Timeframe, Measurable outcomes)..." 
+            style={{ minHeight: "120px" }} 
+          />
         </div>
       </div>
 

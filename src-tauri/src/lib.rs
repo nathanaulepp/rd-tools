@@ -2,8 +2,6 @@
 // Phase 6: Added export_note_pdf command — triggers the system print dialog
 // via eval() on the WebviewWindow.
 
-use tauri::Manager;
-
 #[tauri::command]
 async fn export_note_pdf(webview: tauri::WebviewWindow) -> Result<(), String> {
     // Evaluate JavaScript on the frontend to trigger the native print dialog.

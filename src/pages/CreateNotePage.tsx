@@ -52,6 +52,8 @@ interface CreateNotePageProps {
   setIntervention: (i: any) => void;
   monitorEval: any;
   setMonitorEval: (me: any) => void;
+  standards: any;
+  setStandards: (s: any) => void;
 
   calculatedMetrics: any;
   handleExitToStart: () => void;
@@ -183,6 +185,7 @@ export default function CreateNotePage({
   const diagnosisRef = useRef(diagnosis);
   const interventionRef = useRef(intervention);
   const monitorEvalRef  = useRef(monitorEval);
+  const standardsRef    = useRef(standards);
 
   anthroRef.current      = anthro;
   dexaRef.current        = dexaScans;
@@ -192,6 +195,7 @@ export default function CreateNotePage({
   diagnosisRef.current   = diagnosis;
   interventionRef.current = intervention;
   monitorEvalRef.current  = monitorEval;
+  standardsRef.current    = standards;
 
   // ── DRY Domain Save Map (Phase 6 additions) ──────────────────────────────
   const DOMAIN_SAVE_MAP = [
@@ -200,6 +204,7 @@ export default function CreateNotePage({
     { domain: "B",  noteKey: "labs",              ref: labsRef   },
     { domain: "C",  noteKey: "clinical",          ref: clinicalRef },
     { domain: "D",  noteKey: "dietary",           ref: dietaryRef  },
+    { domain: "S",  noteKey: "standards",         ref: standardsRef },
     { domain: "Dx", noteKey: "diagnosis",         ref: diagnosisRef },
     { domain: "I",  noteKey: "intervention",      ref: interventionRef },
     { domain: "ME", noteKey: "monitor_evaluate",  ref: monitorEvalRef },
@@ -389,7 +394,7 @@ export default function CreateNotePage({
 
           {/* Domain D */}
           <div className={`nav-item ${activeDomain === "D" ? "active" : ""}`} onClick={() => handleDomainSwitch("D")}>
-            D. Dietary History
+            D. Dietary Data
           </div>
           {activeDomain === "D" && (
             <div className="sub-nav">
@@ -485,6 +490,8 @@ export default function CreateNotePage({
               patientData={patientData} 
               calculatedMetrics={calculatedMetrics} 
               dietary={dietary} 
+              standards={standards}
+              setStandards={setStandards}
             />
           )}
           {activeDomain === "Dx" && (

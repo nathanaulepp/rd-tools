@@ -11,7 +11,7 @@ export const [anthro, setAnthro] = useState({
   const [dexaScans, setDexaScans] = useState<any[]>([]);
   const [labs, setLabs] = useState<Record<string, { current: string, historical: string }>>({});
   const [clinical, setClinical] = useState({
-    chiefComplaint: "", medHx: "", medications: "", temples: "", clavicles: "", shoulders: "", scapula: "", interosseous: "", thighs: "", calves: "",
+    chiefComplaint: "", medHx: "", familyHx: "", socialHx: "", medications: "", temples: "", clavicles: "", shoulders: "", scapula: "", interosseous: "", thighs: "", calves: "",
     orbital: "", cheek: "", tricepsFat: "", midAxillary: "",
     hair: "", eyes: "", mouthLips: "", tongue: "", teethGums: "", headNeck: "", nails: "", skin: "",
     pittingEdema: "", ascites: "", edemaDescription: "",
