@@ -115,11 +115,29 @@ export default function DietaryDomain({ dietary, setDietary, activeSubDomain, cl
             <div className="card">
               <h4 className="mb-1">Additional D2 Factors</h4>
               <div className="grid-2-col">
-                <div className="input-group"><label>D22: Macro & Micronutrient Adequacy</label><textarea value={dietary?.macroAdequacy || ""} onChange={e => handleUpdate("macroAdequacy", e.target.value)} /></div>
-                <div className="input-group"><label>D23: Meal & Snack Patterns</label><textarea value={dietary?.mealPatterns || ""} onChange={e => handleUpdate("mealPatterns", e.target.value)} /></div>
-                <div className="input-group"><label>D24: Current & Previous Diets</label><textarea value={dietary?.currentDiets || ""} onChange={e => handleUpdate("currentDiets", e.target.value)} /></div>
-                <div className="input-group"><label>D25: Fluid Intake</label><input type="text" value={dietary?.fluidIntake || ""} onChange={e => handleUpdate("fluidIntake", e.target.value)} /></div>
-                <div className="input-group"><label>D26: Eating Environment</label><input type="text" value={dietary?.eatingEnv || ""} onChange={e => handleUpdate("eatingEnv", e.target.value)} /></div>
+                <div className="input-group">
+                  <label>D22: Estimated Energy Intake (%)</label>
+                  <input 
+                    type="number" 
+                    value={dietary?.eeiPercent || ""} 
+                    onChange={e => handleUpdate("eeiPercent", e.target.value)} 
+                    placeholder="e.g. 50"
+                  />
+                </div>
+                <div className="input-group">
+                  <label>D22: Intake Timeframe (Days)</label>
+                  <input 
+                    type="number" 
+                    value={dietary?.eeiTimeframe || ""} 
+                    onChange={e => handleUpdate("eeiTimeframe", e.target.value)} 
+                    placeholder="e.g. 7"
+                  />
+                </div>
+                <div className="input-group"><label>D23: Macro & Micronutrient Adequacy</label><textarea value={dietary?.macroAdequacy || ""} onChange={e => handleUpdate("macroAdequacy", e.target.value)} /></div>
+                <div className="input-group"><label>D24: Meal & Snack Patterns</label><textarea value={dietary?.mealPatterns || ""} onChange={e => handleUpdate("mealPatterns", e.target.value)} /></div>
+                <div className="input-group"><label>D25: Current & Previous Diets</label><textarea value={dietary?.currentDiets || ""} onChange={e => handleUpdate("currentDiets", e.target.value)} /></div>
+                <div className="input-group"><label>D26: Fluid Intake</label><input type="text" value={dietary?.fluidIntake || ""} onChange={e => handleUpdate("fluidIntake", e.target.value)} /></div>
+                <div className="input-group"><label>D27: Eating Environment</label><input type="text" value={dietary?.eatingEnv || ""} onChange={e => handleUpdate("eatingEnv", e.target.value)} /></div>
               </div>
             </div>
           </>

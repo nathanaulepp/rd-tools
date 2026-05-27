@@ -111,6 +111,8 @@ export const defaultDietary = {
   oralCalories: "",
   oralProtein: "",
   oralWater: "",
+  eeiPercent: "",
+  eeiTimeframe: "",
   herbalCAM: "",
   supplements: "",
   understanding: "",

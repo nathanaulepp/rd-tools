@@ -13,10 +13,243 @@ import { SectionHeader } from "../../shared/ui/SectionHeader";
 import { Field } from "../../shared/ui/Field";
 import { formatAge } from "../../shared/utils/date";
 
+import { 
+  evaluateWeightLoss, 
+  evaluateIntake, 
+  diagnoseMalnutrition, 
+  MalnutritionCriteria, 
+  Severity,
+  ClinicalContext,
+  getAcuteModerateThreshold,
+  getChronicSevereThreshold
+} from "./malnutritionEngine";
+
 // ── Import the generated dictionary ──────────────────────────────────────────
-// Adjust the relative path to wherever you place etiologyData.ts in your project.
-// Example: if it lives at src/shared/constants/etiologyData.ts, change the path below.
 import { DIAGNOSIS_GROUPS, getAllEtiologiesForProblem } from "./etiologyData";
+
+// ─── Malnutrition Table Component ────────────────────────────────────────────
+
+interface MalnutritionTableProps {
+  anthro: any;
+  dietary: any;
+  clinical: any;
+  calculatedMetrics: any;
+}
+
+function MalnutritionTable({ anthro, dietary, clinical, calculatedMetrics }: MalnutritionTableProps) {
+  const [context, setContext] = useState<ClinicalContext>("Acute");
+
+  // 1. Calculate Weight Loss %
+  const wt = parseFloat(anthro?.wt || "0");
+  const ubw = parseFloat(anthro?.ubw || "0");
+  const pctLoss = (ubw > 0 && wt > 0 && ubw > wt) ? ((ubw - wt) / ubw) * 100 : 0;
+  const days = calculatedMetrics?.ubwTimeframeDays || 0;
+
+  // 2. Thresholds for Display
+  const modThreshold = context === "Acute" ? getAcuteModerateThreshold(days) : null;
+  const sevThreshold = context === "Chronic" ? getChronicSevereThreshold(days) : (days >= 7 && days < 30 ? (3 / 23) * (days - 7) + 2 : getAcuteModerateThreshold(days));
+
+  // 3. Map NFPE to Severity
+  const getMaxNFPE = (fields: string[]): Severity => {
+    let max: Severity = "None";
+    for (const f of fields) {
+      const val = clinical?.[f];
+      if (val === "Severe") return "Severe";
+      if (val === "Moderate") max = "Moderate";
+      else if (val === "Mild" && max === "None") max = "Moderate"; // ASPEN maps Mild/Mod together usually
+    }
+    return max;
+  };
+
+  const muscleFields = ["temples", "clavicles", "shoulders", "scapula", "interosseous", "thighs", "calves"];
+  const fatFields = ["orbital", "cheek", "tricepsFat", "midAxillary"];
+  
+  const fluidSeverity = (): Severity => {
+    if (clinical?.ascites === "Severe" || clinical?.pittingEdema === "+3" || clinical?.pittingEdema === "+4") return "Severe";
+    if (clinical?.ascites === "Moderate" || clinical?.pittingEdema === "+2") return "Moderate";
+    if (clinical?.ascites === "Mild" || clinical?.pittingEdema === "+1") return "Moderate";
+    return "None";
+  };
+
+  const gripSeverity = (): Severity => {
+    if (clinical?.gripStrength === "Measurably Reduced") return context === "Acute" ? "Moderate" : "Severe";
+    return "None";
+  };
+
+  const criteria: MalnutritionCriteria = {
+    weightLoss: evaluateWeightLoss(pctLoss, days, context),
+    eei: evaluateIntake(parseFloat(dietary?.eeiPercent || "0"), parseFloat(dietary?.eeiTimeframe || "0"), context),
+    muscleWasting: getMaxNFPE(muscleFields),
+    fatLoss: getMaxNFPE(fatFields),
+    fluidAccumulation: fluidSeverity(),
+    gripStrength: gripSeverity(),
+  };
+
+  const diagnosisResult = diagnoseMalnutrition(criteria);
+
+  const getCellColor = (sev: Severity) => {
+    if (sev === "Severe") return "#fee2e2";
+    if (sev === "Moderate") return "#fef3c7";
+    if (sev === "Borderline") return "#f1f5f9";
+    return "#fff";
+  };
+
+  const getTextColor = (sev: Severity) => {
+    if (sev === "Severe") return "#991b1b";
+    if (sev === "Moderate") return "#92400e";
+    return "#475569";
+  };
+
+  return (
+    <div className="card" style={{ marginBottom: "1.5rem", border: "1px solid #e2e8f0" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+        <SectionHeader 
+          title="ASPEN Malnutrition Diagnostic Engine" 
+          subtitle="Continuous Interpolation (Rule of Two)" 
+          color="#1e293b" 
+        />
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "#f1f5f9", padding: "4px", borderRadius: "8px" }}>
+          {(["Acute", "Chronic"] as ClinicalContext[]).map(c => (
+            <button
+              key={c}
+              onClick={() => setContext(c)}
+              style={{
+                padding: "4px 12px", border: "none", borderRadius: "6px", cursor: "pointer",
+                fontSize: "0.75rem", fontWeight: 700,
+                background: context === c ? "#fff" : "transparent",
+                color: context === c ? "#1e293b" : "#64748b",
+                boxShadow: context === c ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              }}
+            >
+              {c}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8rem", marginBottom: "1rem" }}>
+        <thead>
+          <tr style={{ textAlign: "left", background: "#f8fafc" }}>
+            <th style={{ padding: "10px", border: "1px solid #e2e8f0" }}>Criterion</th>
+            <th style={{ padding: "10px", border: "1px solid #e2e8f0" }}>Mod Threshold</th>
+            <th style={{ padding: "10px", border: "1px solid #e2e8f0" }}>Sev Threshold</th>
+            <th style={{ padding: "10px", border: "1px solid #e2e8f0" }}>Patient Value</th>
+            <th style={{ padding: "10px", border: "1px solid #e2e8f0" }}>Outcome</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>Weight Loss (%)</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>
+              {modThreshold !== null ? `≥ ${modThreshold.toFixed(1)}%` : "N/A"}
+            </td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>
+              {sevThreshold !== null ? `≥ ${sevThreshold.toFixed(1)}%` : "N/A"}
+            </td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>
+              {pctLoss.toFixed(1)}% ({days}d)
+            </td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(criteria.weightLoss), color: getTextColor(criteria.weightLoss), fontWeight: 700 }}>
+              {criteria.weightLoss}
+            </td>
+          </tr>
+          <tr>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>Energy Intake (%)</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>
+              {"< 75%"}
+            </td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>
+              {"≤ 50%"}
+            </td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>
+              {dietary?.eeiPercent || 0}% ({dietary?.eeiTimeframe || 0}d)
+            </td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(criteria.eei), color: getTextColor(criteria.eei), fontWeight: 700 }}>
+              {criteria.eei}
+            </td>
+          </tr>
+          <tr>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>Muscle Wasting</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>Mild-Moderate</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>Severe</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>
+              {muscleFields.filter(f => clinical?.[f] && clinical?.[f] !== "Normal").length} sites
+            </td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(criteria.muscleWasting), color: getTextColor(criteria.muscleWasting), fontWeight: 700 }}>
+              {criteria.muscleWasting}
+            </td>
+          </tr>
+          <tr>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>Fat Loss</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>Mild-Moderate</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>Severe</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>
+              {fatFields.filter(f => clinical?.[f] && clinical?.[f] !== "Normal").length} sites
+            </td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(criteria.fatLoss), color: getTextColor(criteria.fatLoss), fontWeight: 700 }}>
+              {criteria.fatLoss}
+            </td>
+          </tr>
+          <tr>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>Fluid Accumulation</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>Mild-Moderate</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>Severe</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>
+              {clinical?.pittingEdema || "None"}
+            </td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(criteria.fluidAccumulation), color: getTextColor(criteria.fluidAccumulation), fontWeight: 700 }}>
+              {criteria.fluidAccumulation}
+            </td>
+          </tr>
+          <tr>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>Functional Grip</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>{context === "Acute" ? "Reduced" : "N/A"}</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>{context === "Chronic" ? "Reduced" : "N/A"}</td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>
+              {clinical?.gripStrength || "WNL"}
+            </td>
+            <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(criteria.gripStrength), color: getTextColor(criteria.gripStrength), fontWeight: 700 }}>
+              {criteria.gripStrength}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style={{ 
+        padding: "1rem", 
+        background: diagnosisResult.diagnosis === "None" ? "#f8fafc" : (diagnosisResult.diagnosis.includes("Severe") ? "#fef2f2" : "#fffbeb"),
+        border: "1px solid",
+        borderColor: diagnosisResult.diagnosis === "None" ? "#e2e8f0" : (diagnosisResult.diagnosis.includes("Severe") ? "#fecaca" : "#fef3c7"),
+        borderRadius: "8px"
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Automated Diagnosis</div>
+            <div style={{ 
+              fontSize: "1.1rem", 
+              fontWeight: 800, 
+              color: diagnosisResult.diagnosis === "None" ? "#334155" : (diagnosisResult.diagnosis.includes("Severe") ? "#991b1b" : "#92400e") 
+            }}>
+              {diagnosisResult.diagnosis}
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Clinical Buffer</div>
+            <div style={{ fontSize: "0.85rem", fontWeight: 600, color: "#334155" }}>± 0.5% applied</div>
+          </div>
+        </div>
+        {diagnosisResult.reasoning.length > 0 && (
+          <div style={{ marginTop: "10px", fontSize: "0.75rem", color: "#475569", borderTop: "1px solid rgba(0,0,0,0.05)", paddingTop: "8px" }}>
+            <strong>Engine Reasoning:</strong>
+            <ul style={{ margin: "4px 0 0 16px", padding: 0 }}>
+              {diagnosisResult.reasoning.map((r, i) => <li key={i}>{r}</li>)}
+            </ul>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ─── Contextual S-suggestion builder ─────────────────────────────────────────
 // Reads live app state (anthro, dietary) to produce ready-made evidence strings.
@@ -416,7 +649,6 @@ const ETIOLOGY_DOMAINS = [
 function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, calculatedMetrics }: PESCardProps) {
   const [showEtiologySuggestions, setShowEtiologySuggestions] = useState(true);
   const [showSignsSuggestions, setShowSignsSuggestions] = useState(true);
-  const [customEtiologyDomain, setCustomEtiologyDomain] = useState(ETIOLOGY_DOMAINS[0]);
 
   const accentColor = isPrimary ? "#3498db" : "#8e44ad";
   const label = isPrimary ? "Primary Nutrition Diagnosis" : `Additional Diagnosis ${index}`;
@@ -643,6 +875,7 @@ interface DiagnosisDomainProps {
   anthro?: any;
   /** Pass live dietary state from App.tsx for contextual S-suggestions */
   dietary?: any;
+  clinical?: any;
   calculatedMetrics?: any;
 }
 
@@ -651,7 +884,7 @@ function newDx() {
   return { id: _nextId++, problem: "", etiology: "", signsSymptoms: "" };
 }
 
-export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dietary, calculatedMetrics }: DiagnosisDomainProps) {
+export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dietary, clinical, calculatedMetrics }: DiagnosisDomainProps) {
   const update = (field: string, val: any) => setDiagnosis({ ...diagnosis, [field]: val });
 
   const addDx = () => {
@@ -680,6 +913,14 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
   return (
     <div className="fade-in">
       <DomainHeader title="Dx. Nutrition Diagnosis" />
+
+      {/* ASPEN Malnutrition Engine */}
+      <MalnutritionTable 
+        anthro={anthro} 
+        dietary={dietary} 
+        clinical={clinical} 
+        calculatedMetrics={calculatedMetrics} 
+      />
 
       {/* PES Builder */}
       <div className="card">

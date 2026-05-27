@@ -485,7 +485,14 @@ export default function CreateNotePage({
             />
           )}
           {activeDomain === "Dx" && (
-            <DiagnosisDomain diagnosis={diagnosis} setDiagnosis={setDiagnosis} anthro={anthro} dietary={dietary} calculatedMetrics={calculatedMetrics} />
+            <DiagnosisDomain 
+              diagnosis={diagnosis} 
+              setDiagnosis={setDiagnosis} 
+              anthro={anthro} 
+              dietary={dietary} 
+              clinical={clinical}
+              calculatedMetrics={calculatedMetrics} 
+            />
           )}
           {activeDomain === "I" && (
             <InterventionDomain intervention={intervention} setIntervention={setIntervention} />

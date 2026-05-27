@@ -33,7 +33,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 
 #### Clinical
 - [x] import drug database
-- [ ] add drug lookup
+- [x] add drug lookup
 - [ ] Automated drug-nutrient interactions
 - [ ] Automated malnutrition chart
 - [ ] Automated refeeding risk chart
@@ -51,7 +51,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [x] automate comparative standards
 - [x] automate comparison to current nutrition rx: (kcal, pro, fluid --> low|WNL|high?)
 - [x] Improve user flow of UI
-- [ ] Automate linking patient BMI to comparative standards' clinical context options
+- [x] Automate linking patient BMI to comparative standards' clinical context options
 
 ### Diagnosis
 - [x] PES statement builder

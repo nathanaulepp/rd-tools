@@ -384,7 +384,7 @@ function D11Oral({ dietary, setDietary }: D11OralProps) {
           </div>
         </div>
         <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1rem" }}>
-          <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#718096", marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Estimated Oral Nutrient Intake</div>
+          <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#718096", marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Previous Calculated Nutrient Needs</div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
             <Field label="Calories (kcal/day)"><NumInput value={dietary.oralCalories || ""} onChange={v => handleUpdate("oralCalories", v)} placeholder="e.g. 1800" /></Field>
             <Field label="Protein (g/day)"><NumInput value={dietary.oralProtein || ""} onChange={v => handleUpdate("oralProtein", v)} placeholder="e.g. 75" /></Field>

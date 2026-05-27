@@ -458,6 +458,37 @@ export default function NutritionStandardsDomain({
     }
   }, [dietary]);
 
+  // ── Auto-link BMI to Sub-types ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!bmi || bmi <= 0) return;
+
+    if (condition === "critical_illness") {
+      let bmiGroup = "";
+      if (bmi < 30) bmiGroup = "bmi_lt30";
+      else if (bmi <= 50) bmiGroup = "bmi_30_50";
+      else bmiGroup = "bmi_gt50";
+      
+      if (variant !== bmiGroup) {
+        setVariant(bmiGroup);
+      }
+    } else if (condition === "pregnancy") {
+      // Only auto-update if variant is unset or already a T2/3 variant
+      // This avoids overriding Trimester 1 (t1) if explicitly selected.
+      const isT23 = !variant || variant.startsWith("t2_t3_");
+      if (isT23) {
+        let bmiGroup = "";
+        if (bmi < 18.5) bmiGroup = "t2_t3_uw";
+        else if (bmi < 25) bmiGroup = "t2_t3_nw";
+        else if (bmi < 30) bmiGroup = "t2_t3_ow";
+        else bmiGroup = "t2_t3_ob";
+
+        if (variant !== bmiGroup) {
+          setVariant(bmiGroup);
+        }
+      }
+    }
+  }, [condition, bmi, variant]);
+
   const { effectiveWeight, weightBasis, nfpeWarning } = useMemo(() => {
     if (renalDryWeight) {
       return { effectiveWeight: parseFloat(renalDryWeight), weightBasis: "Renal Dry Weight", nfpeWarning: false };
