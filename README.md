@@ -21,7 +21,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 ## Roadmap & To-Do List
 
 ### RD Workstation
-- [ ] Add keyboard shortcuts
+- [ ] Add keyboard shortcuts (root call is "ctrl + .")
 - [ ] Split panes function
 
 ### Assessment
