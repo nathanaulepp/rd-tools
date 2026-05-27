@@ -157,7 +157,6 @@ function MicroPanel({ title, fields, values, onChange, accent, expanded, onToggl
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "0.6rem" }}>
             {fields.map(f => {
-              // Use stored unit if present, otherwise fall back to the US-standard default
               const currentUnit = values[f.key]?.unit || f.defaultUnit;
               return (
                 <Field key={f.key} label={f.label}>
@@ -260,7 +259,6 @@ function ENModularCard({ modular, onUpdate, onRemove }: ENModularCardProps) {
         </Field>
       </div>
 
-      {/* Live contribution summary */}
       {(kcalNum > 0 || protNum > 0) && (
         <div style={{ display: "flex", gap: "8px", marginTop: "0.5rem" }}>
           {kcalNum > 0 && <span style={{ fontSize: "0.72rem", background: "#fef3c7", color: "#92400e", borderRadius: "4px", padding: "2px 8px", fontWeight: 700 }}>+{Math.round(kcalNum)} kcal</span>}
@@ -275,7 +273,7 @@ function ENModularCard({ modular, onUpdate, onRemove }: ENModularCardProps) {
   );
 }
 
-// ─── EN Modular Panel (collapsible section per feed) ─────────────────────────
+// ─── EN Modular Panel ────────────────────────────────────────────────────────
 interface ENModularPanelProps {
   modulars: constant.ENModular[];
   nextModularId: number;
@@ -297,7 +295,7 @@ function ENModularPanel({ modulars, nextModularId, onUpdate }: ENModularPanelPro
   const removeModular = (id: number) =>
     onUpdate(modulars.filter(m => m.id !== id), nextModularId);
 
-  const totalKcal   = modulars.reduce((sum, m) => sum + helper.num(m.kcal), 0);
+  const totalKcal    = modulars.reduce((sum, m) => sum + helper.num(m.kcal), 0);
   const totalProtein = modulars.reduce((sum, m) => sum + helper.num(m.protein), 0);
 
   return (
@@ -368,7 +366,8 @@ function ENModularPanel({ modulars, nextModularId, onUpdate }: ENModularPanelPro
 interface D11OralProps { dietary: Dietary; setDietary: (d: Dietary) => void; }
 
 function D11Oral({ dietary, setDietary }: D11OralProps) {
-  const handleUpdate = (field: string, val: string) => setDietary({ ...dietary, [field]: val });
+  const handleUpdate = (field: string, val: string) =>
+    setDietary({ ...dietary, [field]: val });
   return (
     <div style={{ marginBottom: "1.5rem" }}>
       <div className="card">
@@ -398,7 +397,6 @@ function D11Oral({ dietary, setDietary }: D11OralProps) {
 
 // ─── D12: Enteral Nutrition ───────────────────────────────────────────────────
 
-// Formula name management — stored in dietary.savedFormulas (persists to DB)
 interface FormulaManagerProps {
   savedFormulas: string[];
   value: string;
@@ -484,7 +482,6 @@ interface ENFeedCardProps {
   idx: number;
   onChange: (updated: ENFeed) => void;
   onRemove: () => void;
-  // Formula library lives in dietary (persisted to DB)
   savedFormulas: string[];
   onAddFormula: (name: string) => void;
   onDeleteFormula: (name: string) => void;
@@ -495,7 +492,6 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
   const nutrients = helper.calcENNutrients(feed);
   const isExpanded = feed.expanded;
 
-  // Modular state lives on the feed object (serialized with the feed)
   const modulars: constant.ENModular[] = (feed as any).modulars || [];
   const nextModularId: number = (feed as any).nextModularId || 1;
 
@@ -503,9 +499,9 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
     onChange({ ...feed, modulars: newModulars, nextModularId: nextId } as any);
   };
 
-  const modularKcal   = modulars.reduce((s, m) => s + helper.num(m.kcal), 0);
+  const modularKcal    = modulars.reduce((s, m) => s + helper.num(m.kcal), 0);
   const modularProtein = modulars.reduce((s, m) => s + helper.num(m.protein), 0);
-  const totalCalWithMod = nutrients.totalCal + Math.round(modularKcal);
+  const totalCalWithMod  = nutrients.totalCal + Math.round(modularKcal);
   const totalProtWithMod = Math.round((nutrients.totalProt + modularProtein) * 10) / 10;
 
   return (
@@ -519,8 +515,6 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
       />
       {isExpanded && (
         <div style={{ padding: "1rem", borderTop: "1px solid #e2e8f0", background: "#fff" }}>
-
-          {/* Label + Route */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "0.75rem", marginBottom: "1rem" }}>
             <Field label="Feed Label">
               <input
@@ -536,7 +530,6 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
             </Field>
           </div>
 
-          {/* Delivery Type */}
           <div style={{ marginBottom: "1rem" }}>
             <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#34495e", marginBottom: "6px" }}>Delivery Type</div>
             <div style={{ display: "flex", gap: "8px" }}>
@@ -554,7 +547,6 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
             </div>
           </div>
 
-          {/* Formula selection — library persisted in dietary.savedFormulas */}
           <div style={{ marginBottom: "1rem" }}>
             <Field label="Formula">
               <FormulaManager
@@ -567,7 +559,6 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
             </Field>
           </div>
 
-          {/* Rate inputs */}
           {feed.type === "bolus" ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "1rem" }}>
               <Field label="mL per bolus"><NumInput value={feed.bolusMl} onChange={v => update("bolusMl", v)} /></Field>
@@ -581,7 +572,6 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
             </div>
           )}
 
-          {/* Flushes */}
           <div style={{ background: "#f8fafc", borderRadius: "6px", padding: "0.75rem", marginBottom: "1rem" }}>
             <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#718096", marginBottom: "0.5rem" }}>Flushes</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem" }}>
@@ -591,21 +581,18 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
             </div>
           </div>
 
-          {/* Formula nutrition facts */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.75rem", marginBottom: "1rem" }}>
             <Field label="Cal/mL" hint="e.g. 1.0, 1.5, 2.0"><NumInput value={feed.calPerMl} onChange={v => update("calPerMl", v)} placeholder="1.0" /></Field>
             <Field label="Protein (g/L)" hint="from formula label"><NumInput value={feed.protGPerL} onChange={v => update("protGPerL", v)} placeholder="44" /></Field>
             <Field label="Free Water (%)" hint="0–100"><NumInput value={feed.fwPct} onChange={v => update("fwPct", v)} placeholder="85" /></Field>
           </div>
 
-          {/* Modular additives panel */}
           <ENModularPanel
             modulars={modulars}
             nextModularId={nextModularId}
             onUpdate={updateModulars}
           />
 
-          {/* Nutrient summary chips */}
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", paddingTop: "0.75rem", borderTop: "1px solid #f0f0f0", marginTop: "0.75rem" }}>
             <NutrientChip label="Volume" value={nutrients.totalMl} unit="mL/day" color="#3498db" />
             <NutrientChip
@@ -636,14 +623,13 @@ function ENFeedCard({ feed, idx, onChange, onRemove, savedFormulas, onAddFormula
 interface D12EnteralProps {
   state: ENState;
   setState: (s: ENState) => void;
-  // Formula library persisted in dietary
   savedFormulas: string[];
   onAddFormula: (name: string) => void;
   onDeleteFormula: (name: string) => void;
 }
 
 function D12Enteral({ state, setState, savedFormulas, onAddFormula, onDeleteFormula }: D12EnteralProps) {
-  const addFeed = () => setState({ ...state, feeds: [...state.feeds, helper.makeENFeed(state.nextId)], nextId: state.nextId + 1 });
+  const addFeed    = () => setState({ ...state, feeds: [...state.feeds, helper.makeENFeed(state.nextId)], nextId: state.nextId + 1 });
   const updateFeed = (id: number, updated: ENFeed) => setState({ ...state, feeds: state.feeds.map(f => f.id === id ? updated : f) });
   const removeFeed = (id: number) => setState({ ...state, feeds: state.feeds.filter(f => f.id !== id) });
 
@@ -689,11 +675,11 @@ function D12Enteral({ state, setState, savedFormulas, onAddFormula, onDeleteForm
             Total EN Delivery (All Feeds + Modulars Combined)
           </div>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <NutrientChip label="Total Volume"     value={Math.round(totals.vol)}                   unit="mL/day"   color="#27ae60" />
-            <NutrientChip label="Total Calories"   value={Math.round(totals.cal)}                   unit="kcal/day" color="#e67e22" />
-            <NutrientChip label="Total Protein"    value={Math.round(totals.prot * 10) / 10}        unit="g/day"    color="#8e44ad" />
-            <NutrientChip label="Total Free Water" value={Math.round(totals.fw)}                    unit="mL/day"   color="#3498db" />
-            <NutrientChip label="Total Flush Water" value={Math.round(totals.flush)}                unit="mL/day"   color="#0891b2" />
+            <NutrientChip label="Total Volume"      value={Math.round(totals.vol)}                unit="mL/day"   color="#27ae60" />
+            <NutrientChip label="Total Calories"    value={Math.round(totals.cal)}                unit="kcal/day" color="#e67e22" />
+            <NutrientChip label="Total Protein"     value={Math.round(totals.prot * 10) / 10}    unit="g/day"    color="#8e44ad" />
+            <NutrientChip label="Total Free Water"  value={Math.round(totals.fw)}                unit="mL/day"   color="#3498db" />
+            <NutrientChip label="Total Flush Water" value={Math.round(totals.flush)}             unit="mL/day"   color="#0891b2" />
           </div>
         </div>
       )}
@@ -770,7 +756,6 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
             <Field label="Start Time"><input type="time" value={feed.startTime} onChange={e => update("startTime", e.target.value)} style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} /></Field>
           </div>
 
-          {/* Macronutrients */}
           <div style={{ background: "#faf5ff", border: "1px solid #e9d8fd", borderRadius: "8px", padding: "1rem", marginBottom: "1rem" }}>
             <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#6b46c1", marginBottom: "0.85rem", textTransform: "uppercase" }}>Macronutrients</div>
 
@@ -840,14 +825,12 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
             </div>
           </div>
 
-          {/* Summary chips */}
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "1rem", padding: "0.75rem", background: "#f8f4ff", borderRadius: "8px", border: "1px solid #e9d8fd" }}>
             <NutrientChip label="Est. Calories" value={totalCal  > 0 ? totalCal  : "—"} unit="kcal/day" color="#e67e22" />
             <NutrientChip label="Est. Protein"  value={totalProt > 0 ? totalProt : "—"} unit="g/day"    color="#8e44ad" />
             <NutrientChip label="Est. Volume"   value={totalVol  > 0 ? totalVol  : "—"} unit="mL/day"   color="#3498db" />
           </div>
 
-          {/* Electrolytes + Vitamins — now uses defaultUnit from constants */}
           <MicroPanel
             title="Electrolytes & Trace Elements"
             fields={constant.ELECTROLYTES}
@@ -899,8 +882,6 @@ function D13Parenteral({ state, setState }: D13ParenteralProps) {
 }
 
 // ─── Tab Navigation & Root ────────────────────────────────────────────────────
-// savedFormulas now lives in dietary (persisted to DB) rather than local state.
-// This means formula names survive tab switches and page reloads.
 
 const TABS = [
   { id: "D11", label: "D11 – Oral",       color: "#3498db" },
@@ -910,25 +891,27 @@ const TABS = [
 
 interface D1NutritionRxProps {
   dietary?: Dietary;
-  setDietary?: (d: Dietary) => void;
+  setDietary?: (d: Dietary | ((prev: Dietary) => Dietary)) => void;
 }
 
 export default function D1NutritionRx({ dietary = {}, setDietary = () => {} }: D1NutritionRxProps) {
   const [activeTab, setActiveTab] = useState<string>("D11");
 
-  // Formula library persisted in dietary prop (hits autosave → DB)
+  // Formula library persisted in dietary prop
   const savedFormulas: string[] = (dietary as any).savedFormulas || [];
 
+  // ── PATCH: use functional setter to merge only the changed key,
+  //    preventing stale-closure overwrites of sibling keys in `dietary`.
   const handleAddFormula = (name: string) => {
     if (savedFormulas.includes(name)) return;
-    setDietary({ ...dietary, savedFormulas: [...savedFormulas, name] } as any);
+    setDietary((prev: Dietary) => ({ ...prev, savedFormulas: [...((prev as any).savedFormulas || []), name] } as any));
   };
 
   const handleDeleteFormula = (name: string) => {
-    setDietary({ ...dietary, savedFormulas: savedFormulas.filter((f: string) => f !== name) } as any);
+    setDietary((prev: Dietary) => ({ ...prev, savedFormulas: ((prev as any).savedFormulas || []).filter((f: string) => f !== name) } as any));
   };
 
-  // EN / PN lifted state (fully synced with dietary for autosave)
+  // EN / PN lifted state — fully synced with dietary for autosave
   const enState: ENState = (dietary as any).enState || {
     feeds: [helper.makeENFeed(1)],
     savedFormulas: [],
@@ -940,8 +923,12 @@ export default function D1NutritionRx({ dietary = {}, setDietary = () => {} }: D
     nextId: 2,
   };
 
-  const setEnState = (s: ENState) => setDietary({ ...dietary, enState: s });
-  const setPnState = (s: PNState) => setDietary({ ...dietary, pnState: s });
+  // ── PATCH: functional setters so concurrent updates don't clobber each other.
+  const setEnState = (s: ENState) =>
+    setDietary((prev: Dietary) => ({ ...prev, enState: s } as any));
+
+  const setPnState = (s: PNState) =>
+    setDietary((prev: Dietary) => ({ ...prev, pnState: s } as any));
 
   return (
     <div className="fade-in">
@@ -960,7 +947,7 @@ export default function D1NutritionRx({ dietary = {}, setDietary = () => {} }: D
       </div>
 
       <div style={{ display: activeTab === "D11" ? "block" : "none" }}>
-        <D11Oral dietary={dietary} setDietary={setDietary} />
+        <D11Oral dietary={dietary} setDietary={setDietary as (d: Dietary) => void} />
       </div>
       <div style={{ display: activeTab === "D12" ? "block" : "none" }}>
         <D12Enteral

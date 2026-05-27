@@ -2,8 +2,10 @@
 // Phase 6: Added Diagnosis (Dx), Intervention (I), Monitor/Eval (ME) domains
 // + Settings link in sidebar
 // FIX: Added missing standards/setStandards to props interface and destructuring
+// PATCH: Debounced autosave for dietary domain so D12/D13 tab changes persist
+//        without requiring an explicit subdomain switch.
 
-import React, { useState, useRef, useCallback } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import type { Patient, Note } from "../shared/api/db";
 import { autosaveNote, submitNote } from "../shared/api/db";
 
@@ -53,8 +55,8 @@ interface CreateNotePageProps {
   setIntervention: (i: any) => void;
   monitorEval: any;
   setMonitorEval: (me: any) => void;
-  standards: any;           // FIX: was missing
-  setStandards: (s: any) => void; // FIX: was missing
+  standards: any;
+  setStandards: (s: any) => void;
 
   calculatedMetrics: any;
   handleExitToStart: () => void;
@@ -71,6 +73,9 @@ const DOMAIN_LABELS: Record<DomainKey, string> = {
   I:  "Intervention",
   ME: "Monitor & Evaluate",
 };
+
+// ─── Debounce delay for background dietary saves (ms) ─────────────────────────
+const DIETARY_DEBOUNCE_MS = 1200;
 
 // ─── Submit Modal ─────────────────────────────────────────────────────────────
 interface SubmitModalProps {
@@ -143,7 +148,7 @@ function SubmitModal({ state, missingFields, onConfirm, onClose }: SubmitModalPr
 
 const btnStyles: Record<string, React.CSSProperties> = {
   primary: { background: "#3498db", color: "#fff", border: "none", padding: "0.55rem 1.25rem", borderRadius: "8px", fontSize: "0.88rem", fontWeight: 700, cursor: "pointer" },
-  outline:  { background: "transparent", color: "#3498db", border: "1px solid #3498db", padding: "0.55rem 1.25rem", borderRadius: "8px", fontSize: "0.88rem", fontWeight: 700, cursor: "pointer" },
+  outline: { background: "transparent", color: "#3498db", border: "1px solid #3498db", padding: "0.55rem 1.25rem", borderRadius: "8px", fontSize: "0.88rem", fontWeight: 700, cursor: "pointer" },
 };
 
 // ─── Main Component ───────────────────────────────────────────────────────────
@@ -159,7 +164,7 @@ export default function CreateNotePage({
   diagnosis, setDiagnosis,
   intervention, setIntervention,
   monitorEval, setMonitorEval,
-  standards, setStandards,   // FIX: was missing from destructuring
+  standards, setStandards,
   calculatedMetrics,
   handleExitToStart,
 }: CreateNotePageProps) {
@@ -188,6 +193,7 @@ export default function CreateNotePage({
   const monitorEvalRef  = useRef(monitorEval);
   const standardsRef    = useRef(standards);
 
+  // Keep refs in sync with latest prop values on every render
   anthroRef.current       = anthro;
   dexaRef.current         = dexaScans;
   labsRef.current         = labs;
@@ -251,6 +257,48 @@ export default function CreateNotePage({
     }
   }, [noteId]);
 
+  // ── PATCH: Debounced autosave for the dietary domain ─────────────────────
+  // Because D12 and D13 are internal tabs inside the D1 subdomain, switching
+  // between them does NOT trigger the normal subdomain-change save path.
+  // This effect watches `dietary` and flushes it to SQLite after the user
+  // pauses for DIETARY_DEBOUNCE_MS, regardless of which internal tab is active.
+  const dietaryDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    // Skip on initial mount / when there is no note to save to yet
+    if (!noteId) return;
+
+    // Cancel any previously scheduled save
+    if (dietaryDebounceRef.current) {
+      clearTimeout(dietaryDebounceRef.current);
+    }
+
+    dietaryDebounceRef.current = setTimeout(async () => {
+      try {
+        await autosaveNote(noteId, "dietary", dietaryRef.current);
+        // Silently succeed — no toast to avoid noise during rapid typing
+      } catch (e) {
+        console.error("Debounced dietary autosave failed:", e);
+        // Only surface an error toast if we're still on the dietary domain
+        // so the message is contextually relevant
+        if (activeDomain === "D") {
+          showToast("⚠ Dietary save failed — check connection");
+        }
+      }
+    }, DIETARY_DEBOUNCE_MS);
+
+    // Clean up on unmount or before next effect run
+    return () => {
+      if (dietaryDebounceRef.current) {
+        clearTimeout(dietaryDebounceRef.current);
+      }
+    };
+    // dietary is the only trigger; activeDomain is captured for the error toast
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dietary, noteId]);
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   const handleSubmitClick = () => {
     if (noteStatus === "submitted") return;
     setModalState("confirm");
@@ -261,6 +309,13 @@ export default function CreateNotePage({
   const handleConfirmSubmit = async () => {
     if (!noteId || !patientId) return;
     setModalState("saving");
+
+    // Cancel any pending debounced dietary save — we're about to do a full save
+    if (dietaryDebounceRef.current) {
+      clearTimeout(dietaryDebounceRef.current);
+      dietaryDebounceRef.current = null;
+    }
+
     const saved = await saveAllDomains();
     if (!saved) { setModalOpen(false); return; }
 
@@ -292,6 +347,14 @@ export default function CreateNotePage({
 
     if (activeDomain === "Dx") {
       processNoteEtiologies(diagnosisRef.current);
+    }
+
+    // For the dietary domain we flush the debounce immediately on switch,
+    // then the normal saveDomain call below also persists it. This ensures
+    // zero data loss even if the debounce hadn't fired yet.
+    if (activeDomain === "D" && dietaryDebounceRef.current) {
+      clearTimeout(dietaryDebounceRef.current);
+      dietaryDebounceRef.current = null;
     }
 
     const ok = await saveDomain(activeDomain);
@@ -485,13 +548,13 @@ export default function CreateNotePage({
             />
           )}
           {activeDomain === "Dx" && (
-            <DiagnosisDomain 
-              diagnosis={diagnosis} 
-              setDiagnosis={setDiagnosis} 
-              anthro={anthro} 
-              dietary={dietary} 
+            <DiagnosisDomain
+              diagnosis={diagnosis}
+              setDiagnosis={setDiagnosis}
+              anthro={anthro}
+              dietary={dietary}
               clinical={clinical}
-              calculatedMetrics={calculatedMetrics} 
+              calculatedMetrics={calculatedMetrics}
             />
           )}
           {activeDomain === "I" && (
