@@ -196,6 +196,16 @@ export default function ClinicalDomain({ clinical, setClinical, activeSubDomain 
                 />
               </div>
               <div className="input-group mt-1">
+                <label>Pedal Edema</label>
+                <ChipGroup
+                  multiSelect={false}
+                  options={["Yes", "No"]}
+                  value={clinical.pedalEdema}
+                  onChange={v => handleUpdate("pedalEdema", v)}
+                  severityMap={{ "Yes": "danger", "No": "success" }}
+                />
+              </div>
+              <div className="input-group mt-1">
                 <label>Edema Description (Optional)</label>
                 <input 
                   type="text" 

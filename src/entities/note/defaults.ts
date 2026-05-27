@@ -74,6 +74,7 @@ export const defaultClinical = {
   nails: [] as string[],
   skin: [] as string[],
   pittingEdema: "",
+  pedalEdema: "",
   ascites: "",
   edemaDescription: "",
   temp: "",
@@ -233,5 +234,6 @@ export const defaultStandards = {
   currentFluid: "",
   icKcal: "",
   dryWt: "",
+  renalDryWeight: "",
   extraInputs: {} as Record<string, string>,
 };

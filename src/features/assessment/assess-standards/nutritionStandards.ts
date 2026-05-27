@@ -12,6 +12,7 @@ export interface PatientInputs {
   ageYears: number;
   sex: "M" | "F";
   bmi: number;
+  weightLabel?: string;
   // Optional overrides
   dryWtKg?: number;
   icMeasuredKcal?: number; // If IC available, bypass MSJ
@@ -250,7 +251,7 @@ export interface EvalOptions {
 
 export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
   const { condition, variant, patient, currentRx, extraInputs = {} } = opts;
-  const { wtKg, htCm, ageYears, sex, bmi, dryWtKg, icMeasuredKcal } = patient;
+  const { wtKg, htCm, ageYears, sex, bmi, dryWtKg, icMeasuredKcal, weightLabel } = patient;
 
   const ibwKg = calcIBW(htCm, sex);
   const ree = calcMSJ(wtKg, htCm, ageYears, sex);
@@ -264,7 +265,7 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
   let fluidLow: number | null = null, fluidHigh: number | null = null;
   let fluidNote = "";
   let wtForKcal = wtKg;
-  let wtLabel = "Actual Wt";
+  let wtLabel = weightLabel || "Actual Wt";
   let wtForProt = wtKg;
   let eeKcal = ree; // default
   let eeSource: NutritionEvaluation["eeSource"] = "MSJ×AF";
@@ -278,7 +279,7 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
   switch (condition) {
 
     case "aki": {
-      wtForKcal = wtKg; wtLabel = "Actual Wt";
+      wtForKcal = wtKg; 
       if (icMeasuredKcal) {
         cafUsed = 1.0; eeKcal = icMeasuredKcal * cafUsed;
         eeSource = "IC";
@@ -300,7 +301,7 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     }
 
     case "acute_pancreatitis": {
-      wtForKcal = wtKg; wtLabel = "Actual Wt";
+      wtForKcal = wtKg;
       if (icMeasuredKcal) {
         cafUsed = 1.0; eeKcal = icMeasuredKcal * cafUsed; eeSource = "IC";
         kcalLow = eeKcal * 1.0; kcalHigh = eeKcal * 1.1;
@@ -315,7 +316,7 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     }
 
     case "breastfeeding": {
-      wtForKcal = wtKg; wtLabel = "Actual Wt";
+      wtForKcal = wtKg;
       // TEE estimated as MSJ × 1.5 (average active new mother)
       afUsed = 1.5; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
       const tee = eeKcal;
@@ -331,7 +332,7 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     }
 
     case "burns": {
-      wtForKcal = wtKg; wtLabel = "Actual Wt";
+      wtForKcal = wtKg;
       if (icMeasuredKcal) {
         cafUsed = 1.0; eeKcal = icMeasuredKcal; eeSource = "IC";
         kcalLow = eeKcal; kcalHigh = eeKcal * 1.1;
@@ -348,7 +349,7 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     }
 
     case "cancer": {
-      wtForKcal = wtKg; wtLabel = "Actual Wt";
+      wtForKcal = wtKg;
       if (icMeasuredKcal) {
         cafUsed = 1.1; eeKcal = icMeasuredKcal * cafUsed; eeSource = "IC";
         kcalLow = eeKcal * 0.95; kcalHigh = eeKcal * 1.05;
@@ -365,7 +366,7 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     }
 
     case "ckd_3_5": {
-      wtForKcal = wtKg; wtLabel = "Actual Wt";
+      wtForKcal = wtKg;
       afUsed = 1.2; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
       kcalLow = wtKg * 25; kcalHigh = wtKg * 35;
       if (variant === "vlcd") { protLow = wtKg * 0.28; protHigh = wtKg * 0.43; }
@@ -376,7 +377,7 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     }
 
     case "ckd_5d": {
-      wtForKcal = wtKg; wtLabel = "Actual Wt";
+      wtForKcal = wtKg;
       afUsed = 1.2; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
       kcalLow = wtKg * 25; kcalHigh = wtKg * 35;
       protLow = wtKg * 1.0; protHigh = wtKg * 1.2;
@@ -395,12 +396,12 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     case "kidney_transplant": {
       afUsed = 1.2; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
       if (variant === "acute") {
-        wtForKcal = wtKg; wtLabel = "Actual Wt";
+        wtForKcal = wtKg;
         kcalLow = Math.min(wtKg * 30, ree * 1.3);
         kcalHigh = Math.max(wtKg * 35, ree * 1.5);
         protLow = wtKg * 1.2; protHigh = wtKg * 2.0;
       } else {
-        wtForKcal = wtKg; wtLabel = "Actual Wt";
+        wtForKcal = wtKg;
         kcalLow = wtKg * 25; kcalHigh = wtKg * 30;
         if (variant === "chronic_dm") { protLow = wtKg * 0.8; protHigh = wtKg * 0.9; }
         else { protLow = wtKg * 0.6; protHigh = wtKg * 0.8; }
@@ -410,7 +411,7 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     }
 
     case "copd": {
-      wtForKcal = wtKg; wtLabel = "Actual Wt";
+      wtForKcal = wtKg;
       afUsed = 1.3; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
       kcalLow = wtKg * 30; kcalHigh = wtKg * 30;
       protLow = wtKg * 1.0; protHigh = wtKg * 1.5;
@@ -420,21 +421,32 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
 
     case "cirrhosis": {
       const baseWt = dryWtKg || wtKg;
-      wtForKcal = baseWt; wtLabel = dryWtKg ? "Dry Wt" : "Actual Wt (no dry wt entered)";
-      afUsed = 1.3; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
-      kcalLow = baseWt * 30; kcalHigh = baseWt * 35;
+      wtForKcal = baseWt; 
+      if (!weightLabel) {
+        wtLabel = dryWtKg ? "Dry Wt" : "Actual Wt (no dry wt entered)";
+      }
+      
+      if (icMeasuredKcal) {
+        cafUsed = 1.0; eeKcal = icMeasuredKcal * cafUsed;
+        eeSource = "IC";
+        kcalLow = eeKcal * 1.0; kcalHigh = eeKcal * 1.2; // Standard cirrhosis IC target
+      } else {
+        afUsed = 1.3; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
+        kcalLow = baseWt * 30; kcalHigh = baseWt * 35;
+      }
+
       if (variant === "critical") { protLow = baseWt * 1.5; protHigh = baseWt * 2.0; }
       else { protLow = baseWt * 1.0; protHigh = baseWt * 1.5; }
       fluidLow = baseWt * 30; fluidHigh = baseWt * 35;
       fluidNote = "Restrict fluids for hypervolemic hyponatremia.";
-      if (!dryWtKg) flags.push("⚠ Cirrhosis: use dry weight for targets — enter in inputs for accurate calculation.");
+      if (!dryWtKg && !weightLabel) flags.push("⚠ Cirrhosis: use dry weight for targets — enter in inputs for accurate calculation.");
       flags.push("ℹ Do NOT restrict protein in cirrhosis (outdated practice). Adequate intake prevents sarcopenia.");
       break;
     }
 
     case "liver_transplant": {
       afUsed = 1.2; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
-      wtForKcal = wtKg; wtLabel = "Actual Wt";
+      wtForKcal = wtKg;
       if (variant === "acute") {
         kcalLow = wtKg * 30; kcalHigh = wtKg * 35;
         protLow = wtKg * 1.5; protHigh = wtKg * 2.0;
@@ -465,11 +477,11 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
         afUsed = 1.2;
         flags.push("IC preferred in critical illness. MSJ×AF used as fallback.");
         if (activeVariant === "bmi_lt30") {
-          wtForKcal = wtKg; wtLabel = "Actual Wt";
+          wtForKcal = wtKg;
           kcalLow = wtKg * 12; kcalHigh = wtKg * 25;
           flags.push("BMI <30: 12–25 kcal/kg in first 7–10 days (hypocaloric early feeding). Advance to 25–30 after.");
         } else if (activeVariant === "bmi_30_50") {
-          wtForKcal = wtKg; wtLabel = "Actual Wt";
+          wtForKcal = wtKg;
           kcalLow = wtKg * 11; kcalHigh = wtKg * 14;
           flags.push("Obese critical illness (BMI 30–50): permissive underfeeding 11–14 kcal/kg actual wt.");
         } else { // bmi_gt50
@@ -491,7 +503,7 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     case "pregnancy": {
       // TEE estimate: MSJ × 1.4 (light activity)
       afUsed = 1.4; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
-      wtForKcal = wtKg; wtLabel = "Pre-pregnancy / Actual Wt";
+      wtForKcal = wtKg;
       if (variant === "t1") {
         kcalLow = eeKcal; kcalHigh = eeKcal;
         flags.push("T1: No additional caloric intake above non-pregnant EER.");
@@ -505,7 +517,7 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     }
 
     case "pressure_injuries": {
-      wtForKcal = wtKg; wtLabel = "Actual Wt";
+      wtForKcal = wtKg;
       afUsed = 1.3; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
       kcalLow = wtKg * 30; kcalHigh = wtKg * 35;
       if (variant === "stage_3_4") { protLow = wtKg * 1.5; protHigh = wtKg * 2.0; }
@@ -519,7 +531,7 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     }
 
     case "trauma": {
-      wtForKcal = wtKg; wtLabel = "Actual Wt";
+      wtForKcal = wtKg;
       afUsed = 1.4; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
       kcalLow = wtKg * 20; kcalHigh = wtKg * 35;
       protLow = wtKg * 1.2; protHigh = wtKg * 2.0;
@@ -537,7 +549,9 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
       current: currentRx.kcalPerDay,
       unit: "kcal/day",
       status: evalStatus(currentRx.kcalPerDay, kcalLow, kcalHigh),
-      note: `Based on ${wtLabel} (${Math.round(wtForKcal)} kg)`,
+      note: eeSource === "IC" 
+        ? `Based on Indirect Calorimetry (${icMeasuredKcal} kcal)`
+        : `Based on ${wtLabel} (${Math.round(wtForKcal)} kg)`,
     });
   }
 
@@ -552,10 +566,9 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
       status: evalStatus(currentRx.proteinGPerDay, pLow, pHigh),
       note: protFixed
         ? `Fixed RDA target (${protFixed} g/day)`
-        : `Based on ${bmi < 30 || condition !== "critical_illness" ? wtLabel : wtForProt === ibwKg ? "IBW (Hamwi)" : "Actual Wt"} (${Math.round(wtForProt)} kg)`,
+        : `Based on ${bmi < 30 || condition !== "critical_illness" ? wtLabel : wtForProt === ibwKg ? "IBW (Hamwi)" : wtLabel} (${Math.round(wtForProt)} kg)`,
     });
   }
-
   if (fluidLow !== null && fluidHigh !== null && currentRx.fluidMlPerDay !== undefined) {
     results.push({
       label: "Fluid",

@@ -479,6 +479,7 @@ export default function CreateNotePage({
               patientData={patientData}
               calculatedMetrics={calculatedMetrics}
               dietary={dietary}
+              clinical={clinical}
               standards={standards}
               setStandards={setStandards}
             />

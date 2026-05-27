@@ -150,6 +150,7 @@ interface NutritionStandardsDomainProps {
   patientData: any;
   calculatedMetrics: any;
   dietary: any;
+  clinical: any;
   standards: any;
   setStandards: (s: any) => void;
 }
@@ -159,6 +160,7 @@ export default function NutritionStandardsDomain({
   patientData,
   calculatedMetrics,
   dietary,
+  clinical,
   standards,
   setStandards,
 }: NutritionStandardsDomainProps) {
@@ -180,6 +182,7 @@ export default function NutritionStandardsDomain({
   const [currentFluid, setCurrentFluid] = useState(standards.currentFluid || "");
   const [icKcal, setIcKcal] = useState(standards.icKcal || "");
   const [dryWt, setDryWt] = useState(standards.dryWt || "");
+  const [renalDryWeight, setRenalDryWeight] = useState(standards.renalDryWeight || "");
   const [extraInputs, setExtraInputs] = useState<Record<string, string>>(standards.extraInputs || {});
   
   const [evaluation, setEvaluation] = useState<NutritionEvaluation | null>(null);
@@ -188,7 +191,7 @@ export default function NutritionStandardsDomain({
   const syncToParent = () => {
     setStandards({
       condition, variant, currentKcal, currentProtein, currentFluid,
-      icKcal, dryWt, extraInputs
+      icKcal, dryWt, renalDryWeight, extraInputs
     });
   };
 
@@ -203,6 +206,47 @@ export default function NutritionStandardsDomain({
       setCurrentProtein(val);
     }
   }, [dietary]);
+
+  // ── Logic: Calculate Effective Weight (ABW) ──────────────────────────────
+  const { effectiveWeight, weightBasis, nfpeWarning } = useMemo(() => {
+    // 1. Prioritize Renal Dry Weight (for dialysis)
+    if (renalDryWeight) {
+      return { 
+        effectiveWeight: parseFloat(renalDryWeight), 
+        weightBasis: "Renal Dry Weight",
+        nfpeWarning: false 
+      };
+    }
+
+    // 2. Fallback to Manual Dry Weight
+    if (dryWt) {
+      return { 
+        effectiveWeight: parseFloat(dryWt), 
+        weightBasis: "Dry Weight",
+        nfpeWarning: false 
+      };
+    }
+
+    // 3. Calculate based on NFPE findings (Cirrhosis/Fluid context)
+    let reduction = 0;
+    if (clinical.ascites === "Mild") reduction += 0.05;
+    else if (clinical.ascites === "Moderate") reduction += 0.10;
+    else if (clinical.ascites === "Severe") reduction += 0.15;
+    
+    if (clinical.pedalEdema === "Yes") {
+      reduction += 0.05;
+    }
+
+    const calculatedWeight = wtKg * (1 - reduction);
+    const isCirrhosis = condition === "cirrhosis";
+    const missingNfpe = isCirrhosis && !clinical.ascites && !clinical.pedalEdema;
+
+    return {
+      effectiveWeight: calculatedWeight,
+      weightBasis: reduction > 0 ? `Estimated Dry Weight (Actual - ${Math.round(reduction * 100)}%)` : "Actual Weight",
+      nfpeWarning: missingNfpe
+    };
+  }, [renalDryWeight, dryWt, wtKg, condition, clinical]);
 
   // ── Logic: Check Readiness ───────────────────────────────────────────────
   const missingAnthro = useMemo(() => {
@@ -222,10 +266,22 @@ export default function NutritionStandardsDomain({
     const result = evaluateNutritionRx({
       condition: condition as ConditionKey,
       variant: variant || undefined,
-      patient: { wtKg, htCm, ageYears, sex, bmi, dryWtKg: dryWt ? parseFloat(dryWt) : undefined, icMeasuredKcal: icKcal ? parseFloat(icKcal) : undefined },
+      patient: { 
+        wtKg: effectiveWeight, 
+        htCm, 
+        ageYears, 
+        sex, 
+        bmi, 
+        weightLabel: weightBasis,
+        dryWtKg: dryWt ? parseFloat(dryWt) : undefined, 
+        icMeasuredKcal: icKcal ? parseFloat(icKcal) : undefined 
+      },
       currentRx: { kcalPerDay: parseFloat(currentKcal) || 0, proteinGPerDay: parseFloat(currentProtein) || 0, fluidMlPerDay: currentFluid ? parseFloat(currentFluid) : undefined },
       extraInputs: Object.fromEntries(Object.entries(extraInputs).map(([k, v]) => [k, parseFloat(v) || v])),
     });
+    
+    // Inject weight basis
+    (result as any).weightBasis = weightBasis;
     setEvaluation(result);
   };
 
@@ -233,7 +289,7 @@ export default function NutritionStandardsDomain({
   useEffect(() => { 
     if (isReady) runEvaluation(); 
     syncToParent();
-  }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, dryWt, extraInputs, wtKg, htCm]);
+  }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, dryWt, renalDryWeight, extraInputs, wtKg, htCm, effectiveWeight]);
 
   const variants = condition ? (CONDITION_VARIANTS[condition] || []) : [];
   const extraFields = condition ? (CONDITION_EXTRA_INPUTS[condition] || []) : [];
@@ -331,6 +387,10 @@ export default function NutritionStandardsDomain({
               <label style={tinyLabelStyle}>Indirect Calorimetry (mREE)</label>
               <input type="number" value={icKcal} onChange={e => setIcKcal(e.target.value)} style={inputStyle} placeholder="Measured kcal" />
             </div>
+            <div className="input-group">
+              <label style={tinyLabelStyle}>Renal Dry Weight (kg)</label>
+              <input type="number" value={renalDryWeight} onChange={e => setRenalDryWeight(e.target.value)} style={inputStyle} placeholder="Prescribed (Dialysis)" />
+            </div>
             {(condition === "cirrhosis" || condition === "liver_transplant") && (
               <div className="input-group">
                 <label style={tinyLabelStyle}>Dry Weight (kg)</label>
@@ -347,9 +407,18 @@ export default function NutritionStandardsDomain({
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
                 <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#1e293b" }}>Evaluation Results</div>
                 <div style={{ fontSize: "0.65rem", color: "#94a3b8" }}>
-                   Basis: {evaluation.eeSource} · {evaluation.weightLabel} ({evaluation.weightUsed}kg)
+                   Basis: {evaluation.eeSource} · {weightBasis} ({effectiveWeight.toFixed(1)}kg)
                 </div>
               </div>
+
+              {nfpeWarning && (
+                <div style={{ background: "#fffbeb", border: "1px solid #fef3c7", borderRadius: "8px", padding: "0.75rem 1rem", marginBottom: "1rem" }}>
+                  <div style={{ fontSize: "0.78rem", color: "#92400e", display: "flex", gap: "8px", alignItems: "center" }}>
+                    <span>⚠</span>
+                    <span><strong>Cirrhosis Alert:</strong> No NFPE (Ascites/Edema) findings recorded. Dry weight assessment recommended.</span>
+                  </div>
+                </div>
+              )}
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "10px", marginBottom: "1.5rem" }}>
                 {evaluation.results.map((r, i) => <NutrientScorecardItem key={i} result={r} />)}
