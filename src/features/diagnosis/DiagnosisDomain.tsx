@@ -1,11 +1,10 @@
 // src/features/diagnosis/DiagnosisDomain.tsx
 // Phase 7: Automated PES Builder with Auto-Suggest
-//
-// CHANGES from Phase 6:
-//  - Replaced <select> for Problem with a searchable Combobox
-//  - Etiology textarea now shows category-grouped suggestion chips from ETIOLOGY_MAP
-//  - Signs & Symptoms surfaces contextual evidence chips built from anthro/dietary state
-//  - etiologyData.ts must be placed alongside this file (or at the correct import path)
+// PATCH: Enhanced Signs & Symptoms suggestions with:
+//   - Categorized hints (Anthropometric, Biochemical, Clinical/Physical, Dietary/Intake)
+//   - "Add Category..." dropdown (Smart Tag) for manual entries
+//   - Expanded contextual evidence from clinical NFPE findings
+//   - Multi-select semicolon-join logic with consistent "used" detection
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { DomainHeader } from "../../shared/ui/DomainHeader";
@@ -13,21 +12,286 @@ import { SectionHeader } from "../../shared/ui/SectionHeader";
 import { Field } from "../../shared/ui/Field";
 import { formatAge } from "../../shared/utils/date";
 
-import { 
-  evaluateWeightLoss, 
-  evaluateIntake, 
-  diagnoseMalnutrition, 
-  MalnutritionCriteria, 
+import {
+  evaluateWeightLoss,
+  evaluateIntake,
+  diagnoseMalnutrition,
+  MalnutritionCriteria,
   Severity,
   ClinicalContext,
   getAcuteModerateThreshold,
-  getChronicSevereThreshold
+  getChronicSevereThreshold,
 } from "./malnutritionEngine";
 
-// ── Import the generated dictionary ──────────────────────────────────────────
 import { DIAGNOSIS_GROUPS, getAllEtiologiesForProblem } from "./etiologyData";
 
-// ─── Malnutrition Table Component ────────────────────────────────────────────
+// ─── S/S Category Definitions ─────────────────────────────────────────────────
+
+const SIGNS_SYMPTOMS_CATEGORIES = [
+  "Anthropometric",
+  "Biochemical",
+  "Clinical/Physical",
+  "Dietary/Intake",
+  "Functional",
+  "Behavioral",
+] as const;
+
+type SSCategory = (typeof SIGNS_SYMPTOMS_CATEGORIES)[number];
+
+const SS_CATEGORY_COLORS: Record<SSCategory, string> = {
+  "Anthropometric":    "#3182ce",
+  "Biochemical":       "#805ad5",
+  "Clinical/Physical": "#e53e3e",
+  "Dietary/Intake":    "#276749",
+  "Functional":        "#c05621",
+  "Behavioral":        "#2c7a7b",
+};
+
+interface SSHint {
+  text: string;
+  category: SSCategory;
+}
+
+// ─── Expanded Contextual S/S Builder ─────────────────────────────────────────
+// Maps live app state → categorized NCP evidence strings
+
+function buildContextualSuggestions(
+  problem: string,
+  anthro: any,
+  dietary: any,
+  calculatedMetrics?: any,
+  clinical?: any
+): SSHint[] {
+  const hints: SSHint[] = [];
+  if (!problem) return hints;
+
+  const p = problem.toLowerCase();
+
+  // ── ANTHROPOMETRIC ────────────────────────────────────────────────────────
+  if (anthro) {
+    const wt   = parseFloat(anthro.wt   || "0");
+    const ubw  = parseFloat(anthro.ubw  || "0");
+    const wtUnit = anthro.wtUnit || "kg";
+
+    // Weight loss
+    if (wt > 0 && ubw > 0 && ubw > wt) {
+      const loss = (ubw - wt).toFixed(1);
+      const pct  = (((ubw - wt) / ubw) * 100).toFixed(1);
+      const timeStr = calculatedMetrics?.ubwTimeframeDays != null
+        ? `over ${formatAge(calculatedMetrics.ubwTimeframeDays)}`
+        : "";
+      hints.push({
+        text: `Unintentional weight loss of ${loss} ${wtUnit} (${pct}%) ${timeStr}`.trim(),
+        category: "Anthropometric",
+      });
+    }
+
+    // Weight gain
+    if (wt > 0 && ubw > 0 && wt > ubw) {
+      const gain = (wt - ubw).toFixed(1);
+      const pct  = (((wt - ubw) / ubw) * 100).toFixed(1);
+      hints.push({
+        text: `Weight gain of ${gain} ${wtUnit} (${pct}%) above usual body weight`,
+        category: "Anthropometric",
+      });
+    }
+
+    // BMI
+    if (anthro.ht && wt > 0) {
+      const htCm = anthro.htUnit === "in" ? parseFloat(anthro.ht) * 2.54 : parseFloat(anthro.ht);
+      const wtKg = wtUnit === "lbs" ? wt / 2.2046 : wt;
+      if (htCm > 0) {
+        const bmi = (wtKg / Math.pow(htCm / 100, 2)).toFixed(1);
+        const bmiNum = parseFloat(bmi);
+        if (bmiNum < 18.5 && (p.includes("underweight") || p.includes("energy intake") || p.includes("malnutrition"))) {
+          hints.push({ text: `BMI of ${bmi} kg/m² (underweight)`, category: "Anthropometric" });
+        }
+        if (bmiNum >= 25 && bmiNum < 30 && (p.includes("overweight") || p.includes("energy intake"))) {
+          hints.push({ text: `BMI of ${bmi} kg/m² (overweight)`, category: "Anthropometric" });
+        }
+        if (bmiNum >= 30 && (p.includes("obesity") || p.includes("excessive energy") || p.includes("overweight"))) {
+          hints.push({ text: `BMI of ${bmi} kg/m² (obese, Class ${bmiNum >= 40 ? "III" : bmiNum >= 35 ? "II" : "I"})`, category: "Anthropometric" });
+        }
+      }
+    }
+
+    // Head circumference for peds
+    if (anthro.head && (p.includes("growth") || p.includes("pediatric") || p.includes("breastfeed"))) {
+      hints.push({
+        text: `Head circumference of ${anthro.head} ${anthro.circUnit || "cm"}`,
+        category: "Anthropometric",
+      });
+    }
+
+    // Mid-arm circumference
+    if (anthro.mac && (p.includes("malnutrition") || p.includes("protein") || p.includes("muscle") || p.includes("sarcopenia"))) {
+      hints.push({
+        text: `Mid-arm circumference (MAC) of ${anthro.mac} ${anthro.circUnit || "cm"}`,
+        category: "Anthropometric",
+      });
+    }
+  }
+
+  // ── DIETARY / INTAKE ──────────────────────────────────────────────────────
+  if (dietary) {
+    const kcal = parseFloat(dietary.oralCalories || "0");
+    const prot = parseFloat(dietary.oralProtein  || "0");
+    const eeiPct  = parseFloat(dietary.eeiPercent   || "0");
+    const eeiDays = parseFloat(dietary.eeiTimeframe || "0");
+
+    if (kcal > 0 && (p.includes("energy") || p.includes("intake") || p.includes("malnutrition") || p.includes("weight"))) {
+      hints.push({
+        text: `Estimated oral energy intake of ${Math.round(kcal)} kcal/day per 24-hour recall`,
+        category: "Dietary/Intake",
+      });
+    }
+
+    if (prot > 0 && (p.includes("protein") || p.includes("malnutrition") || p.includes("sarcopenia") || p.includes("muscle") || p.includes("wound") || p.includes("pressure"))) {
+      hints.push({
+        text: `Estimated protein intake of ${prot} g/day per 24-hour recall`,
+        category: "Dietary/Intake",
+      });
+    }
+
+    if (eeiPct > 0 && eeiDays > 0 && (p.includes("energy") || p.includes("intake") || p.includes("malnutrition"))) {
+      hints.push({
+        text: `Estimated energy intake approximately ${Math.round(eeiPct)}% of estimated needs over ${eeiDays} day${eeiDays !== 1 ? "s" : ""}`,
+        category: "Dietary/Intake",
+      });
+    }
+
+    if (dietary.fluidIntake && (p.includes("fluid") || p.includes("dehydrat") || p.includes("renal") || p.includes("kidney"))) {
+      hints.push({ text: `Reported fluid intake: ${dietary.fluidIntake}`, category: "Dietary/Intake" });
+    }
+
+    if (dietary.foodSecurity && (p.includes("food insecurity") || p.includes("access") || p.includes("limited access"))) {
+      hints.push({ text: `Food security concern documented: ${dietary.foodSecurity}`, category: "Dietary/Intake" });
+    }
+
+    if (dietary.dietOrder && (p.includes("diet") || p.includes("intake") || p.includes("oral"))) {
+      hints.push({ text: `Current diet order: ${dietary.dietOrder}`, category: "Dietary/Intake" });
+    }
+  }
+
+  // ── CLINICAL / PHYSICAL (NFPE) ────────────────────────────────────────────
+  if (clinical) {
+    const muscleFields: Record<string, string> = {
+      temples:      "temporal muscle wasting",
+      clavicles:    "clavicle prominence (fat/muscle loss)",
+      shoulders:    "shoulder muscle wasting",
+      scapula:      "scapular muscle wasting",
+      interosseous: "interosseous muscle wasting (dorsal hand)",
+      thighs:       "quadriceps muscle wasting (thighs)",
+      calves:       "gastrocnemius muscle wasting (calves)",
+    };
+
+    const fatFields: Record<string, string> = {
+      orbital:    "orbital fat loss (periorbital hollowing)",
+      cheek:      "buccal fat loss (temporal hollowing/buccal wasting)",
+      tricepsFat: "tricep subcutaneous fat loss",
+      midAxillary: "mid-axillary subcutaneous fat loss",
+    };
+
+    const relevantToMuscle = p.includes("malnutrition") || p.includes("protein") || p.includes("sarcopenia") || p.includes("muscle") || p.includes("weight loss");
+    const relevantToFat    = p.includes("malnutrition") || p.includes("energy") || p.includes("weight loss");
+
+    if (relevantToMuscle || relevantToFat) {
+      Object.entries(muscleFields).forEach(([key, desc]) => {
+        const val = clinical[key];
+        if (val && val !== "Normal" && val !== "") {
+          hints.push({
+            text: `${val} ${desc} on NFPE`,
+            category: "Clinical/Physical",
+          });
+        }
+      });
+
+      Object.entries(fatFields).forEach(([key, desc]) => {
+        const val = clinical[key];
+        if (val && val !== "Normal" && val !== "") {
+          hints.push({
+            text: `${val} ${desc} on NFPE`,
+            category: "Clinical/Physical",
+          });
+        }
+      });
+    }
+
+    // Fluid accumulation
+    if (clinical.pittingEdema && clinical.pittingEdema !== "None" && (p.includes("fluid") || p.includes("malnutrition") || p.includes("liver") || p.includes("renal") || p.includes("heart"))) {
+      const edemaDesc = clinical.edemaDescription ? ` (${clinical.edemaDescription})` : "";
+      hints.push({
+        text: `Pitting edema ${clinical.pittingEdema}${edemaDesc} on physical exam`,
+        category: "Clinical/Physical",
+      });
+    }
+
+    if (clinical.ascites && clinical.ascites !== "None" && (p.includes("liver") || p.includes("cirrhosis") || p.includes("fluid"))) {
+      hints.push({
+        text: `${clinical.ascites} ascites on physical exam`,
+        category: "Clinical/Physical",
+      });
+    }
+
+    // Functional grip
+    if (clinical.gripStrength === "Measurably Reduced" && (p.includes("malnutrition") || p.includes("sarcopenia") || p.includes("functional"))) {
+      hints.push({
+        text: `Measurably reduced functional grip strength on bedside assessment`,
+        category: "Functional",
+      });
+    }
+
+    // GI symptoms
+    if (clinical.giDistress && (p.includes("malnutrition") || p.includes("intake") || p.includes("gi") || p.includes("swallow") || p.includes("chewing"))) {
+      hints.push({
+        text: `GI distress reported: ${clinical.giDistress}`,
+        category: "Clinical/Physical",
+      });
+    }
+
+    // Swallowing
+    if (clinical.swallowing && (p.includes("swallow") || p.includes("chewing") || p.includes("oral intake") || p.includes("dysphagia"))) {
+      hints.push({
+        text: `Swallowing difficulty: ${clinical.swallowing}`,
+        category: "Clinical/Physical",
+      });
+    }
+
+    // Chewing
+    if (clinical.chewing && (p.includes("chewing") || p.includes("oral") || p.includes("intake"))) {
+      hints.push({
+        text: `Oral/chewing concern: ${clinical.chewing}`,
+        category: "Clinical/Physical",
+      });
+    }
+
+    // Imaging/body composition
+    if (clinical.imaging_smi && (p.includes("sarcopenia") || p.includes("muscle") || p.includes("malnutrition"))) {
+      hints.push({
+        text: `Skeletal muscle index (SMI) of ${clinical.imaging_smi} cm²/m² on cross-sectional imaging`,
+        category: "Clinical/Physical",
+      });
+    }
+  }
+
+  // ── BEHAVIORAL ────────────────────────────────────────────────────────────
+  if (dietary) {
+    if (dietary.readiness && (p.includes("readiness") || p.includes("not ready") || p.includes("behavior") || p.includes("adherence"))) {
+      hints.push({
+        text: `Readiness to change rated ${dietary.readiness}/10 by patient self-report`,
+        category: "Behavioral",
+      });
+    }
+
+    if (dietary.bingePurge && (p.includes("disorder") || p.includes("disordered") || p.includes("behavior"))) {
+      hints.push({ text: `Reported binge/purge behaviors: ${dietary.bingePurge}`, category: "Behavioral" });
+    }
+  }
+
+  return hints;
+}
+
+// ─── Malnutrition Table Component (unchanged) ─────────────────────────────────
 
 interface MalnutritionTableProps {
   anthro: any;
@@ -39,31 +303,33 @@ interface MalnutritionTableProps {
 function MalnutritionTable({ anthro, dietary, clinical, calculatedMetrics }: MalnutritionTableProps) {
   const [context, setContext] = useState<ClinicalContext>("Acute");
 
-  // 1. Calculate Weight Loss %
-  const wt = parseFloat(anthro?.wt || "0");
+  const wt  = parseFloat(anthro?.wt  || "0");
   const ubw = parseFloat(anthro?.ubw || "0");
   const pctLoss = (ubw > 0 && wt > 0 && ubw > wt) ? ((ubw - wt) / ubw) * 100 : 0;
   const days = calculatedMetrics?.ubwTimeframeDays || 0;
 
-  // 2. Thresholds for Display
   const modThreshold = context === "Acute" ? getAcuteModerateThreshold(days) : null;
-  const sevThreshold = context === "Chronic" ? getChronicSevereThreshold(days) : (days >= 7 && days < 30 ? (3 / 23) * (days - 7) + 2 : getAcuteModerateThreshold(days));
+  const sevThreshold =
+    context === "Chronic"
+      ? getChronicSevereThreshold(days)
+      : days >= 7 && days < 30
+      ? (3 / 23) * (days - 7) + 2
+      : getAcuteModerateThreshold(days);
 
-  // 3. Map NFPE to Severity
   const getMaxNFPE = (fields: string[]): Severity => {
     let max: Severity = "None";
     for (const f of fields) {
       const val = clinical?.[f];
       if (val === "Severe") return "Severe";
       if (val === "Moderate") max = "Moderate";
-      else if (val === "Mild" && max === "None") max = "Moderate"; // ASPEN maps Mild/Mod together usually
+      else if (val === "Mild" && max === "None") max = "Moderate";
     }
     return max;
   };
 
   const muscleFields = ["temples", "clavicles", "shoulders", "scapula", "interosseous", "thighs", "calves"];
-  const fatFields = ["orbital", "cheek", "tricepsFat", "midAxillary"];
-  
+  const fatFields    = ["orbital", "cheek", "tricepsFat", "midAxillary"];
+
   const fluidSeverity = (): Severity => {
     if (clinical?.ascites === "Severe" || clinical?.pittingEdema === "+3" || clinical?.pittingEdema === "+4") return "Severe";
     if (clinical?.ascites === "Moderate" || clinical?.pittingEdema === "+2") return "Moderate";
@@ -77,12 +343,12 @@ function MalnutritionTable({ anthro, dietary, clinical, calculatedMetrics }: Mal
   };
 
   const criteria: MalnutritionCriteria = {
-    weightLoss: evaluateWeightLoss(pctLoss, days, context),
-    eei: evaluateIntake(parseFloat(dietary?.eeiPercent || "0"), parseFloat(dietary?.eeiTimeframe || "0"), context),
-    muscleWasting: getMaxNFPE(muscleFields),
-    fatLoss: getMaxNFPE(fatFields),
+    weightLoss:        evaluateWeightLoss(pctLoss, days, context),
+    eei:               evaluateIntake(parseFloat(dietary?.eeiPercent || "0"), parseFloat(dietary?.eeiTimeframe || "0"), context),
+    muscleWasting:     getMaxNFPE(muscleFields),
+    fatLoss:           getMaxNFPE(fatFields),
     fluidAccumulation: fluidSeverity(),
-    gripStrength: gripSeverity(),
+    gripStrength:      gripSeverity(),
   };
 
   const diagnosisResult = diagnoseMalnutrition(criteria);
@@ -103,13 +369,13 @@ function MalnutritionTable({ anthro, dietary, clinical, calculatedMetrics }: Mal
   return (
     <div className="card" style={{ marginBottom: "1.5rem", border: "1px solid #e2e8f0" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-        <SectionHeader 
-          title="ASPEN Malnutrition Diagnostic Engine" 
-          subtitle="Continuous Interpolation (Rule of Two)" 
-          color="#1e293b" 
+        <SectionHeader
+          title="ASPEN Malnutrition Diagnostic Engine"
+          subtitle="Continuous Interpolation (Rule of Two)"
+          color="#1e293b"
         />
         <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "#f1f5f9", padding: "4px", borderRadius: "8px" }}>
-          {(["Acute", "Chronic"] as ClinicalContext[]).map(c => (
+          {(["Acute", "Chronic"] as ClinicalContext[]).map((c) => (
             <button
               key={c}
               onClick={() => setContext(c)}
@@ -138,98 +404,74 @@ function MalnutritionTable({ anthro, dietary, clinical, calculatedMetrics }: Mal
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>Weight Loss (%)</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>
-              {modThreshold !== null ? `≥ ${modThreshold.toFixed(1)}%` : "N/A"}
-            </td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>
-              {sevThreshold !== null ? `≥ ${sevThreshold.toFixed(1)}%` : "N/A"}
-            </td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>
-              {pctLoss.toFixed(1)}% ({days}d)
-            </td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(criteria.weightLoss), color: getTextColor(criteria.weightLoss), fontWeight: 700 }}>
-              {criteria.weightLoss}
-            </td>
-          </tr>
-          <tr>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>Energy Intake (%)</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>
-              {"< 75%"}
-            </td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>
-              {"≤ 50%"}
-            </td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>
-              {dietary?.eeiPercent || 0}% ({dietary?.eeiTimeframe || 0}d)
-            </td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(criteria.eei), color: getTextColor(criteria.eei), fontWeight: 700 }}>
-              {criteria.eei}
-            </td>
-          </tr>
-          <tr>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>Muscle Wasting</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>Mild-Moderate</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>Severe</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>
-              {muscleFields.filter(f => clinical?.[f] && clinical?.[f] !== "Normal").length} sites
-            </td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(criteria.muscleWasting), color: getTextColor(criteria.muscleWasting), fontWeight: 700 }}>
-              {criteria.muscleWasting}
-            </td>
-          </tr>
-          <tr>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>Fat Loss</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>Mild-Moderate</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>Severe</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>
-              {fatFields.filter(f => clinical?.[f] && clinical?.[f] !== "Normal").length} sites
-            </td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(criteria.fatLoss), color: getTextColor(criteria.fatLoss), fontWeight: 700 }}>
-              {criteria.fatLoss}
-            </td>
-          </tr>
-          <tr>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>Fluid Accumulation</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>Mild-Moderate</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>Severe</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>
-              {clinical?.pittingEdema || "None"}
-            </td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(criteria.fluidAccumulation), color: getTextColor(criteria.fluidAccumulation), fontWeight: 700 }}>
-              {criteria.fluidAccumulation}
-            </td>
-          </tr>
-          <tr>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>Functional Grip</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>{context === "Acute" ? "Reduced" : "N/A"}</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>{context === "Chronic" ? "Reduced" : "N/A"}</td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>
-              {clinical?.gripStrength || "WNL"}
-            </td>
-            <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(criteria.gripStrength), color: getTextColor(criteria.gripStrength), fontWeight: 700 }}>
-              {criteria.gripStrength}
-            </td>
-          </tr>
+          {[
+            {
+              label: "Weight Loss (%)",
+              mod: modThreshold !== null ? `≥ ${modThreshold.toFixed(1)}%` : "N/A",
+              sev: sevThreshold !== null ? `≥ ${sevThreshold.toFixed(1)}%` : "N/A",
+              val: `${pctLoss.toFixed(1)}% (${days}d)`,
+              outcome: criteria.weightLoss,
+            },
+            {
+              label: "Energy Intake (%)",
+              mod: "< 75%",
+              sev: "≤ 50%",
+              val: `${dietary?.eeiPercent || 0}% (${dietary?.eeiTimeframe || 0}d)`,
+              outcome: criteria.eei,
+            },
+            {
+              label: "Muscle Wasting",
+              mod: "Mild-Moderate",
+              sev: "Severe",
+              val: `${muscleFields.filter((f) => clinical?.[f] && clinical?.[f] !== "Normal").length} sites`,
+              outcome: criteria.muscleWasting,
+            },
+            {
+              label: "Fat Loss",
+              mod: "Mild-Moderate",
+              sev: "Severe",
+              val: `${fatFields.filter((f) => clinical?.[f] && clinical?.[f] !== "Normal").length} sites`,
+              outcome: criteria.fatLoss,
+            },
+            {
+              label: "Fluid Accumulation",
+              mod: "Mild-Moderate",
+              sev: "Severe",
+              val: clinical?.pittingEdema || "None",
+              outcome: criteria.fluidAccumulation,
+            },
+            {
+              label: "Functional Grip",
+              mod: context === "Acute" ? "Reduced" : "N/A",
+              sev: context === "Chronic" ? "Reduced" : "N/A",
+              val: clinical?.gripStrength || "WNL",
+              outcome: criteria.gripStrength,
+            },
+          ].map((row) => (
+            <tr key={row.label}>
+              <td style={{ padding: "10px", border: "1px solid #e2e8f0", fontWeight: 600 }}>{row.label}</td>
+              <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>{row.mod}</td>
+              <td style={{ padding: "10px", border: "1px solid #e2e8f0", color: "#64748b" }}>{row.sev}</td>
+              <td style={{ padding: "10px", border: "1px solid #e2e8f0" }}>{row.val}</td>
+              <td style={{ padding: "10px", border: "1px solid #e2e8f0", background: getCellColor(row.outcome), color: getTextColor(row.outcome), fontWeight: 700 }}>
+                {row.outcome}
+              </td>
+            </tr>
+          ))}
         </tbody>
       </table>
 
-      <div style={{ 
-        padding: "1rem", 
-        background: diagnosisResult.diagnosis === "None" ? "#f8fafc" : (diagnosisResult.diagnosis.includes("Severe") ? "#fef2f2" : "#fffbeb"),
+      <div style={{
+        padding: "1rem",
+        background: diagnosisResult.diagnosis === "None" ? "#f8fafc" : diagnosisResult.diagnosis.includes("Severe") ? "#fef2f2" : "#fffbeb",
         border: "1px solid",
-        borderColor: diagnosisResult.diagnosis === "None" ? "#e2e8f0" : (diagnosisResult.diagnosis.includes("Severe") ? "#fecaca" : "#fef3c7"),
-        borderRadius: "8px"
+        borderColor: diagnosisResult.diagnosis === "None" ? "#e2e8f0" : diagnosisResult.diagnosis.includes("Severe") ? "#fecaca" : "#fef3c7",
+        borderRadius: "8px",
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <div style={{ fontSize: "0.65rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>Automated Diagnosis</div>
-            <div style={{ 
-              fontSize: "1.1rem", 
-              fontWeight: 800, 
-              color: diagnosisResult.diagnosis === "None" ? "#334155" : (diagnosisResult.diagnosis.includes("Severe") ? "#991b1b" : "#92400e") 
-            }}>
+            <div style={{ fontSize: "1.1rem", fontWeight: 800, color: diagnosisResult.diagnosis === "None" ? "#334155" : diagnosisResult.diagnosis.includes("Severe") ? "#991b1b" : "#92400e" }}>
               {diagnosisResult.diagnosis}
             </div>
           </div>
@@ -251,75 +493,6 @@ function MalnutritionTable({ anthro, dietary, clinical, calculatedMetrics }: Mal
   );
 }
 
-// ─── Contextual S-suggestion builder ─────────────────────────────────────────
-// Reads live app state (anthro, dietary) to produce ready-made evidence strings.
-
-function buildContextualSuggestions(
-  problem: string,
-  anthro: any,
-  dietary: any,
-  calculatedMetrics?: any
-): string[] {
-  const hints: string[] = [];
-  if (!problem) return hints;
-
-  const p = problem.toLowerCase();
-
-  // Weight / anthropometric evidence
-  if (anthro) {
-    const wt = parseFloat(anthro.wt);
-    const ubw = parseFloat(anthro.ubw);
-    const wtUnit = anthro.wtUnit || "kg";
-    if (wt > 0 && ubw > 0 && ubw > wt) {
-      const loss = (ubw - wt).toFixed(1);
-      const pct = (((ubw - wt) / ubw) * 100).toFixed(1);
-      const timeStr = (calculatedMetrics?.ubwTimeframeDays !== undefined && calculatedMetrics?.ubwTimeframeDays !== null)
-        ? `over ${formatAge(calculatedMetrics.ubwTimeframeDays)}`
-        : "";
-      hints.push(`Unintentional weight loss of ${loss} ${wtUnit} (${pct}%) ${timeStr}`.trim());
-    }
-
-    if (anthro.ht && wt > 0) {
-      const htCm =
-        anthro.htUnit === "in"
-          ? parseFloat(anthro.ht) * 2.54
-          : parseFloat(anthro.ht);
-      const wtKg = wtUnit === "lbs" ? wt / 2.2046 : wt;
-      if (htCm > 0) {
-        const bmi = (wtKg / Math.pow(htCm / 100, 2)).toFixed(1);
-        if ((p.includes("underweight") || p.includes("energy intake")) && parseFloat(bmi) < 18.5)
-          hints.push(`BMI of ${bmi} kg/m² (underweight)`);
-        if ((p.includes("overweight") || p.includes("obesity") || p.includes("excessive energy")) && parseFloat(bmi) >= 25)
-          hints.push(`BMI of ${bmi} kg/m² (${parseFloat(bmi) >= 30 ? "obese" : "overweight"})`);
-      }
-    }
-  }
-
-  // Dietary / intake evidence
-  if (dietary) {
-    const kcal = parseFloat(dietary.oralCalories);
-    const prot = parseFloat(dietary.oralProtein);
-
-    if (kcal > 0 && (p.includes("energy") || p.includes("intake") || p.includes("malnutrition"))) {
-      hints.push(`Estimated oral energy intake of ${Math.round(kcal)} kcal/day per 24-hour recall`);
-    }
-    if (prot > 0 && (p.includes("protein") || p.includes("malnutrition") || p.includes("sarcopenia") || p.includes("muscle"))) {
-      hints.push(`Estimated protein intake of ${prot} g/day per 24-hour recall`);
-    }
-    if (dietary.fluidIntake && (p.includes("fluid") || p.includes("dehydrat"))) {
-      hints.push(`Reported fluid intake: ${dietary.fluidIntake}`);
-    }
-    if (dietary.foodSecurity && (p.includes("food insecurity") || p.includes("access"))) {
-      hints.push(`Food security concern: ${dietary.foodSecurity}`);
-    }
-    if (dietary.readiness && (p.includes("readiness") || p.includes("not ready") || p.includes("behavior"))) {
-      hints.push(`Readiness to change rated ${dietary.readiness}/10 by patient`);
-    }
-  }
-
-  return hints;
-}
-
 // ─── Combobox ─────────────────────────────────────────────────────────────────
 
 interface ComboboxProps {
@@ -332,7 +505,7 @@ interface ComboboxProps {
 
 function SearchableCombobox({ value, onChange, placeholder, options, groupedOptions }: ComboboxProps) {
   const [query, setQuery] = useState(value);
-  const [open, setOpen] = useState(false);
+  const [open, setOpen]   = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setQuery(value); }, [value]);
@@ -349,30 +522,18 @@ function SearchableCombobox({ value, onChange, placeholder, options, groupedOpti
     if (!groupedOptions) return [];
     const q = query.toLowerCase();
     if (!q) return groupedOptions;
-    return groupedOptions.map(g => ({
-      ...g,
-      items: g.items.filter(d => d.toLowerCase().includes(q)),
-    })).filter(g => g.items.length > 0);
+    return groupedOptions.map((g) => ({ ...g, items: g.items.filter((d) => d.toLowerCase().includes(q)) })).filter((g) => g.items.length > 0);
   }, [query, groupedOptions]);
 
   const filteredOptions = useMemo(() => {
     if (!options) return [];
     const q = query.toLowerCase();
     if (!q) return options;
-    return options.filter(o => o.toLowerCase().includes(q));
+    return options.filter((o) => o.toLowerCase().includes(q));
   }, [query, options]);
 
-  const handleSelect = (val: string) => {
-    setQuery(val);
-    onChange(val);
-    setOpen(false);
-  };
-
-  const handleClear = () => {
-    setQuery("");
-    onChange("");
-    setOpen(false);
-  };
+  const handleSelect = (val: string) => { setQuery(val); onChange(val); setOpen(false); };
+  const handleClear  = () => { setQuery(""); onChange(""); setOpen(false); };
 
   return (
     <div ref={ref} style={{ position: "relative" }}>
@@ -381,78 +542,36 @@ function SearchableCombobox({ value, onChange, placeholder, options, groupedOpti
           type="text"
           value={query}
           onFocus={() => setOpen(true)}
-          onChange={e => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
+          onChange={(e) => { setQuery(e.target.value); onChange(e.target.value); setOpen(true); }}
           placeholder={placeholder}
-          style={{
-            flex: 1,
-            padding: "7px 10px",
-            border: "1px solid #e2e8f0",
-            borderRadius: "6px",
-            fontSize: "0.88rem",
-            fontFamily: "inherit",
-            outline: "none",
-            boxSizing: "border-box",
-          }}
+          style={{ flex: 1, padding: "7px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.88rem", fontFamily: "inherit", outline: "none", boxSizing: "border-box" }}
         />
         {query && (
-          <button
-            onClick={handleClear}
-            style={{ border: "none", background: "none", color: "#94a3b8", cursor: "pointer", fontSize: "1rem", padding: "0 6px" }}
-            title="Clear"
-          >
-            ×
-          </button>
+          <button onClick={handleClear} style={{ border: "none", background: "none", color: "#94a3b8", cursor: "pointer", fontSize: "1rem", padding: "0 6px" }} title="Clear">×</button>
         )}
       </div>
 
       {open && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
-          background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 300,
-          maxHeight: "300px", overflowY: "auto",
-        }}>
-          {groupedOptions && filteredGrouped.map(g => (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 300, maxHeight: "300px", overflowY: "auto" }}>
+          {groupedOptions && filteredGrouped.map((g) => (
             <div key={g.group}>
-              <div style={{
-                padding: "6px 12px", fontSize: "0.65rem", fontWeight: 800,
-                color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em",
-                borderBottom: "1px solid #f1f5f9", background: "#fafafa", position: "sticky", top: 0,
-              }}>
+              <div style={{ padding: "6px 12px", fontSize: "0.65rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", borderBottom: "1px solid #f1f5f9", background: "#fafafa", position: "sticky", top: 0 }}>
                 {g.group}
               </div>
-              {g.items.map(item => (
-                <button
-                  key={item}
-                  onClick={() => handleSelect(item)}
-                  style={{
-                    display: "block", width: "100%", textAlign: "left",
-                    padding: "7px 14px", background: "none", border: "none",
-                    fontSize: "0.84rem", cursor: "pointer", color: "#1e293b",
-                    borderBottom: "1px solid #f8fafc",
-                    fontWeight: item === value ? 700 : 400,
-                  }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#f0f7ff")}
-                  onMouseLeave={e => (e.currentTarget.style.background = "none")}
+              {g.items.map((item) => (
+                <button key={item} onClick={() => handleSelect(item)} style={{ display: "block", width: "100%", textAlign: "left", padding: "7px 14px", background: "none", border: "none", fontSize: "0.84rem", cursor: "pointer", color: "#1e293b", borderBottom: "1px solid #f8fafc", fontWeight: item === value ? 700 : 400 }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f7ff")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
                 >
                   {item}
                 </button>
               ))}
             </div>
           ))}
-          {options && filteredOptions.map(item => (
-            <button
-              key={item}
-              onClick={() => handleSelect(item)}
-              style={{
-                display: "block", width: "100%", textAlign: "left",
-                padding: "7px 14px", background: "none", border: "none",
-                fontSize: "0.84rem", cursor: "pointer", color: "#1e293b",
-                borderBottom: "1px solid #f8fafc",
-                fontWeight: item === value ? 700 : 400,
-              }}
-              onMouseEnter={e => (e.currentTarget.style.background = "#f0f7ff")}
-              onMouseLeave={e => (e.currentTarget.style.background = "none")}
+          {options && filteredOptions.map((item) => (
+            <button key={item} onClick={() => handleSelect(item)} style={{ display: "block", width: "100%", textAlign: "left", padding: "7px 14px", background: "none", border: "none", fontSize: "0.84rem", cursor: "pointer", color: "#1e293b", borderBottom: "1px solid #f8fafc", fontWeight: item === value ? 700 : 400 }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "#f0f7ff")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
             >
               {item}
             </button>
@@ -463,7 +582,7 @@ function SearchableCombobox({ value, onChange, placeholder, options, groupedOpti
   );
 }
 
-// ─── Etiology Suggestion Chips ────────────────────────────────────────────────
+// ─── Etiology Suggestion Chips (unchanged) ────────────────────────────────────
 
 interface EtiologySuggestionsProps {
   problem: string;
@@ -475,7 +594,6 @@ function EtiologySuggestions({ problem, currentEtiology, onAppend }: EtiologySug
   const etiologies = getAllEtiologiesForProblem(problem);
   if (etiologies.length === 0) return null;
 
-  // Group by category
   const grouped: Record<string, string[]> = {};
   for (const e of etiologies) {
     if (!grouped[e.category]) grouped[e.category] = [];
@@ -495,17 +613,10 @@ function EtiologySuggestions({ problem, currentEtiology, onAppend }: EtiologySug
     "Physical function":     "#2980b9",
   };
 
-  const isAlreadyUsed = (etio: string) =>
-    currentEtiology.toLowerCase().includes(etio.toLowerCase());
+  const isAlreadyUsed = (etio: string) => currentEtiology.toLowerCase().includes(etio.toLowerCase());
 
   return (
-    <div style={{
-      marginTop: "8px",
-      background: "#f8fafc",
-      border: "1px solid #e2e8f0",
-      borderRadius: "8px",
-      padding: "10px 12px",
-    }}>
+    <div style={{ marginTop: "8px", background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "10px 12px" }}>
       <div style={{ fontSize: "0.68rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>
         Suggested Etiologies — click to select
       </div>
@@ -513,35 +624,15 @@ function EtiologySuggestions({ problem, currentEtiology, onAppend }: EtiologySug
         const color = CAT_COLORS[cat] || "#64748b";
         return (
           <div key={cat} style={{ marginBottom: "8px" }}>
-            <div style={{
-              fontSize: "0.62rem", fontWeight: 700, color, textTransform: "uppercase",
-              letterSpacing: "0.05em", marginBottom: "4px",
-            }}>
-              {cat}
-            </div>
+            <div style={{ fontSize: "0.62rem", fontWeight: 700, color, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>{cat}</div>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
-              {etiologies.map(etio => {
+              {etiologies.map((etio) => {
                 const used = isAlreadyUsed(etio);
                 return (
-                  <button
-                    key={etio}
-                    onClick={() => !used && onAppend(`${etio} (${cat})`)}
-                    title={used ? "Already in etiology field" : `Select: "${etio}"`}
-                    style={{
-                      padding: "3px 9px",
-                      borderRadius: "12px",
-                      border: `1px solid ${color}40`,
-                      background: used ? `${color}15` : `${color}08`,
-                      color: used ? `${color}99` : color,
-                      fontSize: "0.72rem",
-                      fontWeight: 600,
-                      cursor: used ? "default" : "pointer",
-                      textDecoration: used ? "line-through" : "none",
-                      opacity: used ? 0.6 : 1,
-                      transition: "all 0.15s",
-                    }}
-                    onMouseEnter={e => { if (!used) e.currentTarget.style.background = `${color}20`; }}
-                    onMouseLeave={e => { if (!used) e.currentTarget.style.background = `${color}08`; }}
+                  <button key={etio} onClick={() => !used && onAppend(`${etio} (${cat})`)} title={used ? "Already in etiology field" : `Select: "${etio}"`}
+                    style={{ padding: "3px 9px", borderRadius: "12px", border: `1px solid ${color}40`, background: used ? `${color}15` : `${color}08`, color: used ? `${color}99` : color, fontSize: "0.72rem", fontWeight: 600, cursor: used ? "default" : "pointer", textDecoration: used ? "line-through" : "none", opacity: used ? 0.6 : 1, transition: "all 0.15s" }}
+                    onMouseEnter={(e) => { if (!used) e.currentTarget.style.background = `${color}20`; }}
+                    onMouseLeave={(e) => { if (!used) e.currentTarget.style.background = `${color}08`; }}
                   >
                     {etio}
                   </button>
@@ -555,67 +646,109 @@ function EtiologySuggestions({ problem, currentEtiology, onAppend }: EtiologySug
   );
 }
 
+// ─── Enhanced Signs & Symptoms Suggestions ────────────────────────────────────
 
-// ─── Signs & Symptoms Suggestions ────────────────────────────────────────────
-
-interface SSignsSuggestionsProps {
+interface SignsSuggestionsProps {
   problem: string;
   currentSigns: string;
   anthro: any;
   dietary: any;
+  clinical?: any;
   calculatedMetrics?: any;
   onAppend: (text: string) => void;
 }
 
-function SignsSuggestions({ problem, currentSigns, anthro, dietary, calculatedMetrics, onAppend }: SSignsSuggestionsProps) {
-  const suggestions = useMemo(
-    () => buildContextualSuggestions(problem, anthro, dietary, calculatedMetrics),
-    [problem, anthro?.wt, anthro?.ubw, anthro?.ht, dietary?.oralCalories, dietary?.oralProtein, dietary?.readiness, calculatedMetrics?.ubwTimeframeDays]
+function SignsSuggestions({ problem, currentSigns, anthro, dietary, clinical, calculatedMetrics, onAppend }: SignsSuggestionsProps) {
+  const allHints = useMemo(
+    () => buildContextualSuggestions(problem, anthro, dietary, calculatedMetrics, clinical),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      problem,
+      anthro?.wt, anthro?.ubw, anthro?.ht, anthro?.head, anthro?.mac, anthro?.wtUnit,
+      dietary?.oralCalories, dietary?.oralProtein, dietary?.eeiPercent, dietary?.eeiTimeframe,
+      dietary?.fluidIntake, dietary?.foodSecurity, dietary?.dietOrder, dietary?.readiness, dietary?.bingePurge,
+      clinical?.temples, clinical?.clavicles, clinical?.shoulders, clinical?.scapula,
+      clinical?.interosseous, clinical?.thighs, clinical?.calves,
+      clinical?.orbital, clinical?.cheek, clinical?.tricepsFat, clinical?.midAxillary,
+      clinical?.pittingEdema, clinical?.ascites, clinical?.gripStrength,
+      clinical?.giDistress, clinical?.swallowing, clinical?.chewing, clinical?.imaging_smi,
+      calculatedMetrics?.ubwTimeframeDays,
+    ]
   );
 
-  if (suggestions.length === 0) return null;
+  if (allHints.length === 0) return null;
 
-  const isUsed = (s: string) => currentSigns.toLowerCase().includes(s.toLowerCase().slice(0, 20));
+  // Group by category
+  const grouped = useMemo(() => {
+    const map: Partial<Record<SSCategory, SSHint[]>> = {};
+    for (const h of allHints) {
+      if (!map[h.category]) map[h.category] = [];
+      map[h.category]!.push(h);
+    }
+    return map;
+  }, [allHints]);
+
+  // Consistent "used" check — normalise whitespace and compare first 25 chars
+  const isUsed = (hint: SSHint) => {
+    const needle = hint.text.toLowerCase().slice(0, 25).replace(/\s+/g, " ").trim();
+    return currentSigns.toLowerCase().replace(/\s+/g, " ").includes(needle);
+  };
+
+  const presentCategories = (Object.keys(grouped) as SSCategory[]).filter(
+    (cat) => (grouped[cat] ?? []).length > 0
+  );
 
   return (
-    <div style={{
-      marginTop: "8px",
-      background: "#f0fff4",
-      border: "1px solid #9ae6b4",
-      borderRadius: "8px",
-      padding: "10px 12px",
-    }}>
+    <div style={{ marginTop: "8px", background: "#f0fff4", border: "1px solid #9ae6b4", borderRadius: "8px", padding: "10px 12px" }}>
       <div style={{ fontSize: "0.68rem", fontWeight: 800, color: "#276749", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "8px" }}>
-        ✦ Contextual Evidence — from your note data
+        ✦ Contextual Evidence — grouped by category
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-        {suggestions.map((s, i) => {
-          const used = isUsed(s);
-          return (
-            <button
-              key={i}
-              onClick={() => !used && onAppend(s)}
-              title={used ? "Already inserted" : "Click to insert"}
-              style={{
-                padding: "4px 10px",
-                borderRadius: "12px",
-                border: "1px solid #9ae6b4",
-                background: used ? "#c6f6d5" : "#fff",
-                color: used ? "#22543d99" : "#276749",
-                fontSize: "0.74rem",
-                fontWeight: 600,
-                cursor: used ? "default" : "pointer",
-                textDecoration: used ? "line-through" : "none",
-                transition: "all 0.15s",
-              }}
-              onMouseEnter={e => { if (!used) e.currentTarget.style.background = "#c6f6d5"; }}
-              onMouseLeave={e => { if (!used) e.currentTarget.style.background = "#fff"; }}
-            >
-              {s}
-            </button>
-          );
-        })}
-      </div>
+
+      {presentCategories.map((cat) => {
+        const color  = SS_CATEGORY_COLORS[cat];
+        const hints  = grouped[cat] ?? [];
+        return (
+          <div key={cat} style={{ marginBottom: "10px" }}>
+            {/* Category label */}
+            <div style={{ fontSize: "0.62rem", fontWeight: 800, color, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px", display: "flex", alignItems: "center", gap: "5px" }}>
+              <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: color }} />
+              {cat}
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px" }}>
+              {hints.map((hint, i) => {
+                const used = isUsed(hint);
+                return (
+                  <button
+                    key={i}
+                    onClick={() => !used && onAppend(hint.text)}
+                    title={used ? "Already inserted" : `Click to insert into Signs & Symptoms`}
+                    style={{
+                      padding: "4px 10px",
+                      borderRadius: "12px",
+                      border: `1px solid ${color}50`,
+                      background: used ? `${color}18` : "#fff",
+                      color: used ? `${color}80` : color,
+                      fontSize: "0.73rem",
+                      fontWeight: 600,
+                      cursor: used ? "default" : "pointer",
+                      textDecoration: used ? "line-through" : "none",
+                      opacity: used ? 0.65 : 1,
+                      transition: "all 0.15s",
+                      maxWidth: "280px",
+                      textAlign: "left",
+                      lineHeight: 1.4,
+                    }}
+                    onMouseEnter={(e) => { if (!used) { e.currentTarget.style.background = `${color}18`; } }}
+                    onMouseLeave={(e) => { if (!used) { e.currentTarget.style.background = "#fff"; } }}
+                  >
+                    {hint.text}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -630,6 +763,7 @@ interface PESCardProps {
   onRemove?: () => void;
   anthro?: any;
   dietary?: any;
+  clinical?: any;
   calculatedMetrics?: any;
 }
 
@@ -646,65 +780,74 @@ const ETIOLOGY_DOMAINS = [
   "Physical function",
 ];
 
-function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, calculatedMetrics }: PESCardProps) {
+function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, clinical, calculatedMetrics }: PESCardProps) {
   const [showEtiologySuggestions, setShowEtiologySuggestions] = useState(true);
-  const [showSignsSuggestions, setShowSignsSuggestions] = useState(true);
+  const [showSignsSuggestions,    setShowSignsSuggestions]    = useState(true);
 
   const accentColor = isPrimary ? "#3498db" : "#8e44ad";
-  const label = isPrimary ? "Primary Nutrition Diagnosis" : `Additional Diagnosis ${index}`;
+  const label       = isPrimary ? "Primary Nutrition Diagnosis" : `Additional Diagnosis ${index}`;
 
-  // Append to etiology field (semicolon-delimited if content exists)
+  // Append to etiology field
   const handleEtiologyAppend = (etio: string) => {
     const existing = data.etiology.trim();
-    const next = existing ? `${existing}; ${etio}` : etio;
+    const next     = existing ? `${existing}; ${etio}` : etio;
     onChange("etiology", next);
   };
 
-  // Manual etiology domain appender - Smart Replace
+  // Smart Replace for etiology domain tag
   const handleAddDomain = (domain: string) => {
     if (!domain) return;
-    let existing = data.etiology.trim();
+    const existing  = data.etiology.trim();
     if (!existing) return;
-    
-    // Split by segments (semicolon)
-    const segments = existing.split(";").map(s => s.trim()).filter(Boolean);
+    const segments  = existing.split(";").map((s) => s.trim()).filter(Boolean);
     if (segments.length === 0) return;
-
-    let lastSegment = segments[segments.length - 1];
-
-    // Regex to see if it already ends with a domain in parentheses
-    // Group 1: The text before the final parentheses
-    // Group 2: The content inside the final parentheses
-    const match = lastSegment.match(/^(.*)\s*\(([^)]+)\)$/);
-    
+    let last        = segments[segments.length - 1];
+    const match     = last.match(/^(.*)\s*\(([^)]+)\)$/);
     if (match && ETIOLOGY_DOMAINS.includes(match[2].trim())) {
-      // Smart Replace: swap the existing domain for the new one
-      lastSegment = `${match[1].trim()} (${domain})`;
+      last = `${match[1].trim()} (${domain})`;
     } else {
-      // Normal Append: just add the domain to the end
-      lastSegment = `${lastSegment} (${domain})`;
+      last = `${last} (${domain})`;
     }
-
-    segments[segments.length - 1] = lastSegment;
+    segments[segments.length - 1] = last;
     onChange("etiology", segments.join("; "));
   };
 
-  // Append to signsSymptoms field
-  const handleSignsAppend = (s: string) => {
+  // Smart append for Signs & Symptoms — semicolon-join, avoid duplicates
+  const handleSignsAppend = (text: string) => {
     const existing = data.signsSymptoms.trim();
-    const next = existing ? `${existing}; ${s}` : s;
+    const next     = existing ? `${existing}; ${text}` : text;
     onChange("signsSymptoms", next);
   };
 
+  // Add S/S category tag — identical Smart Replace logic
+  const handleAddSSCategory = (category: string) => {
+    if (!category) return;
+    const existing = data.signsSymptoms.trim();
+    if (!existing) return;
+    const segments = existing.split(";").map((s) => s.trim()).filter(Boolean);
+    if (segments.length === 0) return;
+    let last = segments[segments.length - 1];
+    // Smart Replace: if already ends with a category in parentheses, swap it
+    const match = last.match(/^(.*)\s*\(([^)]+)\)$/);
+    if (match && (SIGNS_SYMPTOMS_CATEGORIES as readonly string[]).includes(match[2].trim())) {
+      last = `${match[1].trim()} (${category})`;
+    } else {
+      last = `${last} (${category})`;
+    }
+    segments[segments.length - 1] = last;
+    onChange("signsSymptoms", segments.join("; "));
+  };
+
   const hasEtiologySuggestions = !!getAllEtiologiesForProblem(data.problem).length;
+
   const contextualHints = useMemo(
-    () => buildContextualSuggestions(data.problem, anthro, dietary, calculatedMetrics),
-    [data.problem, anthro, dietary, calculatedMetrics?.ubwTimeframeDays]
+    () => buildContextualSuggestions(data.problem, anthro, dietary, calculatedMetrics, clinical),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [data.problem, anthro, dietary, calculatedMetrics, clinical]
   );
 
-  // Domain adder visibility: show if there is any text in the etiology field
-  // This allows the user to append or change a domain at any time.
-  const showDomainAdder = data.etiology.trim().length > 0;
+  const showDomainAdder   = data.etiology.trim().length > 0;
+  const showSSCategoryBtn = data.signsSymptoms.trim().length > 0;
 
   return (
     <div style={{
@@ -731,25 +874,15 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
       <Field label="P — Problem (Nutrition Diagnosis)">
         <SearchableCombobox
           value={data.problem}
-          onChange={v => onChange("problem", v)}
+          onChange={(v) => onChange("problem", v)}
           placeholder="Search or select diagnosis…"
-          groupedOptions={DIAGNOSIS_GROUPS.map(g => ({ group: g.group, items: g.diagnoses }))}
+          groupedOptions={DIAGNOSIS_GROUPS.map((g) => ({ group: g.group, items: g.diagnoses }))}
         />
       </Field>
 
       {/* PES Live Preview */}
       {data.problem && (
-        <div style={{
-          background: "#fff",
-          border: `1px solid ${accentColor}30`,
-          borderRadius: "6px",
-          padding: "0.65rem 0.9rem",
-          margin: "0.85rem 0",
-          fontSize: "0.84rem",
-          lineHeight: 1.7,
-          fontStyle: "italic",
-          color: "#334155",
-        }}>
+        <div style={{ background: "#fff", border: `1px solid ${accentColor}30`, borderRadius: "6px", padding: "0.65rem 0.9rem", margin: "0.85rem 0", fontSize: "0.84rem", lineHeight: 1.7, fontStyle: "italic", color: "#334155" }}>
           <span style={{ fontWeight: 700, color: accentColor, fontStyle: "normal" }}>{data.problem}</span>
           {data.etiology && (
             <> <span style={{ color: "#64748b", fontStyle: "normal" }}>related to</span>{" "}
@@ -762,9 +895,10 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
         </div>
       )}
 
-      {/* E & S grid */}
+      {/* E & S Grid */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.85rem", marginTop: "0.5rem" }}>
-        {/* E — Etiology */}
+
+        {/* ── E — Etiology ── */}
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
             <label style={{ fontSize: "0.72rem", fontWeight: 700, color: "#4a5568", textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -772,21 +906,21 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
             </label>
             {hasEtiologySuggestions && (
               <button
-                onClick={() => setShowEtiologySuggestions(s => !s)}
+                onClick={() => setShowEtiologySuggestions((s) => !s)}
                 style={{ fontSize: "0.62rem", padding: "1px 7px", border: `1px solid ${accentColor}40`, borderRadius: "8px", background: showEtiologySuggestions ? `${accentColor}15` : "transparent", color: accentColor, cursor: "pointer", fontWeight: 700 }}
               >
                 {showEtiologySuggestions ? "Hide hints" : "Show hints"}
               </button>
             )}
           </div>
-          
+
           <div style={{ position: "relative", width: "100%" }}>
             <textarea
               value={data.etiology}
-              onChange={e => onChange("etiology", e.target.value)}
+              onChange={(e) => onChange("etiology", e.target.value)}
               placeholder="Related to…"
               style={{
-                padding: showDomainAdder ? "7px 110px 7px 9px" : "7px 9px", 
+                padding: showDomainAdder ? "7px 110px 7px 9px" : "7px 9px",
                 border: "1px solid #e2e8f0", borderRadius: "6px",
                 fontSize: "0.85rem", minHeight: "72px", resize: "vertical",
                 width: "100%", boxSizing: "border-box", fontFamily: "inherit",
@@ -794,38 +928,25 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
               }}
             />
             {showDomainAdder && (
-              <div style={{
-                position: "absolute", top: "8px", right: "8px",
-                zIndex: 10,
-              }}>
+              <div style={{ position: "absolute", top: "8px", right: "8px", zIndex: 10 }}>
                 <select
                   value=""
-                  onChange={e => handleAddDomain(e.target.value)}
-                  style={{
-                    fontSize: "0.65rem", padding: "4px 8px", borderRadius: "6px",
-                    border: "1px solid #cbd5e1", background: accentColor, color: "#fff",
-                    cursor: "pointer", outline: "none", fontWeight: 700,
-                    width: "100px", appearance: "none", textAlign: "center",
-                  }}
+                  onChange={(e) => handleAddDomain(e.target.value)}
+                  style={{ fontSize: "0.65rem", padding: "4px 8px", borderRadius: "6px", border: "1px solid #cbd5e1", background: accentColor, color: "#fff", cursor: "pointer", outline: "none", fontWeight: 700, width: "100px", appearance: "none", textAlign: "center" }}
                 >
                   <option value="" disabled>Add Domain...</option>
-                  {ETIOLOGY_DOMAINS.map(d => <option key={d} value={d} style={{ color: "#1e293b", background: "#fff" }}>{d}</option>)}
+                  {ETIOLOGY_DOMAINS.map((d) => <option key={d} value={d} style={{ color: "#1e293b", background: "#fff" }}>{d}</option>)}
                 </select>
               </div>
             )}
           </div>
 
           {showEtiologySuggestions && data.problem && (
-            <EtiologySuggestions
-              problem={data.problem}
-              currentEtiology={data.etiology}
-              onAppend={handleEtiologyAppend}
-            />
+            <EtiologySuggestions problem={data.problem} currentEtiology={data.etiology} onAppend={handleEtiologyAppend} />
           )}
         </div>
 
-
-        {/* S — Signs & Symptoms */}
+        {/* ── S — Signs & Symptoms ── */}
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
             <label style={{ fontSize: "0.72rem", fontWeight: 700, color: "#4a5568", textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -833,29 +954,58 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
             </label>
             {contextualHints.length > 0 && (
               <button
-                onClick={() => setShowSignsSuggestions(s => !s)}
+                onClick={() => setShowSignsSuggestions((s) => !s)}
                 style={{ fontSize: "0.62rem", padding: "1px 7px", border: "1px solid #9ae6b4", borderRadius: "8px", background: showSignsSuggestions ? "#f0fff4" : "transparent", color: "#276749", cursor: "pointer", fontWeight: 700 }}
               >
-                {showSignsSuggestions ? "Hide hints" : `${contextualHints.length} hint${contextualHints.length > 1 ? "s" : ""}`}
+                {showSignsSuggestions ? "Hide hints" : `${contextualHints.length} hint${contextualHints.length !== 1 ? "s" : ""}`}
               </button>
             )}
           </div>
-          <textarea
-            value={data.signsSymptoms}
-            onChange={e => onChange("signsSymptoms", e.target.value)}
-            placeholder="As evidenced by…"
-            style={{
-              padding: "7px 9px", border: "1px solid #e2e8f0", borderRadius: "6px",
-              fontSize: "0.85rem", minHeight: "72px", resize: "vertical",
-              width: "100%", boxSizing: "border-box", fontFamily: "inherit",
-            }}
-          />
+
+          {/* Textarea with Category Adder button (mirrors Etiology Domain adder) */}
+          <div style={{ position: "relative", width: "100%" }}>
+            <textarea
+              value={data.signsSymptoms}
+              onChange={(e) => onChange("signsSymptoms", e.target.value)}
+              placeholder="As evidenced by…"
+              style={{
+                padding: showSSCategoryBtn ? "7px 118px 7px 9px" : "7px 9px",
+                border: "1px solid #e2e8f0", borderRadius: "6px",
+                fontSize: "0.85rem", minHeight: "72px", resize: "vertical",
+                width: "100%", boxSizing: "border-box", fontFamily: "inherit",
+                transition: "padding 0.2s",
+              }}
+            />
+            {/* "Add Category..." dropdown — appears once user has typed something */}
+            {showSSCategoryBtn && (
+              <div style={{ position: "absolute", top: "8px", right: "8px", zIndex: 10 }}>
+                <select
+                  value=""
+                  onChange={(e) => handleAddSSCategory(e.target.value)}
+                  title="Tag the last evidence item with a category"
+                  style={{
+                    fontSize: "0.62rem", padding: "4px 6px", borderRadius: "6px",
+                    border: "1px solid #9ae6b4", background: "#276749", color: "#fff",
+                    cursor: "pointer", outline: "none", fontWeight: 700,
+                    width: "108px", appearance: "none", textAlign: "center",
+                  }}
+                >
+                  <option value="" disabled>Add Category...</option>
+                  {SIGNS_SYMPTOMS_CATEGORIES.map((c) => (
+                    <option key={c} value={c} style={{ color: "#1e293b", background: "#fff" }}>{c}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
+
           {showSignsSuggestions && data.problem && (
             <SignsSuggestions
               problem={data.problem}
               currentSigns={data.signsSymptoms}
               anthro={anthro}
               dietary={dietary}
+              clinical={clinical}
               calculatedMetrics={calculatedMetrics}
               onAppend={handleSignsAppend}
             />
@@ -871,9 +1021,7 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
 interface DiagnosisDomainProps {
   diagnosis: any;
   setDiagnosis: (d: any) => void;
-  /** Pass live anthro state from App.tsx for contextual S-suggestions */
   anthro?: any;
-  /** Pass live dietary state from App.tsx for contextual S-suggestions */
   dietary?: any;
   clinical?: any;
   calculatedMetrics?: any;
@@ -915,12 +1063,7 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
       <DomainHeader title="Dx. Nutrition Diagnosis" />
 
       {/* ASPEN Malnutrition Engine */}
-      <MalnutritionTable 
-        anthro={anthro} 
-        dietary={dietary} 
-        clinical={clinical} 
-        calculatedMetrics={calculatedMetrics} 
-      />
+      <MalnutritionTable anthro={anthro} dietary={dietary} clinical={clinical} calculatedMetrics={calculatedMetrics} />
 
       {/* PES Builder */}
       <div className="card">
@@ -928,10 +1071,7 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
           <SectionHeader title="PES Statement Builder" subtitle="Problem · Etiology · Signs/Symptoms" color="#3498db" />
           <button
             onClick={addDx}
-            style={{
-              background: "#8e44ad", color: "#fff", border: "none", borderRadius: "6px",
-              padding: "6px 14px", cursor: "pointer", fontSize: "0.8rem", fontWeight: 700, whiteSpace: "nowrap",
-            }}
+            style={{ background: "#8e44ad", color: "#fff", border: "none", borderRadius: "6px", padding: "6px 14px", cursor: "pointer", fontSize: "0.8rem", fontWeight: 700, whiteSpace: "nowrap" }}
           >
             + Add Diagnosis
           </button>
@@ -941,14 +1081,11 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
         <PESCard
           index={0}
           isPrimary={true}
-          data={{
-            problem: diagnosis.problem || "",
-            etiology: diagnosis.etiology || "",
-            signsSymptoms: diagnosis.signsSymptoms || "",
-          }}
+          data={{ problem: diagnosis.problem || "", etiology: diagnosis.etiology || "", signsSymptoms: diagnosis.signsSymptoms || "" }}
           onChange={(field, val) => update(field, val)}
           anthro={anthro}
           dietary={dietary}
+          clinical={clinical}
           calculatedMetrics={calculatedMetrics}
         />
 
@@ -963,6 +1100,7 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
             onRemove={() => removeAdditional(dx.id)}
             anthro={anthro}
             dietary={dietary}
+            clinical={clinical}
             calculatedMetrics={calculatedMetrics}
           />
         ))}
@@ -977,7 +1115,7 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
             <input
               type="text"
               value={diagnosis.priorityRanking || ""}
-              onChange={e => update("priorityRanking", e.target.value)}
+              onChange={(e) => update("priorityRanking", e.target.value)}
               placeholder="e.g. Primary: NI-1.2; Secondary: NC-3.2"
             />
           </div>
@@ -986,7 +1124,7 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
             <input
               type="text"
               value={diagnosis.notes || ""}
-              onChange={e => update("notes", e.target.value)}
+              onChange={(e) => update("notes", e.target.value)}
               placeholder="Any nuance or context…"
             />
           </div>
@@ -995,7 +1133,7 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
           <label>Nutrition Diagnosis Narrative</label>
           <textarea
             value={diagnosis.nutritionDxNarrative || ""}
-            onChange={e => update("nutritionDxNarrative", e.target.value)}
+            onChange={(e) => update("nutritionDxNarrative", e.target.value)}
             placeholder="Summarize the nutrition diagnosis in clinical language…"
             style={{ minHeight: "80px" }}
           />

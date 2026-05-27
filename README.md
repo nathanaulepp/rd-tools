@@ -42,9 +42,9 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [x] **add** PN macro conc. (unit/vol)
 - [x] *patch* formula name submissions for EN
 - [x] **add** create functionality for EN modulars (mL/bolus isn't enough)
-- [ ] *patch* broken autosave for D12 and D13
-- [ ] **add** D3.1 automated estimated oral intake
-- [ ] **add** Incorporate a formulary database
+- [x] *patch* broken autosave for D12 and D13
+- [ ] **add** D2.1 automated estimated oral intake
+- [ ] **add** Incorporate a persistent EN formulary database into ./src/shared/api
 - [ ] **add** GIR check (timeline layout with dynamic points for unique intervals from 0:00 to 23:59)
 
 #### Standards
@@ -58,7 +58,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [x] **add** allow for creation of new etiology blocks through saved ADIMEs
 - [x] **add** Automated malnutrition chart
 - [x] **add** Build skeleton for contextual suggestions for signs & symptoms (s/s) --> use assessment data
-- [ ] *patch* PES s/s contextual suggestions missing chip selection and dropdowns
+- [x] *patch* PES s/s contextual suggestions missing chip selection and dropdowns
 - [ ] **add** Differentials to guide continued/ordered assessment
 
 ### Intervention
