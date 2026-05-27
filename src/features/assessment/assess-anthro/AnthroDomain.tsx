@@ -57,14 +57,8 @@ export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScan
                   </span>
                   
                   {wtChangeDetails && (
-                    <span className="chip active">
-                      Δ Wt: {wtChangeDetails.pctString}%
-                    </span>
-                  )}
-                  
-                  {wtChangeDetails?.isLoss && (
-                    <span className={`chip ${wtChangeDetails.isSevere ? "active-danger" : "active-warning"}`}>
-                      Wt Loss: {wtChangeDetails.absPctString}% {wtChangeDetails.timeStr ? `(${wtChangeDetails.timeStr})` : ""}
+                    <span className={`chip ${wtChangeDetails.isLoss ? (wtChangeDetails.isSevere ? "active-danger" : "active-warning") : "active"}`}>
+                      Δ Wt: {wtChangeDetails.pctString}% {wtChangeDetails.timeStr ? `(${wtChangeDetails.timeStr})` : ""}
                     </span>
                   )}
                 </div>
