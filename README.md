@@ -1,48 +1,79 @@
 # rd-tools
 
-from: Nathan Aulepp
+**Author:** Nathan Aulepp
 
-This project aims to accelerate the completion of clinical dietitian charting work. 
+## Overview
+This project aims to accelerate the completion of clinical dietitian charting work.
 
-Benefit: Many clinicians can expand their scope by reducing work time on charting and increasing their time face-to-face
-with patients, researching for nutrition edge cases, or implementing quality improvement for their facility. Charting
-is often considered by health administrators as having little-to-zero financial return. 
+### The Problem
+Charting is often considered by health administrators as having little-to-zero financial return. Consequently, it consumes valuable time that could be spent on higher-impact clinical tasks.
 
-Therefore, your true (and perceived) value as a dietitian increases as you replace your time charting with more
-meaningful tasks.
+### The Solution
+By reducing time spent on charting, clinicians can expand their scope:
+- Increasing face-to-face time with patients.
+- Researching complex nutrition edge cases.
+- Implementing quality improvement initiatives for their facility.
 
+*Your true (and perceived) value as a dietitian increases as you replace routine charting with more meaningful clinical tasks.*
 
-List of to do:
+---
 
-**RD Workstation**
---add keyboard shortcuts
+## Roadmap & To-Do List
 
-*assessment*
-anthro
---DEXA scan functionality mapped and coded
+### RD Workstation
+- [ ] Add keyboard shortcuts
 
-clinical
---automated drug nutrient interactions
---automated malnutrition chart
---automated refeeding risk chart
+### Assessment
+#### Anthro
+- [ ] DEXA scan functionality mapped and coded
 
-dietary
---D31 automated estimated oral intake
---incorporate a formulary database
---GIR check (timeline layout, with a dynamic number of points because a point is assigned to each unique GIR interval from 0:00 to 23:59) 
+#### Clinical
+- [ ] Automated drug-nutrient interactions
+- [ ] Automated malnutrition chart
+- [ ] Automated refeeding risk chart
 
+#### Dietary
+- [ ] D3.1 automated estimated oral intake
+- [ ] Incorporate a formulary database
+- [ ] GIR check (timeline layout with dynamic points for unique intervals from 0:00 to 23:59)
 
-standards
---improve user flow of UI
+#### Standards
+- [ ] Improve user flow of UI
 
-*diagnosis*
---differentials to guide continued/ordered assessment
+### Diagnosis
+- [ ] Differentials to guide continued/ordered assessment
 
-*intervention*
---oral/EN/PN calculations
---basic renal adjustments
+### Intervention
+- [ ] Oral/EN/PN calculations
+- [ ] Basic renal adjustments
 
+### Dietitian Tools
+- [ ] **METs Calorie Estimator**
+  - Goal: Better activity factor to estimate patient calories.
+  - Formula: `TDEE = MSJ_RMR * SUM(0-24 hours of (activity * MET / 24))`
 
-*dietitian tools*
---if you want a better activity factor to estimate patient calories:
-daily activity METs calorie estimator (sums up all daily activities [with time est.] then calculates average MET) formula is TDEE = MSJ_RMR * SUM of 0_24 hours of (activity * MET / 24)
+---
+
+## Development
+
+### Prerequisites
+- [Node.js](https://nodejs.org/)
+- [Rust](https://www.rust-lang.org/tools/install)
+- [Tauri Prerequisites](https://v2.tauri.app/start/prerequisites/)
+
+### Setup
+1. Clone the repository.
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Run the development environment:
+   ```bash
+   npm run tauri dev
+   ```
+
+### Build
+To generate a production bundle:
+```bash
+npm run tauri build
+```
