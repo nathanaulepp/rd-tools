@@ -16,6 +16,11 @@ interface PatientHeaderProps {
   patientData: any;
   setPatientData: (d: any) => void;
   clinical: any;
+  // add these:
+  onExit?: () => void;
+  onSubmit?: () => void;
+  isSubmitted?: boolean;
+  isSaving?: boolean;
 }
 
 export default function PatientHeader({
@@ -24,6 +29,10 @@ export default function PatientHeader({
   patientData,
   setPatientData,
   clinical,
+  onExit,
+  onSubmit,
+  isSubmitted,
+  isSaving,
 }: PatientHeaderProps) {
   const [dateError, setDateError] = useState<string>("");
 
@@ -139,6 +148,17 @@ export default function PatientHeader({
             </span>
           </div>
         ))}
+
+        {(onExit || onSubmit) && (
+          <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem", alignItems: "center", flexShrink: 0 }}>
+            {isSaving && <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 600 }}>Saving…</span>}
+            {isSubmitted && (
+              <span style={{ fontSize: "0.7rem", fontWeight: 700, background: "#d4edda", color: "#155724", border: "1px solid #c3e6cb", borderRadius: "10px", padding: "2px 8px" }}>✓ Submitted</span>
+            )}
+            {onExit && <button className="btn-outline" onClick={onExit}>Exit</button>}
+            {onSubmit && !isSubmitted && <button className="btn-primary" onClick={onSubmit}>Submit</button>}
+          </div>
+        )}
       </div>
 
       {/* Validation error banner — sits flush below the header */}

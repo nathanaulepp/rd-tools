@@ -1,6 +1,7 @@
 // src/pages/CreateNotePage.tsx
 // Phase 6: Added Diagnosis (Dx), Intervention (I), Monitor/Eval (ME) domains
 // + Settings link in sidebar
+// FIX: Added missing standards/setStandards to props interface and destructuring
 
 import React, { useState, useRef, useCallback } from "react";
 import type { Patient, Note } from "../shared/api/db";
@@ -52,8 +53,8 @@ interface CreateNotePageProps {
   setIntervention: (i: any) => void;
   monitorEval: any;
   setMonitorEval: (me: any) => void;
-  standards: any;
-  setStandards: (s: any) => void;
+  standards: any;           // FIX: was missing
+  setStandards: (s: any) => void; // FIX: was missing
 
   calculatedMetrics: any;
   handleExitToStart: () => void;
@@ -71,7 +72,7 @@ const DOMAIN_LABELS: Record<DomainKey, string> = {
   ME: "Monitor & Evaluate",
 };
 
-// ─── Submit Modal (unchanged) ─────────────────────────────────────────────────
+// ─── Submit Modal ─────────────────────────────────────────────────────────────
 interface SubmitModalProps {
   state: "confirm" | "saving" | "error" | "success";
   missingFields: string[];
@@ -158,6 +159,7 @@ export default function CreateNotePage({
   diagnosis, setDiagnosis,
   intervention, setIntervention,
   monitorEval, setMonitorEval,
+  standards, setStandards,   // FIX: was missing from destructuring
   calculatedMetrics,
   handleExitToStart,
 }: CreateNotePageProps) {
@@ -165,7 +167,6 @@ export default function CreateNotePage({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeDomain, setActiveDomain] = useState<DomainKey>("A");
   const [activeSubDomain, setActiveSubDomain] = useState<string>("A1-A5");
-  const [searchQuery, setSearchQuery] = useState("");
   const [toastMsg, setToastMsg] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
@@ -177,27 +178,27 @@ export default function CreateNotePage({
   );
 
   // Refs for stale-closure-safe saves
-  const anthroRef    = useRef(anthro);
-  const dexaRef      = useRef(dexaScans);
-  const labsRef      = useRef(labs);
-  const clinicalRef  = useRef(clinical);
-  const dietaryRef   = useRef(dietary);
-  const diagnosisRef = useRef(diagnosis);
+  const anthroRef       = useRef(anthro);
+  const dexaRef         = useRef(dexaScans);
+  const labsRef         = useRef(labs);
+  const clinicalRef     = useRef(clinical);
+  const dietaryRef      = useRef(dietary);
+  const diagnosisRef    = useRef(diagnosis);
   const interventionRef = useRef(intervention);
   const monitorEvalRef  = useRef(monitorEval);
   const standardsRef    = useRef(standards);
 
-  anthroRef.current      = anthro;
-  dexaRef.current        = dexaScans;
-  labsRef.current        = labs;
-  clinicalRef.current    = clinical;
-  dietaryRef.current     = dietary;
-  diagnosisRef.current   = diagnosis;
+  anthroRef.current       = anthro;
+  dexaRef.current         = dexaScans;
+  labsRef.current         = labs;
+  clinicalRef.current     = clinical;
+  dietaryRef.current      = dietary;
+  diagnosisRef.current    = diagnosis;
   interventionRef.current = intervention;
   monitorEvalRef.current  = monitorEval;
   standardsRef.current    = standards;
 
-  // ── DRY Domain Save Map (Phase 6 additions) ──────────────────────────────
+  // ── DRY Domain Save Map ──────────────────────────────────────────────────
   const DOMAIN_SAVE_MAP = [
     { domain: "A",  noteKey: "anthro",           ref: anthroRef },
     { domain: "A",  noteKey: "dexa_scans",        ref: dexaRef   },
@@ -289,7 +290,6 @@ export default function CreateNotePage({
   const handleDomainSwitch = async (nextDomain: DomainKey) => {
     if (nextDomain === activeDomain) return;
 
-    // Phase 7: If leaving Dx domain, process etiologies before switching
     if (activeDomain === "Dx") {
       processNoteEtiologies(diagnosisRef.current);
     }
@@ -301,7 +301,7 @@ export default function CreateNotePage({
     else if (nextDomain === "B") setActiveSubDomain("B1");
     else if (nextDomain === "C") setActiveSubDomain("C1");
     else if (nextDomain === "D") setActiveSubDomain("D1");
-    else setActiveSubDomain(""); // Reset for S, Dx, I, ME
+    else setActiveSubDomain("");
     if (window.innerWidth <= 768) setSidebarOpen(false);
   };
 
@@ -313,16 +313,7 @@ export default function CreateNotePage({
   };
 
   const isSubmitted = noteStatus === "submitted";
-  const submitBtnStyle: React.CSSProperties = {
-    padding: "0.3rem 0.9rem", borderRadius: "6px", border: "none",
-    fontSize: "0.78rem", fontWeight: 700,
-    cursor: isSubmitted ? "default" : "pointer",
-    background: isSubmitted ? "#27ae60" : "#e74c3c",
-    color: "#fff", opacity: isSubmitted ? 0.85 : 1,
-    transition: "background 0.2s",
-  };
 
-  // ── Sidebar nav items (Phase 6 appended) ────────────────────────────────
   const singleDomains: { key: DomainKey; label: string; badge?: string }[] = [
     { key: "Dx", label: "Dx. Nutrition Diagnosis" },
     { key: "I",  label: "I. Intervention" },
@@ -339,8 +330,8 @@ export default function CreateNotePage({
         </div>
 
         <div style={{ margin: "0.5rem 0.75rem 0.25rem", fontSize: "0.62rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            Assessment
-          </div>
+          Assessment
+        </div>
         <div className="nav-section">
           {/* Domain A */}
           <div className={`nav-item ${activeDomain === "A" ? "active" : ""}`} onClick={() => handleDomainSwitch("A")}>
@@ -449,21 +440,19 @@ export default function CreateNotePage({
       <main className="main-workspace">
         <header className="top-nav">
           <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}>☰</button>
-          <div className="search-bar-container">
-            <span className="search-icon">🔍</span>
-            <input type="text" className="search-bar" placeholder="Jump to section..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} />
-          </div>
-          {isSaving && <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>Saving…</span>}
-          {isSubmitted && (
-            <span style={{ fontSize: "0.72rem", fontWeight: 700, background: "#d4edda", color: "#155724", border: "1px solid #c3e6cb", borderRadius: "12px", padding: "2px 10px" }}>
-              ✓ Submitted
-            </span>
-          )}
-          {!isSubmitted && <button style={submitBtnStyle} onClick={handleSubmitClick}>Submit Note</button>}
-          <button className="btn-outline" onClick={handleExitToStart}>Exit Note</button>
         </header>
 
-        <PatientHeader patient={patient} note={note} patientData={patientData} setPatientData={setPatientData} clinical={clinical} />
+        <PatientHeader
+          patient={patient}
+          note={note}
+          patientData={patientData}
+          setPatientData={setPatientData}
+          clinical={clinical}
+          onExit={handleExitToStart}
+          onSubmit={handleSubmitClick}
+          isSubmitted={isSubmitted}
+          isSaving={isSaving}
+        />
 
         {isSubmitted && (
           <div style={{ background: "#d4edda", borderBottom: "1px solid #c3e6cb", color: "#155724", padding: "0.4rem 0.75rem", fontSize: "0.78rem", fontWeight: 600, display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -485,11 +474,11 @@ export default function CreateNotePage({
             <DietaryDomain dietary={dietary} setDietary={setDietary} activeSubDomain={activeSubDomain} clinical={clinical} />
           )}
           {activeDomain === "S" && (
-            <NutritionStandardsDomain 
-              anthro={anthro} 
-              patientData={patientData} 
-              calculatedMetrics={calculatedMetrics} 
-              dietary={dietary} 
+            <NutritionStandardsDomain
+              anthro={anthro}
+              patientData={patientData}
+              calculatedMetrics={calculatedMetrics}
+              dietary={dietary}
               standards={standards}
               setStandards={setStandards}
             />

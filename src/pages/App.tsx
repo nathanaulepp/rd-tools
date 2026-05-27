@@ -1,5 +1,6 @@
 // src/pages/App.tsx
 // Phase 6: New domains (Diagnosis, Intervention, Monitor/Eval) + Settings view
+// Added: ErrorBoundary wrapping CreateNotePage, DevErrorPanel mounted globally
 
 import { useState, useMemo, useEffect } from "react";
 import "./App.css";
@@ -13,7 +14,9 @@ import CreateNotePage from "./CreateNotePage";
 import ToolsHomePage from "./ToolsHomePage";
 import PatientGatePage from "./PatientGatePage";
 import ClinicalSummaryView from "./ClinicalSummaryView";
-import SettingsPage from "./SettingsPage"; // Phase 6
+import SettingsPage from "./SettingsPage";
+import { ErrorBoundary, DevErrorPanel } from "../shared/ui/ErrorBoundary";
+
 import {
   defaultPatientData,
   defaultAnthro,
@@ -21,9 +24,9 @@ import {
   defaultLabs,
   defaultClinical,
   defaultDietary,
-  defaultDiagnosis,     // Phase 6
-  defaultIntervention,  // Phase 6
-  defaultMonitorEval,   // Phase 6
+  defaultDiagnosis,
+  defaultIntervention,
+  defaultMonitorEval,
   defaultStandards,
 } from "../entities/note/defaults";
 import { initDrugSync } from "../features/drugs/DrugLookupTool";
@@ -31,7 +34,7 @@ import { initDrugSync } from "../features/drugs/DrugLookupTool";
 export type ViewState =
   | "LOGIN" | "START" | "PATIENT_GATE" | "VIEW_NOTES"
   | "CREATE_NOTE" | "VIEW_SUMMARY" | "TOOLS"
-  | "SETTINGS"; // Phase 6
+  | "SETTINGS";
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -40,7 +43,7 @@ export default function App() {
   useEffect(() => {
     getDb().catch(err => console.error("Failed to initialize database:", err));
     initDrugSync().then(r => {
-      if (r.status === "synced") console.log('Drug DB: ${r.count} terms loaded');
+      if (r.status === "synced") console.log(`Drug DB: ${r.count} terms loaded`);
       if (r.status === "error") console.warn("Drug DB sync failed:", r.error);
     });
   }, []);
@@ -115,7 +118,6 @@ export default function App() {
   const [labs,         setLabs]         = useState(defaultLabs);
   const [clinical,     setClinical]     = useState(defaultClinical);
   const [dietary,      setDietary]      = useState<any>(defaultDietary);
-  // Phase 6 new domains
   const [diagnosis,    setDiagnosis]    = useState<any>(defaultDiagnosis);
   const [intervention, setIntervention] = useState<any>(defaultIntervention);
   const [monitorEval,  setMonitorEval]  = useState<any>(defaultMonitorEval);
@@ -133,43 +135,20 @@ export default function App() {
       languages:     patient.languages  ?? "",
     });
 
-    if (note.anthro) {
-      try { setAnthro(JSON.parse(note.anthro)); } catch(e) { setAnthro(defaultAnthro); }
-    } else { setAnthro(defaultAnthro); }
+    const tryParse = <T,>(raw: string | null | undefined, fallback: T): T => {
+      if (!raw) return fallback;
+      try { return JSON.parse(raw); } catch { return fallback; }
+    };
 
-    if (note.dexa_scans) {
-      try { setDexaScans(JSON.parse(note.dexa_scans)); } catch(e) { setDexaScans(defaultDexaScans); }
-    } else { setDexaScans(defaultDexaScans); }
-
-    if (note.labs) {
-      try { setLabs(JSON.parse(note.labs)); } catch(e) { setLabs(defaultLabs); }
-    } else { setLabs(defaultLabs); }
-
-    if (note.clinical) {
-      try { setClinical(JSON.parse(note.clinical)); } catch(e) { setClinical(defaultClinical); }
-    } else { setClinical(defaultClinical); }
-
-    if (note.dietary) {
-      try { setDietary(JSON.parse(note.dietary)); } catch(e) { setDietary(defaultDietary); }
-    } else { setDietary(defaultDietary); }
-
-    // Phase 6: new domains
-    if (note.diagnosis) {
-      try { setDiagnosis(JSON.parse(note.diagnosis)); } catch(e) { setDiagnosis(defaultDiagnosis); }
-    } else { setDiagnosis(defaultDiagnosis); }
-
-    if (note.intervention) {
-      try { setIntervention(JSON.parse(note.intervention)); } catch(e) { setIntervention(defaultIntervention); }
-    } else { setIntervention(defaultIntervention); }
-
-    if (note.monitor_evaluate) {
-      try { setMonitorEval(JSON.parse(note.monitor_evaluate)); } catch(e) { setMonitorEval(defaultMonitorEval); }
-    } else { setMonitorEval(defaultMonitorEval); }
-
-    // Comparative Standards
-    if ((note as any).standards) {
-      try { setStandards(JSON.parse((note as any).standards)); } catch(e) { setStandards(defaultStandards); }
-    } else { setStandards(defaultStandards); }
+    setAnthro(tryParse(note.anthro, defaultAnthro));
+    setDexaScans(tryParse(note.dexa_scans, defaultDexaScans));
+    setLabs(tryParse(note.labs, defaultLabs));
+    setClinical(tryParse(note.clinical, defaultClinical));
+    setDietary(tryParse(note.dietary, defaultDietary));
+    setDiagnosis(tryParse(note.diagnosis, defaultDiagnosis));
+    setIntervention(tryParse(note.intervention, defaultIntervention));
+    setMonitorEval(tryParse(note.monitor_evaluate, defaultMonitorEval));
+    setStandards(tryParse((note as any).standards, defaultStandards));
   };
 
   // ── Derived metrics ────────────────────────────────────────────────────────
@@ -187,7 +166,7 @@ export default function App() {
 
     let ubwTimeframeDays: number | null = null;
     if (anthro.ubwDate && patientData.noteDate) {
-      const dUbw = new Date(anthro.ubwDate);
+      const dUbw  = new Date(anthro.ubwDate);
       const dNote = new Date(patientData.noteDate);
       ubwTimeframeDays = Math.floor((dNote.getTime() - dUbw.getTime()) / (1000 * 60 * 60 * 24));
     }
@@ -207,7 +186,6 @@ export default function App() {
     labs, setLabs,
     clinical, setClinical,
     dietary, setDietary,
-    // Phase 6
     diagnosis, setDiagnosis,
     intervention, setIntervention,
     monitorEval, setMonitorEval,
@@ -217,55 +195,105 @@ export default function App() {
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
-  if (!isAuthenticated) return <LoginPage onLogin={handleLogin} />;
+  if (!isAuthenticated) return (
+    <>
+      <LoginPage onLogin={handleLogin} />
+      <DevErrorPanel />
+    </>
+  );
 
   switch (currentView) {
     case "START":
       return (
-        <StartPage
-          setCurrentView={setCurrentView}
-          handleLogout={handleLogout}
-          zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
-          theme={theme} setTheme={setTheme}
-        />
+        <>
+          <StartPage
+            setCurrentView={setCurrentView}
+            handleLogout={handleLogout}
+            zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
+            theme={theme} setTheme={setTheme}
+          />
+          <DevErrorPanel />
+        </>
       );
+
     case "PATIENT_GATE":
       return (
-        <PatientGatePage
-          onEnterWorkspace={handleOpenNote}
-          onCancel={() => setCurrentView("START")}
-        />
+        <>
+          <PatientGatePage
+            onEnterWorkspace={handleOpenNote}
+            onCancel={() => setCurrentView("START")}
+          />
+          <DevErrorPanel />
+        </>
       );
+
     case "VIEW_NOTES":
       return (
-        <NoteListPage
-          handleExitToStart={handleExitToStart}
-          onOpenNote={handleOpenNote}
-        />
+        <>
+          <ErrorBoundary label="NoteListPage">
+            <NoteListPage
+              handleExitToStart={handleExitToStart}
+              onOpenNote={handleOpenNote}
+            />
+          </ErrorBoundary>
+          <DevErrorPanel />
+        </>
       );
+
     case "CREATE_NOTE":
-      return <CreateNotePage {...sharedNoteProps} />;
+      return (
+        <>
+          <ErrorBoundary label="CreateNotePage">
+            <CreateNotePage {...sharedNoteProps} />
+          </ErrorBoundary>
+          <DevErrorPanel />
+        </>
+      );
+
     case "VIEW_SUMMARY":
       if (!activePatient || !activeNote) return null;
       return (
-        <ClinicalSummaryView
-          {...sharedNoteProps}
-          patient={activePatient}
-          note={activeNote}
-        />
+        <>
+          <ErrorBoundary label="ClinicalSummaryView">
+            <ClinicalSummaryView
+              {...sharedNoteProps}
+              patient={activePatient}
+              note={activeNote}
+            />
+          </ErrorBoundary>
+          <DevErrorPanel />
+        </>
       );
+
     case "TOOLS":
-      return <ToolsHomePage handleExitToStart={handleExitToStart} />;
-    case "SETTINGS": // Phase 6
-      return <SettingsPage handleExitToStart={handleExitToStart} />;
+      return (
+        <>
+          <ToolsHomePage handleExitToStart={handleExitToStart} />
+          <DevErrorPanel />
+        </>
+      );
+
+    case "SETTINGS":
+      return (
+        <>
+          <ErrorBoundary label="SettingsPage">
+            <SettingsPage handleExitToStart={handleExitToStart} />
+          </ErrorBoundary>
+          <DevErrorPanel />
+        </>
+      );
+
     default:
       return (
-        <StartPage
-          setCurrentView={setCurrentView}
-          handleLogout={handleLogout}
-          zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
-          theme={theme} setTheme={setTheme}
-        />
+        <>
+          <StartPage
+            setCurrentView={setCurrentView}
+            handleLogout={handleLogout}
+            zoomLevel={zoomLevel} setZoomLevel={setZoomLevel}
+            theme={theme} setTheme={setTheme}
+          />
+          <DevErrorPanel />
+        </>
       );
   }
 }
