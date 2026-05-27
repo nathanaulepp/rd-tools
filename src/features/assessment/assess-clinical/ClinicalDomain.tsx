@@ -65,7 +65,7 @@ export default function ClinicalDomain({ clinical, setClinical, activeSubDomain 
       case "C2":
         return (
           <div className="card">
-            <h4 className="mb-1">C2: Vital Signs</h4>
+            <h4 className="mb-1">C2: Vital Signs & Screenings</h4>
             <div className="grid-5-col">
               <div className="input-group">
                 <label>Temp (°F)</label>
@@ -87,6 +87,15 @@ export default function ClinicalDomain({ clinical, setClinical, activeSubDomain 
                 <label>RR (bpm)</label>
                 <input type="text" value={clinical.rr} onChange={e => handleUpdate("rr", e.target.value)} />
               </div>
+            </div>
+            <div className="input-group mt-1">
+              <label>Screenings</label>
+              <textarea 
+                style={{ minHeight: "100px" }} 
+                value={clinical.screenings} 
+                onChange={e => handleUpdate("screenings", e.target.value)} 
+                placeholder="e.g. MSS, malnutrition screening, etc."
+              />
             </div>
           </div>
         );

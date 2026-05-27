@@ -81,6 +81,7 @@ export const defaultClinical = {
   spo2: "",
   bp: "",
   rr: "",
+  screenings: "",
   gripStrength: "",
   giDistress: "",
   chewing: "",

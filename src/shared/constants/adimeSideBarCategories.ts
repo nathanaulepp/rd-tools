@@ -18,7 +18,7 @@ export const BIOCHEMICAL_CATEGORIES = [
 
 export const CLINICAL_CATEGORIES = [
   { id: "C1", title: "C1: Medical Context" },
-  { id: "C2", title: "C2: Vital Signs" },
+  { id: "C2", title: "C2: Vital Signs & Screenings" },
   { id: "C3", title: "C3: Medications" },
   { id: "C4", title: "C4: GI & Systemic Function" },
   { id: "C5", title: "C5: Nutrition Focused Physical Exam (NFPE)" },
