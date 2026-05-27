@@ -21,47 +21,48 @@ By reducing time spent on charting, clinicians can expand their scope:
 ## Roadmap & To-Do List
 
 ### RD Workstation
-- [ ] Add keyboard shortcuts (root call is "ctrl + .")
-- [ ] Split panes function
+- [ ] **add** Add keyboard shortcuts (root call is "ctrl + .")
+- [ ] **add** Split panes function
 
 ### Assessment
 #### Anthro
 - [x] pediatric growth chart automated calc for Zscores and %s
 - [x] pediatric growth velocity automated calc based on past measures w/ current
 - [x] calendar mapping safeguards
-- [ ] DEXA scan functionality mapped and coded
+- [ ] **add** DEXA scan functionality mapped and coded
 
 #### Clinical
-- [x] import drug database
-- [x] add drug lookup
-- [ ] Automated drug-nutrient interactions
-- [ ] Automated malnutrition chart
-- [ ] Automated refeeding risk chart
+- [x] **add** import drug database
+- [x] **add** add drug lookup
+- [ ] **add** Automated drug-nutrient interactions
+- [ ] **add** Automated refeeding risk chart
 
 #### Dietary
-- [x] add current nutrition rx
-- [x] add PN macro conc. (unit/vol)
-- [x] fix formula name submissions for EN
-- [x] create functionality for EN modulars (mL/bolus isn't enough)
-- [ ] D3.1 automated estimated oral intake
-- [ ] Incorporate a formulary database
-- [ ] GIR check (timeline layout with dynamic points for unique intervals from 0:00 to 23:59)
+- [x] **add** current nutrition rx
+- [x] **add** PN macro conc. (unit/vol)
+- [x] *patch* formula name submissions for EN
+- [x] **add** create functionality for EN modulars (mL/bolus isn't enough)
+- [ ] *patch* broken autosave for D12 and D13
+- [ ] **add** D3.1 automated estimated oral intake
+- [ ] **add** Incorporate a formulary database
+- [ ] **add** GIR check (timeline layout with dynamic points for unique intervals from 0:00 to 23:59)
 
 #### Standards
-- [x] automate comparative standards
-- [x] automate comparison to current nutrition rx: (kcal, pro, fluid --> low|WNL|high?)
-- [x] Improve user flow of UI
-- [x] Automate linking patient BMI to comparative standards' clinical context options
+- [x] **add** automate comparative standards
+- [x] **add** automate comparison to current nutrition rx: (kcal, pro, fluid --> low|WNL|high?)
+- [x] **add** Improve user flow of UI
+- [x] **add** Automate linking patient BMI to comparative standards' clinical context options
 
 ### Diagnosis
-- [x] PES statement builder
-- [x] allow for creation of new etiology blocks through saved ADIMEs 
-- [ ] Build skeleton for quick suggestions for signs & symptoms --> use assessment data
-- [ ] Differentials to guide continued/ordered assessment
+- [x] **add** PES statement builder
+- [x] **add** allow for creation of new etiology blocks through saved ADIMEs
+- [x] **add** Automated malnutrition chart
+- [ ] **add** Build skeleton for quick suggestions for signs & symptoms --> use assessment data
+- [ ] **add** Differentials to guide continued/ordered assessment
 
 ### Intervention
-- [ ] Oral/EN/PN calculations
-- [ ] Basic renal adjustments
+- [ ] **add** Oral/EN/PN calculations
+- [ ] **add** Basic renal adjustments
 
 ### Dietitian Tools
 - [ ] **METs Calorie Estimator**
