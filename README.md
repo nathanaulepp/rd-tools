@@ -43,6 +43,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [ ] Automate linking patient BMI to comparative standards' clinical context options
 
 ### Diagnosis
+- [ ] Build skeleton for quick suggestions for signs & symptoms --> use assessment data
 - [ ] Differentials to guide continued/ordered assessment
 
 ### Intervention
