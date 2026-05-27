@@ -210,12 +210,12 @@ function NutrientBarChart({ results, icUsedForKcal }: NutrientBarChartProps) {
                 y1={yTarget + BAR_HEIGHT / 2}
                 x2={LEFT_LABEL + xHi}
                 y2={yTarget + BAR_HEIGHT / 2}
-                stroke={TARGET_COLOR}
+                stroke={"#000000"}
                 strokeWidth="2"
               />
               {/* Whisker caps */}
-              <line x1={LEFT_LABEL + xLo} y1={yTarget + BAR_HEIGHT / 2 - WHISKER_CAP / 2} x2={LEFT_LABEL + xLo} y2={yTarget + BAR_HEIGHT / 2 + WHISKER_CAP / 2} stroke={TARGET_COLOR} strokeWidth="2" />
-              <line x1={LEFT_LABEL + xHi} y1={yTarget + BAR_HEIGHT / 2 - WHISKER_CAP / 2} x2={LEFT_LABEL + xHi} y2={yTarget + BAR_HEIGHT / 2 + WHISKER_CAP / 2} stroke={TARGET_COLOR} strokeWidth="2.5" />
+              <line x1={LEFT_LABEL + xLo} y1={yTarget + BAR_HEIGHT / 2 - WHISKER_CAP / 2} x2={LEFT_LABEL + xLo} y2={yTarget + BAR_HEIGHT / 2 + WHISKER_CAP / 2} stroke={"#000000"} strokeWidth="2" />
+              <line x1={LEFT_LABEL + xHi} y1={yTarget + BAR_HEIGHT / 2 - WHISKER_CAP / 2} x2={LEFT_LABEL + xHi} y2={yTarget + BAR_HEIGHT / 2 + WHISKER_CAP / 2} stroke={"#000000"} strokeWidth="2.5" />
               {/* Target range label */}
               <text
                 x={LEFT_LABEL + xHi + 6}
