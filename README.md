@@ -57,7 +57,8 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [x] **add** PES statement builder
 - [x] **add** allow for creation of new etiology blocks through saved ADIMEs
 - [x] **add** Automated malnutrition chart
-- [ ] **add** Build skeleton for quick suggestions for signs & symptoms --> use assessment data
+- [x] **add** Build skeleton for contextual suggestions for signs & symptoms (s/s) --> use assessment data
+- [ ] *patch* PES s/s contextual suggestions missing chip selection and dropdowns
 - [ ] **add** Differentials to guide continued/ordered assessment
 
 ### Intervention
