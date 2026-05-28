@@ -106,8 +106,7 @@ export const defaultDietary = {
   eatingEnv: "",
   culturalReligious: "",
   socialDynamics: "",
-  dietOrder: "Standard Diet, Regular",
-  actualIntake: "",
+  dietOrder: "",
   oralCalories: "",
   oralProtein: "",
   oralWater: "",
@@ -154,7 +153,6 @@ export const defaultDiagnosis = {
   // Supporting narrative
   nutritionDxNarrative: "",
   priorityRanking: "",    // e.g. "Primary: energy; Secondary: protein"
-  notes: "",
 };
 
 /**

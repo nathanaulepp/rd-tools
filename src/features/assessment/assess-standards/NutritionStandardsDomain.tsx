@@ -18,6 +18,7 @@ import {
   NutritionEvaluation,
   ConditionKey,
 } from "./nutritionStandards";
+import { PalSlider } from "./PalSlider";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -612,7 +613,12 @@ export default function NutritionStandardsDomain({
                 {Object.entries(CONDITION_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
               </select>
             </div>
-            {variants.length > 0 && (
+            {condition === "healthy" ? (
+              <PalSlider
+                value={Number(extraInputs.pal) || 2.0}
+                onChange={(val) => setExtraInputs(prev => ({ ...prev, pal: val.toString() }))}
+              />
+            ) : variants.length > 0 && (
               <div className="input-group">
                 <select value={variant} onChange={e => setVariant(e.target.value)} style={selectStyle}>
                   <option value="">Select Sub-type...</option>

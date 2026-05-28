@@ -44,15 +44,15 @@ export default function ClinicalDomain({ clinical, setClinical, activeSubDomain 
               </div>
               <div className="input-group">
                 <label>Family History</label>
-                <textarea style={{ minHeight: "150px" }} value={clinical.familyHx} onChange={e => handleUpdate("familyHx", e.target.value)} />
+                <textarea style={{ minHeight: "150px" }} value={clinical.familyHx} onChange={e => handleUpdate("familyHx", e.target.value)} placeholder="e.g. mother and father HTN, maternal father cancer..."/>
               </div>
               <div className="input-group">
                 <label>Social History</label>
-                <textarea style={{ minHeight: "150px" }} value={clinical.socialHx} onChange={e => handleUpdate("socialHx", e.target.value)} />
+                <textarea style={{ minHeight: "150px" }} value={clinical.socialHx} onChange={e => handleUpdate("socialHx", e.target.value)} placeholder="e.g. occupation, education, social support, living situation..." />
               </div>
               <div className="input-group">
                 <label>Allergies/Intolerances</label>
-                <textarea style={{ minHeight: "150px" }} value={clinical.allergiesIntolerances} onChange={e => handleUpdate("allergiesIntolerances", e.target.value)} />
+                <textarea style={{ minHeight: "150px" }} value={clinical.allergiesIntolerances} onChange={e => handleUpdate("allergiesIntolerances", e.target.value)} placeholder="e.g. latex, milk, soy..." />
               </div>
               <div className="input-group">
                 <label>Medical Devices/Prosthetics</label>

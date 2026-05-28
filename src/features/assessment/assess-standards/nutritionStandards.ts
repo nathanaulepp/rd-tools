@@ -109,7 +109,8 @@ export type ConditionKey =
   | "critical_illness"
   | "pregnancy"
   | "pressure_injuries"
-  | "trauma";
+  | "trauma"
+  | "healthy";
 
 // ─── Hamwi IBW ────────────────────────────────────────────────────────────────
 
@@ -159,6 +160,7 @@ export const CONDITION_LABELS: Record<ConditionKey, string> = {
   pregnancy: "Pregnancy",
   pressure_injuries: "Pressure Injuries",
   trauma: "Trauma",
+  healthy: "Healthy / Preventive",
 };
 
 // Sub-variant labels per condition
@@ -277,6 +279,31 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
   // ── Condition Logic ───────────────────────────────────────────────────────
 
   switch (condition) {
+
+    case "healthy": {
+      afUsed = Number(extraInputs.pal) || 2.0;
+      eeKcal = ree * afUsed;
+      eeSource = "MSJ×AF";
+      kcalLow = Math.max(0, eeKcal * 0.925);
+      kcalHigh = eeKcal * 1.075;
+      
+      // Protein adjustment based on PAL
+      if (afUsed >= 2.15) {
+        protLow = wtKg * 1.8; protHigh = wtKg * 2.2;
+        flags.push("Elite endurance detected: protein targets increased to 1.8–2.2 g/kg.");
+      } else if (afUsed >= 1.9) {
+        protLow = wtKg * 1.5; protHigh = wtKg * 1.8;
+        flags.push("High-volume endurance detected: protein targets increased to 1.5–1.8 g/kg.");
+      } else if (afUsed >= 1.6) {
+        protLow = wtKg * 1.2; protHigh = wtKg * 1.5;
+      } else {
+        protLow = wtKg * 0.8; protHigh = wtKg * 1.2;
+      }
+
+      fluidLow = wtKg * 30;
+      fluidHigh = wtKg * 35;
+      break;
+    }
 
     case "aki": {
       wtForKcal = wtKg; 

@@ -8,12 +8,14 @@ import {
   updateSubmissionRequirement,
   SubmissionRequirement,
 } from "../shared/api/db";
+import { useEscapeBackout } from "../shared/utils/ShortcutContext";
 
 interface SettingsPageProps {
   handleExitToStart: () => void;
 }
 
 export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
+  useEscapeBackout(handleExitToStart);
   const [requirements, setRequirements] = useState<SubmissionRequirement[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);

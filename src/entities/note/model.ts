@@ -24,7 +24,7 @@ export const [anthro, setAnthro] = useState({
       { label: "Meal 1", value: "" },
     ],
     macroAdequacy: "", mealPatterns: "", currentDiets: "", fluidIntake: "", eatingEnv: "",
-    culturalReligious: "", socialDynamics: "", dietOrder: "Standard Diet, Regular", actualIntake: "", enteralPN: "",
+    culturalReligious: "", socialDynamics: "", dietOrder: "", enteralPN: "",
     herbalCAM: "", supplements: "",
     understanding: "", readiness: "5", psychTies: "", mealPrep: "", eatingOut: "", bingePurge: "",
     foodSecurity: "", foodSupplies: "", transport: "", physicalLevel: "", adls: "", feedingTasks: "", perception: "", qolGoals: ""

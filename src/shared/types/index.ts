@@ -10,7 +10,6 @@ export interface PatientHeaderProps {
 
 export interface Dietary {
   dietOrder?: string;
-  actualIntake?: string;
   oralCalories?: string | number;
   oralProtein?: string | number;
   oralWater?: string | number;
@@ -54,7 +53,6 @@ export interface PNFeed {
   startDate: string;
   startTime: string;
   // Dextrose
-  dextType: string;
   dextHrs: string | number;
   dextAmount: string | number;   // g/day (manual override)
   dextAmountUnit: string;
@@ -62,7 +60,6 @@ export interface PNFeed {
   dextRate: string | number;     // mL/hr
   dextConc: string;              // D% e.g. "10", "20", "50"
   // Amino Acids
-  aaType: string;
   aaHrs: string | number;
   aaAmount: string | number;     // g/day
   aaAmountUnit: string;
@@ -70,13 +67,13 @@ export interface PNFeed {
   aaRate: string | number;       // mL/hr
   aaConc: string;                // % solution
   // Lipids
-  lipidType: string;
   lipidHrs: string | number;
   lipidOil: string;
   lipidAmount: string | number;  // g/day
   lipidDuration: string;
   lipidRate: string | number;    // mL/hr
   lipidConc: "10" | "20" | "30";
+  lipidFreq?: string;            // e.g. "3x"
   lipidCustomOil: string;
   // Combined rate for TNA / 2-in-1
   combinedRate: string | number;

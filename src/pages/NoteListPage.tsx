@@ -13,6 +13,7 @@ import {
   Patient,
   Note,
 } from "../shared/api/db";
+import { useEscapeBackout } from "../shared/utils/ShortcutContext";
 
 interface NoteListPageProps {
   handleExitToStart: () => void;
@@ -292,6 +293,7 @@ function ByDateView({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function NoteListPage({ handleExitToStart, onOpenNote }: NoteListPageProps) {
+  useEscapeBackout(handleExitToStart);
   const [allNotes, setAllNotes]       = useState<NoteWithPatient[]>([]);
   const [loading, setLoading]         = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);

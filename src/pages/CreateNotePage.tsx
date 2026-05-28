@@ -8,6 +8,7 @@
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import type { Patient, Note } from "../shared/api/db";
 import { autosaveNote, submitNote } from "../shared/api/db";
+import { useEscapeBackout } from "../shared/utils/ShortcutContext";
 
 import PatientHeader from "../widgets/PatientHeader";
 import AnthroDomain from "../features/assessment/assess-anthro/AnthroDomain";
@@ -86,6 +87,7 @@ interface SubmitModalProps {
 }
 
 function SubmitModal({ state, missingFields, onConfirm, onClose }: SubmitModalProps) {
+  useEscapeBackout(onClose);
   return (
     <div style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
@@ -181,6 +183,8 @@ export default function CreateNotePage({
   const [noteStatus, setNoteStatus] = useState<"draft" | "submitted">(
     (note?.status as "draft" | "submitted") ?? "draft"
   );
+
+  useEscapeBackout(handleExitToStart);
 
   // Refs for stale-closure-safe saves
   const anthroRef       = useRef(anthro);

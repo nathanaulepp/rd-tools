@@ -8,6 +8,7 @@ import { SelectInput as Sel } from "../../../shared/ui/SelectInput";
 import { StatChip as NutrientChip } from "../../../shared/ui/StatChip";
 import { CollapseHeader } from "../../../shared/ui/CollapseHeader";
 import { SectionHeader } from "../../../shared/ui/SectionHeader";
+import { Tooltip } from "../../../shared/ui/Tooltip";
 
 
 // ─── Small inline derived-value display ──────────────────────────────────────
@@ -26,14 +27,14 @@ function DerivedBadge({ g, kcal, unit, color }: { g: number; kcal: number; unit:
 interface MacroSectionProps {
   label: string;
   color: string;
-  macroType: string; onMacroType: (v: string) => void;
-  hrs: string | number; onHrs: (v: string) => void;
+  hrs: string | number; onHrs: (v: string) => void; hrsDisabled?: boolean;
   duration: string; onDuration: (v: string) => void;
+  freq?: string; onFreq?: (v: string) => void;
   rate: string | number; onRate: (v: string) => void;
   showRate: boolean;
   rateLabel?: string;
-  amount: string | number; amountUnit: string;
-  onAmount: (v: string) => void; onAmountUnit: (v: string) => void;
+  amount: string | number;
+  onAmount: (v: string) => void;
   conc: string; onConc: (v: string) => void;
   concOptions?: string[];
   showConc: boolean;
@@ -43,13 +44,14 @@ interface MacroSectionProps {
 }
 
 function MacroSection({
-  label, color, macroType, onMacroType, hrs, onHrs, duration, onDuration,
+  label, color, hrs, onHrs, hrsDisabled, duration, onDuration, freq, onFreq,
   rate, onRate, showRate, rateLabel = "Rate (mL/hr)",
-  amount, amountUnit, onAmount, onAmountUnit,
+  amount, onAmount,
   conc, onConc, concOptions = [], showConc,
   derivedResult, derivedUnit, extra,
 }: MacroSectionProps) {
-  const cols: string[] = ["110px", "75px", "135px"];
+  const cols: string[] = ["135px", "75px"];
+  if (onFreq) cols.push("115px");
   if (showRate) cols.push("105px");
   cols.push("1fr");
   if (showConc) cols.push("105px");
@@ -59,32 +61,38 @@ function MacroSection({
     <div style={{ background: "#fff", border: `1px solid ${color}30`, borderRadius: "8px", padding: "0.85rem", marginBottom: "0.75rem" }}>
       <div style={{ fontSize: "0.82rem", fontWeight: 700, color, marginBottom: "0.7rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
       <div style={{ display: "grid", gridTemplateColumns: cols.join(" "), gap: "0.55rem", alignItems: "end" }}>
-        <Field label="Type">
-          <Sel value={macroType} onChange={onMacroType} options={constant.MACRO_TYPES} placeholder="Select..." />
-        </Field>
-        <Field label="Hours">
-          <NumInput value={hrs} onChange={onHrs} placeholder="24" />
-        </Field>
         <Field label="Duration Plan">
           <Sel value={duration} onChange={onDuration} options={constant.PN_DURATIONS} placeholder="Select..." />
         </Field>
+        <Field label="Hours">
+          <Tooltip text={hrsDisabled ? "Continuous duration is fixed at 24 hours." : ""}>
+            <NumInput value={hrs} onChange={onHrs} placeholder="24" disabled={hrsDisabled} />
+          </Tooltip>
+        </Field>
+        {onFreq && (
+          <Field label="Frequency">
+            <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+              <select value={freq} onChange={e => onFreq(e.target.value)}
+                style={{ padding: "5px 4px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.85rem", flex: 1 }}>
+                {constant.LIPID_FREQ_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+              <span style={{ fontSize: "0.72rem", color: "#718096", whiteSpace: "nowrap" }}>per week</span>
+            </div>
+          </Field>
+        )}
         {showRate && (
           <Field label={rateLabel}>
             <NumInput value={rate} onChange={onRate} placeholder="mL/hr" />
           </Field>
         )}
-        <Field label={`Amount (${amountUnit || "g"})`}>
-          <div style={{ display: "flex", gap: "3px" }}>
+        <Field label="Amount (g) per day">
+          <div style={{ display: "flex", gap: "3px", alignItems: "center" }}>
             <NumInput
               value={amount}
               onChange={onAmount}
               placeholder={derivedResult ? `${Math.round(derivedResult.g * 10) / 10} (Auto)` : "g/day"}
               style={{ flex: 1 }}
             />
-            <select value={amountUnit} onChange={e => onAmountUnit(e.target.value)}
-              style={{ padding: "5px 4px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.8rem", width: "54px" }}>
-              {constant.AMOUNT_UNITS.map(u => <option key={u}>{u}</option>)}
-            </select>
           </div>
         </Field>
         {showConc && (
@@ -108,9 +116,9 @@ function MacroSection({
 // ─── Lipid concentration button group ────────────────────────────────────────
 function LipidConcButtons({ value, onChange, color }: { value: string; onChange: (v: "10" | "20" | "30") => void; color: string }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px", alignItems: "flex-end" }}>
       <label style={{ fontSize: "0.78rem", fontWeight: 600, color: "#34495e" }}>Conc</label>
-      <div style={{ display: "flex", gap: "3px" }}>
+      <div style={{ display: "flex", gap: "3px", justifyContent: "flex-end" }}>
         {constant.LIPID_CONCS.map(c => (
           <button key={c.pct} onClick={() => onChange(c.pct as "10" | "20" | "30")}
             title={`${c.pct}% — ${c.kcalPerMl} kcal/mL — ${c.note}`}
@@ -126,7 +134,7 @@ function LipidConcButtons({ value, onChange, color }: { value: string; onChange:
         ))}
       </div>
       {value && (
-        <span style={{ fontSize: "0.68rem", color: "#718096" }}>
+        <span style={{ fontSize: "0.68rem", color: "#718096", textAlign: "right" }}>
           {constant.getLipidMeta(value).kcalPerMl} kcal/mL
           {value === "30" && <span style={{ color: "#c05621", fontWeight: 700 }}> ⚠ admix only</span>}
         </span>
@@ -371,24 +379,20 @@ function D11Oral({ dietary, setDietary }: D11OralProps) {
   return (
     <div style={{ marginBottom: "1.5rem" }}>
       <div className="card">
-        <SectionHeader title="D11: Oral Diet Order vs Intake" color="#3498db" />
-        <div style={{ display: "flex", gap: "1rem", marginBottom: "1rem" }}>
-          <div style={{ flex: 1 }} className="input-group">
+        <SectionHeader title="D11: Oral Diet & Intake" color="#3498db" />
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem" }}>
+          <div className="input-group">
             <label>Rx Diet Order</label>
-            <textarea value={dietary.dietOrder || "Standard Diet, Regular"} onChange={e => handleUpdate("dietOrder", e.target.value)} style={{ background: "#edf2f7", minHeight: "90px" }} />
+            <textarea
+              value={dietary.dietOrder || ""}
+              onChange={e => handleUpdate("dietOrder", e.target.value)}
+              placeholder="e.g. Standard Diet, Regular"
+              style={{ background: "#edf2f7", minHeight: "45px" }}
+            />
           </div>
-          <div style={{ flex: 1 }} className="input-group">
-            <label>Actual Intake Documented</label>
-            <textarea value={dietary.actualIntake || ""} onChange={e => handleUpdate("actualIntake", e.target.value)} placeholder="Compare with Rx..." style={{ minHeight: "90px" }} />
-          </div>
-        </div>
-        <div style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1rem" }}>
-          <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#718096", marginBottom: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>Previous Calculated Nutrient Needs</div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
-            <Field label="Calories (kcal/day)"><NumInput value={dietary.oralCalories || ""} onChange={v => handleUpdate("oralCalories", v)} placeholder="e.g. 1800" /></Field>
-            <Field label="Protein (g/day)"><NumInput value={dietary.oralProtein || ""} onChange={v => handleUpdate("oralProtein", v)} placeholder="e.g. 75" /></Field>
-            <Field label="Water / Fluid (mL/day)"><NumInput value={dietary.oralWater || ""} onChange={v => handleUpdate("oralWater", v)} placeholder="e.g. 1500" /></Field>
-          </div>
+          <Field label="Calories (kcal/day)"><NumInput value={dietary.oralCalories || ""} onChange={v => handleUpdate("oralCalories", v)} placeholder="e.g. 1800" /></Field>
+          <Field label="Protein (g/day)"><NumInput value={dietary.oralProtein || ""} onChange={v => handleUpdate("oralProtein", v)} placeholder="e.g. 75" /></Field>
+          <Field label="Water / Fluid (mL/day)"><NumInput value={dietary.oralWater || ""} onChange={v => handleUpdate("oralWater", v)} placeholder="e.g. 1500" /></Field>
         </div>
       </div>
     </div>
@@ -707,7 +711,7 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
 
   const dextDerived  = helper.deriveDextrose(effectiveDextRate, feed.dextHrs, feed.dextConc);
   const aaDerived    = helper.deriveAA(effectiveAARate, feed.aaHrs, feed.aaConc);
-  const lipidDerived = helper.deriveLipid(effectiveLipidRate, feed.lipidHrs, feed.lipidConc);
+  const lipidDerived = helper.deriveLipid(effectiveLipidRate, feed.lipidHrs, feed.lipidConc, feed.lipidFreq);
 
   const dextG  = dextDerived  ? dextDerived.g  : helper.num(feed.dextAmount);
   const aaG    = aaDerived    ? aaDerived.g    : helper.num(feed.aaAmount);
@@ -716,18 +720,38 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
   const totalCal  = Math.round(dextG * 3.4 + aaG * 4 + lipidG * (constant.getLipidMeta(feed.lipidConc).kcalPerMl / constant.getLipidMeta(feed.lipidConc).gPerMl));
   const totalProt = Math.round(aaG * 10) / 10;
 
+  // Weekly frequency multiplier for daily average
+  const lipidMultiplier = (feed.lipidFreq && feed.lipidFreq.endsWith("x")) ? (parseInt(feed.lipidFreq) / 7) : 1;
+
   let totalVol = 0;
   if (rateMode === "tna") {
     totalVol = helper.num(effectiveDextRate) * (helper.num(feed.dextHrs) || 24);
   } else if (rateMode === "twoplusone") {
-    totalVol = (helper.num(effectiveDextRate) * (helper.num(feed.dextHrs) || 24)) + (helper.num(effectiveLipidRate) * (helper.num(feed.lipidHrs) || 24));
+    const mainVol = helper.num(effectiveDextRate) * (helper.num(feed.dextHrs) || 24);
+    const lipidVol = (helper.num(effectiveLipidRate) * (helper.num(feed.lipidHrs) || 24)) * lipidMultiplier;
+    totalVol = mainVol + lipidVol;
   } else {
-    totalVol = (helper.num(effectiveDextRate) * (helper.num(feed.dextHrs) || 24)) + (helper.num(effectiveAARate) * (helper.num(feed.aaHrs) || 24)) + (helper.num(effectiveLipidRate) * (helper.num(feed.lipidHrs) || 24));
+    const dVol = helper.num(effectiveDextRate) * (helper.num(feed.dextHrs) || 24);
+    const aVol = helper.num(effectiveAARate)   * (helper.num(feed.aaHrs)   || 24);
+    const lVol = (helper.num(effectiveLipidRate) * (helper.num(feed.lipidHrs) || 24)) * lipidMultiplier;
+    totalVol = dVol + aVol + lVol;
   }
 
   const dextShowRate  = rateMode === "three";
   const aaShowRate    = rateMode === "three";
-  const lipidShowRate = rateMode === "three" || rateMode === "twoplusone";
+  const lipidShowRate = rateMode === "three";
+
+  const handleDurationChange = (macro: "dext" | "aa" | "lipid", plan: string) => {
+    const updates: any = { [`${macro}Duration`]: plan };
+    if (plan === "Continuous") {
+      updates[`${macro}Hrs`] = "24";
+    } else if (plan === "Cyclic") {
+      if (feed[`${macro}Hrs` as keyof PNFeed] === "24") {
+        updates[`${macro}Hrs`] = "";
+      }
+    }
+    onChange({ ...feed, ...updates });
+  };
 
   return (
     <div style={{ border: "1px solid #e2e8f0", borderRadius: "8px", marginBottom: "1rem", overflow: "hidden" }}>
@@ -760,48 +784,59 @@ function PNFeedCard({ feed, idx, onChange, onRemove }: PNFeedCardProps) {
             <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#6b46c1", marginBottom: "0.85rem", textTransform: "uppercase" }}>Macronutrients</div>
 
             {(rateMode === "tna" || rateMode === "twoplusone") && (
-              <div style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "12px", background: "#ede9fe", borderRadius: "6px", padding: "0.6rem 1rem" }}>
-                <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#6b46c1" }}>
-                  {rateMode === "tna" ? "TNA Infusion Rate:" : "Dextrose + AA Combined Rate:"}
-                </span>
-                <NumInput value={feed.combinedRate} onChange={v => update("combinedRate", v)} placeholder="mL/hr" style={{ width: "90px" }} />
-                <span style={{ fontSize: "0.8rem", color: "#718096" }}>mL/hr</span>
+              <div style={{ marginBottom: "1rem", display: "flex", alignItems: "center", gap: "12px", background: "#ede9fe", borderRadius: "6px", padding: "0.6rem 1rem", flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#6b46c1" }}>
+                    {rateMode === "tna" ? "TNA Infusion Rate:" : "Dextrose + AA Combined Rate:"}
+                  </span>
+                  <NumInput value={feed.combinedRate} onChange={v => update("combinedRate", v)} placeholder="mL/hr" style={{ width: "90px" }} />
+                  <span style={{ fontSize: "0.8rem", color: "#718096" }}>mL/hr</span>
+                </div>
+                {rateMode === "twoplusone" && (
+                  <div style={{ display: "flex", alignItems: "center", gap: "8px", borderLeft: "1px solid #d8b4fe", paddingLeft: "12px" }}>
+                    <span style={{ fontSize: "0.82rem", fontWeight: 700, color: "#6b46c1" }}>Lipid Rate (ILE):</span>
+                    <NumInput value={feed.lipidRate} onChange={v => update("lipidRate", v)} placeholder="mL/hr" style={{ width: "90px" }} />
+                    <span style={{ fontSize: "0.8rem", color: "#718096" }}>mL/hr</span>
+                  </div>
+                )}
               </div>
             )}
 
             <MacroSection
-              label="Dextrose" color="#d69e2e"
-              macroType={feed.dextType} onMacroType={v => update("dextType", v)}
-              hrs={feed.dextHrs} onHrs={v => update("dextHrs", v)}
-              duration={feed.dextDuration} onDuration={v => update("dextDuration", v)}
-              rate={feed.dextRate} onRate={v => update("dextRate", v)} showRate={dextShowRate}
-              amount={feed.dextAmount} amountUnit={feed.dextAmountUnit}
-              onAmount={v => update("dextAmount", v)} onAmountUnit={v => update("dextAmountUnit", v)}
-              conc={feed.dextConc} onConc={v => update("dextConc", v)}
-              concOptions={constant.DEXT_CONC_OPTIONS} showConc={true}
-              derivedResult={dextDerived} derivedUnit="g dextrose"
-            />
-            <MacroSection
               label="Amino Acids" color="#3182ce"
-              macroType={feed.aaType} onMacroType={v => update("aaType", v)}
               hrs={feed.aaHrs} onHrs={v => update("aaHrs", v)}
-              duration={feed.aaDuration} onDuration={v => update("aaDuration", v)}
+              hrsDisabled={feed.aaDuration === "Continuous"}
+              duration={feed.aaDuration} onDuration={v => handleDurationChange("aa", v)}
               rate={feed.aaRate} onRate={v => update("aaRate", v)} showRate={aaShowRate}
-              amount={feed.aaAmount} amountUnit={feed.aaAmountUnit}
-              onAmount={v => update("aaAmount", v)} onAmountUnit={v => update("aaAmountUnit", v)}
+              amount={feed.aaAmount}
+              onAmount={v => update("aaAmount", v)}
               conc={feed.aaConc} onConc={v => update("aaConc", v)}
               concOptions={constant.AA_CONC_OPTIONS} showConc={true}
               derivedResult={aaDerived} derivedUnit="g protein"
             />
             <MacroSection
+              label="Dextrose" color="#d69e2e"
+              hrs={feed.dextHrs} onHrs={v => update("dextHrs", v)}
+              hrsDisabled={feed.dextDuration === "Continuous"}
+              duration={feed.dextDuration} onDuration={v => handleDurationChange("dext", v)}
+              rate={feed.dextRate} onRate={v => update("dextRate", v)} showRate={dextShowRate}
+              amount={feed.dextAmount}
+              onAmount={v => update("dextAmount", v)}
+              conc={feed.dextConc} onConc={v => update("dextConc", v)}
+              concOptions={constant.DEXT_CONC_OPTIONS} showConc={true}
+              derivedResult={dextDerived} derivedUnit="g dextrose"
+            />
+            <MacroSection
               label="Lipids (ILE)" color="#e67e22"
-              macroType={feed.lipidType} onMacroType={v => update("lipidType", v)}
               hrs={feed.lipidHrs} onHrs={v => update("lipidHrs", v)}
-              duration={feed.lipidDuration} onDuration={v => update("lipidDuration", v)}
+              hrsDisabled={feed.lipidDuration === "Continuous"}
+              duration={feed.lipidDuration} onDuration={v => handleDurationChange("lipid", v)}
+              freq={rateMode !== "tna" ? (feed.lipidFreq || "7x") : undefined}
+              onFreq={rateMode !== "tna" ? v => update("lipidFreq", v) : undefined}
               rate={feed.lipidRate} onRate={v => update("lipidRate", v)} showRate={lipidShowRate}
               rateLabel={rateMode === "twoplusone" ? "Lipid Rate (mL/hr)" : "Rate (mL/hr)"}
-              amount={feed.lipidAmount} amountUnit="g"
-              onAmount={v => update("lipidAmount", v)} onAmountUnit={() => {}}
+              amount={feed.lipidAmount}
+              onAmount={v => update("lipidAmount", v)}
               conc={feed.lipidConc} onConc={() => {}} showConc={false}
               derivedResult={lipidDerived} derivedUnit="g lipid"
               extra={<LipidConcButtons value={feed.lipidConc} onChange={v => update("lipidConc", v)} color="#e67e22" />}

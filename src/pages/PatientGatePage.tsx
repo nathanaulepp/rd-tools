@@ -8,6 +8,7 @@ import {
 } from "../shared/api/db";
 import { CreatePatientForm, CreatePatientData } from "../features/patient/CreatePatientForm";
 import { PatientSearch } from "../features/patient/PatientSearch";
+import { useEscapeBackout } from "../shared/utils/ShortcutContext";
 
 import { getLocalIsoDate } from "../shared/utils/date";
 
@@ -27,6 +28,15 @@ export default function PatientGatePage({ onEnterWorkspace, onCancel }: PatientG
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [initialFormData, setInitialFormData] = useState<Partial<CreatePatientData>>({});
+
+  useEscapeBackout(() => {
+    if (mode === "choose") {
+      onCancel();
+    } else {
+      setMode("choose");
+      setError("");
+    }
+  });
 
   const handleCreateNew = async (data: CreatePatientData) => {
     setError("");

@@ -1,10 +1,12 @@
 import React from "react";
+import { useEscapeBackout } from "../shared/utils/ShortcutContext";
 
 interface ToolsHomePageProps {
   handleExitToStart: () => void;
 }
 
 export default function ToolsHomePage({ handleExitToStart }: ToolsHomePageProps) {
+  useEscapeBackout(handleExitToStart);
   return (
     <div className="generic-page">
       <header className="page-header">

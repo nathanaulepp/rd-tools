@@ -10,6 +10,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { DomainHeader } from "../../shared/ui/DomainHeader";
 import { SectionHeader } from "../../shared/ui/SectionHeader";
 import { Field } from "../../shared/ui/Field";
+import { Tooltip } from "../../shared/ui/Tooltip";
 import { formatAge } from "../../shared/utils/date";
 
 import {
@@ -588,9 +589,10 @@ interface EtiologySuggestionsProps {
   problem: string;
   currentEtiology: string;
   onAppend: (text: string) => void;
+  onRemove: (text: string) => void;
 }
 
-function EtiologySuggestions({ problem, currentEtiology, onAppend }: EtiologySuggestionsProps) {
+function EtiologySuggestions({ problem, currentEtiology, onAppend, onRemove }: EtiologySuggestionsProps) {
   const etiologies = getAllEtiologiesForProblem(problem);
   if (etiologies.length === 0) return null;
 
@@ -629,8 +631,8 @@ function EtiologySuggestions({ problem, currentEtiology, onAppend }: EtiologySug
               {etiologies.map((etio) => {
                 const used = isAlreadyUsed(etio);
                 return (
-                  <button key={etio} onClick={() => !used && onAppend(`${etio} (${cat})`)} title={used ? "Already in etiology field" : `Select: "${etio}"`}
-                    style={{ padding: "3px 9px", borderRadius: "12px", border: `1px solid ${color}40`, background: used ? `${color}15` : `${color}08`, color: used ? `${color}99` : color, fontSize: "0.72rem", fontWeight: 600, cursor: used ? "default" : "pointer", textDecoration: used ? "line-through" : "none", opacity: used ? 0.6 : 1, transition: "all 0.15s" }}
+                  <button key={etio} onClick={() => used ? onRemove(etio) : onAppend(`${etio} (${cat})`)} title={used ? "Click to deselect" : `Select: "${etio}"`}
+                    style={{ padding: "3px 9px", borderRadius: "12px", border: `1px solid ${color}40`, background: used ? `${color}15` : `${color}08`, color: used ? `${color}99` : color, fontSize: "0.72rem", fontWeight: 600, cursor: "pointer", textDecoration: used ? "line-through" : "none", opacity: used ? 0.6 : 1, transition: "all 0.15s" }}
                     onMouseEnter={(e) => { if (!used) e.currentTarget.style.background = `${color}20`; }}
                     onMouseLeave={(e) => { if (!used) e.currentTarget.style.background = `${color}08`; }}
                   >
@@ -656,9 +658,10 @@ interface SignsSuggestionsProps {
   clinical?: any;
   calculatedMetrics?: any;
   onAppend: (text: string) => void;
+  onRemove: (text: string) => void;
 }
 
-function SignsSuggestions({ problem, currentSigns, anthro, dietary, clinical, calculatedMetrics, onAppend }: SignsSuggestionsProps) {
+function SignsSuggestions({ problem, currentSigns, anthro, dietary, clinical, calculatedMetrics, onAppend, onRemove }: SignsSuggestionsProps) {
   const allHints = useMemo(
     () => buildContextualSuggestions(problem, anthro, dietary, calculatedMetrics, clinical),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -720,8 +723,8 @@ function SignsSuggestions({ problem, currentSigns, anthro, dietary, clinical, ca
                 return (
                   <button
                     key={i}
-                    onClick={() => !used && onAppend(hint.text)}
-                    title={used ? "Already inserted" : `Click to insert into Signs & Symptoms`}
+                    onClick={() => used ? onRemove(hint.text) : onAppend(hint.text)}
+                    title={used ? "Click to deselect" : `Click to insert into Signs & Symptoms`}
                     style={{
                       padding: "4px 10px",
                       borderRadius: "12px",
@@ -730,7 +733,7 @@ function SignsSuggestions({ problem, currentSigns, anthro, dietary, clinical, ca
                       color: used ? `${color}80` : color,
                       fontSize: "0.73rem",
                       fontWeight: 600,
-                      cursor: used ? "default" : "pointer",
+                      cursor: "pointer",
                       textDecoration: used ? "line-through" : "none",
                       opacity: used ? 0.65 : 1,
                       transition: "all 0.15s",
@@ -787,11 +790,16 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
   const accentColor = isPrimary ? "#3498db" : "#8e44ad";
   const label       = isPrimary ? "Primary Nutrition Diagnosis" : `Additional Diagnosis ${index}`;
 
-  // Append to etiology field
   const handleEtiologyAppend = (etio: string) => {
-    const existing = data.etiology.trim();
-    const next     = existing ? `${existing}; ${etio}` : etio;
-    onChange("etiology", next);
+    onChange("etiology", etio); // replace, not accumulate
+  };
+
+  const handleEtiologyRemove = (etio: string) => {
+    const segments = data.etiology
+      .split(";")
+      .map(s => s.trim())
+      .filter(s => !s.toLowerCase().startsWith(etio.toLowerCase()));
+    onChange("etiology", segments.join("; "));
   };
 
   // Smart Replace for etiology domain tag
@@ -819,22 +827,11 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
     onChange("signsSymptoms", next);
   };
 
-  // Add S/S category tag — identical Smart Replace logic
-  const handleAddSSCategory = (category: string) => {
-    if (!category) return;
-    const existing = data.signsSymptoms.trim();
-    if (!existing) return;
-    const segments = existing.split(";").map((s) => s.trim()).filter(Boolean);
-    if (segments.length === 0) return;
-    let last = segments[segments.length - 1];
-    // Smart Replace: if already ends with a category in parentheses, swap it
-    const match = last.match(/^(.*)\s*\(([^)]+)\)$/);
-    if (match && (SIGNS_SYMPTOMS_CATEGORIES as readonly string[]).includes(match[2].trim())) {
-      last = `${match[1].trim()} (${category})`;
-    } else {
-      last = `${last} (${category})`;
-    }
-    segments[segments.length - 1] = last;
+  const handleSignsRemove = (text: string) => {
+    const segments = data.signsSymptoms
+      .split(";")
+      .map(s => s.trim())
+      .filter(s => s.toLowerCase() !== text.toLowerCase().trim());
     onChange("signsSymptoms", segments.join("; "));
   };
 
@@ -846,8 +843,7 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
     [data.problem, anthro, dietary, calculatedMetrics, clinical]
   );
 
-  const showDomainAdder   = data.etiology.trim().length > 0;
-  const showSSCategoryBtn = data.signsSymptoms.trim().length > 0;
+  const showDomainAdder = data.etiology.trim().length > 0;
 
   return (
     <div style={{
@@ -942,7 +938,7 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
           </div>
 
           {showEtiologySuggestions && data.problem && (
-            <EtiologySuggestions problem={data.problem} currentEtiology={data.etiology} onAppend={handleEtiologyAppend} />
+            <EtiologySuggestions problem={data.problem} currentEtiology={data.etiology} onAppend={handleEtiologyAppend} onRemove={handleEtiologyRemove} />
           )}
         </div>
 
@@ -962,41 +958,18 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
             )}
           </div>
 
-          {/* Textarea with Category Adder button (mirrors Etiology Domain adder) */}
           <div style={{ position: "relative", width: "100%" }}>
             <textarea
               value={data.signsSymptoms}
               onChange={(e) => onChange("signsSymptoms", e.target.value)}
               placeholder="As evidenced by…"
               style={{
-                padding: showSSCategoryBtn ? "7px 118px 7px 9px" : "7px 9px",
+                padding: "7px 9px",
                 border: "1px solid #e2e8f0", borderRadius: "6px",
                 fontSize: "0.85rem", minHeight: "72px", resize: "vertical",
                 width: "100%", boxSizing: "border-box", fontFamily: "inherit",
-                transition: "padding 0.2s",
               }}
             />
-            {/* "Add Category..." dropdown — appears once user has typed something */}
-            {showSSCategoryBtn && (
-              <div style={{ position: "absolute", top: "8px", right: "8px", zIndex: 10 }}>
-                <select
-                  value=""
-                  onChange={(e) => handleAddSSCategory(e.target.value)}
-                  title="Tag the last evidence item with a category"
-                  style={{
-                    fontSize: "0.62rem", padding: "4px 6px", borderRadius: "6px",
-                    border: "1px solid #9ae6b4", background: "#276749", color: "#fff",
-                    cursor: "pointer", outline: "none", fontWeight: 700,
-                    width: "108px", appearance: "none", textAlign: "center",
-                  }}
-                >
-                  <option value="" disabled>Add Category...</option>
-                  {SIGNS_SYMPTOMS_CATEGORIES.map((c) => (
-                    <option key={c} value={c} style={{ color: "#1e293b", background: "#fff" }}>{c}</option>
-                  ))}
-                </select>
-              </div>
-            )}
           </div>
 
           {showSignsSuggestions && data.problem && (
@@ -1008,6 +981,7 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
               clinical={clinical}
               calculatedMetrics={calculatedMetrics}
               onAppend={handleSignsAppend}
+              onRemove={handleSignsRemove}
             />
           )}
         </div>
@@ -1057,6 +1031,25 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
       additionalDiagnoses: diagnosis.additionalDiagnoses.filter((d: any) => d.id !== id),
     });
   };
+
+  const pesOptions = useMemo(() => {
+    const list: string[] = [];
+    if (diagnosis.problem) list.push(diagnosis.problem);
+    (diagnosis.additionalDiagnoses || []).forEach((dx: any) => {
+      if (dx.problem) list.push(dx.problem);
+    });
+    return list;
+  }, [diagnosis.problem, diagnosis.additionalDiagnoses]);
+
+  // Auto-select if only one option exists
+  useEffect(() => {
+    if (pesOptions.length === 1 && diagnosis.priorityRanking !== pesOptions[0]) {
+      update("priorityRanking", pesOptions[0]);
+    } else if (pesOptions.length === 0 && diagnosis.priorityRanking !== "") {
+      update("priorityRanking", "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pesOptions]);
 
   return (
     <div className="fade-in">
@@ -1109,27 +1102,41 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
       {/* Priority ranking + narrative */}
       <div className="card">
         <SectionHeader title="Diagnostic Narrative & Priority" color="#3498db" />
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
-          <div className="input-group">
-            <label>Priority Ranking</label>
-            <input
-              type="text"
+
+        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "1rem", background: "#f8fafc", padding: "8px 12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+          <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#1e293b", whiteSpace: "nowrap" }}>First Priority:</span>
+          <Tooltip text={pesOptions.length === 1 ? "Only one PES statement defined; auto-selected as priority." : pesOptions.length === 0 ? "No diagnoses defined yet." : ""}>
+            <select
               value={diagnosis.priorityRanking || ""}
               onChange={(e) => update("priorityRanking", e.target.value)}
-              placeholder="e.g. Primary: NI-1.2; Secondary: NC-3.2"
-            />
-          </div>
-          <div className="input-group">
-            <label>Additional Notes</label>
-            <input
-              type="text"
-              value={diagnosis.notes || ""}
-              onChange={(e) => update("notes", e.target.value)}
-              placeholder="Any nuance or context…"
-            />
-          </div>
+              disabled={pesOptions.length <= 1}
+              style={{
+                flex: 1,
+                padding: "6px 10px",
+                borderRadius: "6px",
+                border: "1px solid #cbd5e1",
+                fontSize: "0.88rem",
+                outline: "none",
+                background: pesOptions.length <= 1 ? "#f1f5f9" : "#fff",
+                cursor: pesOptions.length <= 1 ? "not-allowed" : "pointer",
+                width: "100%",
+              }}
+            >
+              {pesOptions.length === 0 ? (
+                <option value="">— No diagnoses defined —</option>
+              ) : (
+                <>
+                  <option value="">— Select primary diagnosis —</option>
+                  {pesOptions.map((opt, i) => (
+                    <option key={i} value={opt}>{opt}</option>
+                  ))}
+                </>
+              )}
+            </select>
+          </Tooltip>
         </div>
-        <div className="input-group" style={{ marginTop: "0.5rem" }}>
+
+        <div className="input-group">
           <label>Nutrition Diagnosis Narrative</label>
           <textarea
             value={diagnosis.nutritionDxNarrative || ""}

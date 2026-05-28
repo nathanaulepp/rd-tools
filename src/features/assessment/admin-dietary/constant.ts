@@ -18,14 +18,14 @@ export const EN_ROUTES: string[] = [
 export const PN_ROUTES: string[] = ["Central", "Peripheral"];
 export const PN_ACCESS: string[] = ["PICC", "CVC (Central Venous Catheter)", "Port-a-Cath", "PIV (Peripheral IV)", "Multi-lumen (specify lumen)", "Tunneled CVC", "Other"];
 export const PN_GOALS: string[] = ["Full (sole source)", "Supplemental", "Bridging"];
-export const PN_DELIVERY: string[] = ["3-in-1 (TNA)", "2-in-1 + Separate Lipid Infusion", "3 Fully Separated Macros", "Module-Based", "Transitioning (Define Phases)"];
+export const PN_DELIVERY: string[] = ["3-in-1 (TNA)", "2-in-1 + Separate Lipid Infusion", "3 Fully Separated Macros", "Module-Based"];
 export const PN_DURATIONS: string[] = ["Continuous", "Cyclic", "Taper"];
-export const MACRO_TYPES: string[] = ["Premade", "Compounded"];
 export const LIPID_OILS: string[] = ["Soybean (SO)", "SMOF (Soy/MCT/Olive/Fish)", "Custom (specify)"];
 export const AMOUNT_UNITS: string[] = ["%", "mcg", "mg", "g", "mL", "L", "mEq", "mmol", "IU"];
 export const RATE_UNITS: string[] = ["per hour", "per day"];
 export const DEXT_CONC_OPTIONS = ["5","10","20","25","30","50","70"];
 export const AA_CONC_OPTIONS = ["5","8.5","10","11.4","15"];
+export const LIPID_FREQ_OPTIONS = ["1x", "2x", "3x", "4x", "5x", "6x", "7x"];
 
 // ─── EN Modular Types ────────────────────────────────────────────────────────
 export interface ENModular {

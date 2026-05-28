@@ -17,11 +17,18 @@ export function deriveAA(rateMlHr: string | number, hrs: string | number, concPc
   const g = r * h * c;
   return { g, kcal: g * 4 };
 }
-export function deriveLipid(rateMlHr: string | number, hrs: string | number, concPct: string) {
+export function deriveLipid(rateMlHr: string | number, hrs: string | number, concPct: string, freq?: string) {
   const r = num(rateMlHr), h = num(hrs);
   const meta = getLipidMeta(concPct);
   if (r <= 0 || h <= 0) return null;
-  const g = r * h * meta.gPerMl;
+
+  let multiplier = 1;
+  if (freq && freq.endsWith("x")) {
+    const times = parseInt(freq);
+    if (!isNaN(times)) multiplier = times / 7;
+  }
+
+  const g = r * h * meta.gPerMl * multiplier;
   return { g, kcal: g * (meta.kcalPerMl / meta.gPerMl) };
 }
 
@@ -61,9 +68,10 @@ export function makePNFeed(id: number): PNFeed {
     id, label: `PN Bag ${id}`, indication: "",
     route: "", access: "", delivery: "", goal: "",
     startDate: "", startTime: "",
-    dextType: "", dextHrs: "", dextAmount: "", dextAmountUnit: "g", dextDuration: "", dextRate: "", dextConc: "",
-    aaType: "", aaHrs: "", aaAmount: "", aaAmountUnit: "g", aaDuration: "", aaRate: "", aaConc: "",
-    lipidType: "", lipidHrs: "", lipidOil: "", lipidAmount: "", lipidDuration: "", lipidRate: "", lipidConc: "20",
+    dextHrs: "", dextAmount: "", dextAmountUnit: "g", dextDuration: "", dextRate: "", dextConc: "",
+    aaHrs: "", aaAmount: "", aaAmountUnit: "g", aaDuration: "", aaRate: "", aaConc: "",
+    lipidHrs: "", lipidOil: "", lipidAmount: "", lipidDuration: "", lipidRate: "", lipidConc: "20",
+    lipidFreq: "7x",
     lipidCustomOil: "",
     combinedRate: "",
     insulinUnits: "",
