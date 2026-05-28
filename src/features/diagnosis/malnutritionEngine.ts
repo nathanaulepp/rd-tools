@@ -183,7 +183,7 @@ export function diagnoseMalnutrition(
   }
 
   if (finalDiagnosis === "None" && values.filter(v => v !== "Not Applicable" && v !== "None").length > 0) {
-      reasoning.push("Criteria present but insufficient for diagnosis (requires 2).");
+      reasoning.push("Criterion present but insufficient for diagnosis (requires 2).");
   }
 
   return {
