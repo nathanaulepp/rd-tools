@@ -32,6 +32,13 @@ export function deriveLipid(rateMlHr: string | number, hrs: string | number, con
   return { g, kcal: g * (meta.kcalPerMl / meta.gPerMl) };
 }
 
+export function deriveTNALipid(rateMlHr: string | number, hrs: string | number, concPct: string) {
+  const r = num(rateMlHr), h = num(hrs), c = parseFloat(concPct) / 100;
+  if (r <= 0 || h <= 0 || c <= 0) return null;
+  const g = r * h * c;
+  return { g, kcal: g * 10 }; // TNA lipids typically 10 kcal/g including glycerol
+}
+
 export function getRateMode(delivery: string): "tna" | "twoplusone" | "three" {
   if (delivery === "3-in-1 (TNA)") return "tna";
   if (delivery === "2-in-1 + Separate Lipid Infusion") return "twoplusone";
@@ -51,6 +58,28 @@ export function calcENNutrients(feed: ENFeed) {
     totalFw: Math.round(formulaMl * (fwPct / 100)),
     flushMl: Math.round(flushMl),
   };
+}
+
+/**
+ * Glucose Infusion Rate
+ * GIR (mg/kg/min) = (dextrose g/day × 1000) / (weight_kg × 1440)
+ * Returns null if inputs are insufficient.
+ * Target neonates: 4–6 mg/kg/min; max safe: ~12 mg/kg/min
+ * Adults: typically 3–5 mg/kg/min; max ~7 mg/kg/min
+ */
+export function calcGIR(dextGPerDay: number, wtKg: number): number | null {
+  if (dextGPerDay <= 0 || wtKg <= 0) return null;
+  return (dextGPerDay * 1000) / (wtKg * 1440);
+}
+
+/**
+ * GIR status classification
+ */
+export function girStatus(gir: number): { label: string; color: string; bg: string } {
+  if (gir < 3)   return { label: "Low",    color: "#2563eb", bg: "#dbeafe" };
+  if (gir <= 7)  return { label: "Target", color: "#16a34a", bg: "#dcfce7" };
+  if (gir <= 10) return { label: "High",   color: "#d97706", bg: "#fef3c7" };
+  return             { label: "Excess",  color: "#dc2626", bg: "#fee2e2" };
 }
 
 export function makeENFeed(id: number): ENFeed {
