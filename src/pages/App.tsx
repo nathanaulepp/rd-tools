@@ -79,8 +79,8 @@ export default function App() {
     setCurrentView("LOGIN");
   };
 
-  const handleExitToStart = () => {
-    if (currentView === "CREATE_NOTE") {
+  const handleExitToStart = (skipConfirm: boolean = false) => {
+    if (!skipConfirm && currentView === "CREATE_NOTE") {
       const confirmExit = window.confirm("Are you sure you want to exit? Any unsaved changes will be lost.");
       if (!confirmExit) return;
     }

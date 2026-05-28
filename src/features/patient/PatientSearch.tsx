@@ -1,10 +1,11 @@
 import { useState, useEffect, useRef, CSSProperties } from "react";
-import { Patient, getAllPatients, deletePatient } from "../../shared/api/db";
+import { Patient, Encounter, getAllPatients, deletePatient, getEncountersByPatient } from "../../shared/api/db";
 import { Field } from "../../shared/ui/Field";
 import { FormError } from "../../shared/ui/FormError";
+import { getLocalIsoDate } from "../../shared/utils/date";
 
 interface PatientSearchProps {
-  onSelect: (patient: Patient) => void;
+  onSelect: (patient: Patient, admissionDate: string) => void;
   onCancel: () => void;
   onNavigateToCreate: (query: string) => void;
   loading: boolean;
@@ -21,6 +22,9 @@ export const PatientSearch = ({
   const [allPatients, setAllPatients] = useState<Patient[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+  const [encounters, setEncounters] = useState<Encounter[]>([]);
+  const [selectedAdmDate, setSelectedAdmDate] = useState<string>(getLocalIsoDate());
+  
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [internalError, setInternalError] = useState("");
@@ -51,16 +55,29 @@ export const PatientSearch = ({
     );
   });
 
-  const handleSelectPatient = (p: Patient) => {
+  const handleSelectPatient = async (p: Patient) => {
     setSelectedPatient(p);
     setSearchQuery(`${p.last_name}, ${p.first_name}`);
     setDropdownOpen(false);
     setShowDeleteConfirm(false);
+
+    try {
+      const encs = await getEncountersByPatient(p.id);
+      setEncounters(encs);
+      // Default to latest admission if available, else today
+      if (encs.length > 0) {
+        setSelectedAdmDate(encs[0].admission_date);
+      } else {
+        setSelectedAdmDate(getLocalIsoDate());
+      }
+    } catch (e) {
+      console.error("Failed to load encounters", e);
+    }
   };
 
   const handleStartNote = () => {
     if (selectedPatient) {
-      onSelect(selectedPatient);
+      onSelect(selectedPatient, selectedAdmDate);
     }
   };
 
@@ -70,6 +87,7 @@ export const PatientSearch = ({
       await deletePatient(selectedPatient.id);
       setAllPatients(allPatients.filter(p => p.id !== selectedPatient.id));
       setSelectedPatient(null);
+      setEncounters([]);
       setSearchQuery("");
       setShowDeleteConfirm(false);
     } catch (e) {
@@ -99,6 +117,7 @@ export const PatientSearch = ({
             onChange={(e) => {
               setSearchQuery(e.target.value);
               setSelectedPatient(null);
+              setEncounters([]);
               setDropdownOpen(true);
             }}
             onFocus={() => setDropdownOpen(true)}
@@ -147,52 +166,84 @@ export const PatientSearch = ({
       </div>
 
       {selectedPatient && (
-        <div style={styles.previewCard}>
-          {[
-            {
-              label: "Name",
-              value: `${selectedPatient.last_name}, ${selectedPatient.first_name}`,
-            },
-            { label: "DOB", value: selectedPatient.dob },
-            { label: "Sex", value: selectedPatient.sex },
-            { label: "MRN", value: selectedPatient.mrn },
-            { label: "Languages", value: selectedPatient.languages },
-          ]
-            .filter((r) => r.value)
-            .map((r) => (
-              <div key={r.label} style={styles.previewRow}>
-                <span style={styles.previewLabel}>{r.label}</span>
-                <span style={styles.previewValue}>{r.value}</span>
-              </div>
-            ))}
-
-          <div style={styles.deleteZone}>
-            {!showDeleteConfirm ? (
-              <button
-                style={{ ...styles.btnSmall, ...styles.btnDangerOutline }}
-                onClick={() => setShowDeleteConfirm(true)}
-              >
-                Delete Patient Record
-              </button>
-            ) : (
-              <div style={styles.confirmRow}>
-                <span style={styles.confirmText}>Are you sure? This deletes all history for this patient.</span>
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button
-                    style={{ ...styles.btnSmall, ...styles.btnDanger }}
-                    onClick={handleDeletePatient}
-                  >
-                    Yes, Delete
-                  </button>
-                  <button
-                    style={{ ...styles.btnSmall, ...styles.btnSecondary }}
-                    onClick={() => setShowDeleteConfirm(false)}
-                  >
-                    Cancel
-                  </button>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          {/* Patient Details */}
+          <div style={styles.previewCard}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Patient Details</div>
+            {[
+              { label: "Name", value: `${selectedPatient.last_name}, ${selectedPatient.first_name}` },
+              { label: "DOB", value: selectedPatient.dob },
+              { label: "MRN", value: selectedPatient.mrn },
+            ]
+              .filter((r) => r.value)
+              .map((r) => (
+                <div key={r.label} style={styles.previewRow}>
+                  <span style={styles.previewLabel}>{r.label}</span>
+                  <span style={styles.previewValue}>{r.value}</span>
                 </div>
-              </div>
-            )}
+              ))}
+
+            <div style={styles.deleteZone}>
+              {!showDeleteConfirm ? (
+                <button
+                  style={{ ...styles.btnSmall, ...styles.btnDangerOutline }}
+                  onClick={() => setShowDeleteConfirm(true)}
+                >
+                  Delete Patient Record
+                </button>
+              ) : (
+                <div style={styles.confirmRow}>
+                  <span style={styles.confirmText}>Are you sure? This deletes all history for this patient.</span>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button
+                      style={{ ...styles.btnSmall, ...styles.btnDanger }}
+                      onClick={handleDeletePatient}
+                    >
+                      Yes, Delete
+                    </button>
+                    <button
+                      style={{ ...styles.btnSmall, ...styles.btnSecondary }}
+                      onClick={() => setShowDeleteConfirm(false)}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Admission / Encounter Context */}
+          <div style={{ ...styles.previewCard, borderLeft: '4px solid #3498db' }}>
+            <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#3498db', textTransform: 'uppercase', marginBottom: '1rem' }}>Encounter Context</div>
+            
+            <Field label="Choose Admission Date">
+              <select 
+                value={selectedAdmDate} 
+                onChange={(e) => setSelectedAdmDate(e.target.value)}
+                style={{ ...styles.input, fontWeight: 700 }}
+              >
+                <optgroup label="New Admission">
+                  <option value={getLocalIsoDate()}>Start New Admission (Today)</option>
+                </optgroup>
+                {encounters.length > 0 && (
+                  <optgroup label="Continue Active Admission">
+                    {encounters.map(e => (
+                      <option key={e.id} value={e.admission_date}>
+                        Admitted: {e.admission_date}
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
+              </select>
+            </Field>
+
+            <div style={{ marginTop: '1rem', fontSize: '0.75rem', color: '#718096', fontStyle: 'italic', lineHeight: 1.4 }}>
+              {selectedAdmDate === getLocalIsoDate() && !encounters.find(e => e.admission_date === selectedAdmDate) 
+                ? "This will start a fresh hospital encounter for today's date."
+                : "Adding a follow-up note to the selected hospital stay."
+              }
+            </div>
           </div>
         </div>
       )}
@@ -210,7 +261,7 @@ export const PatientSearch = ({
           onClick={handleStartNote}
           disabled={loading || !selectedPatient}
         >
-          {loading ? "Opening…" : "Start New Note for This Patient →"}
+          {loading ? "Opening…" : "Enter Clinical Workspace →"}
         </button>
       </div>
     </div>

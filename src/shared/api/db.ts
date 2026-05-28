@@ -1,9 +1,8 @@
 // src/shared/api/db.ts
-// Phase 6: Future-Proofing Hooks
-//   • diagnosis, intervention, monitor_evaluate columns added to notes
-//     via safe ALTER TABLE IF NOT EXISTS (idempotent on every launch)
-//   • autosaveNote domain union extended
-//   • PDF export helper added (uses Tauri shell to open system print dialog)
+// Phase 7: Encounter (Admission) Domain Layer
+//   • encounters table added to group notes by hospital stay
+//   • Idempotent migration links legacy notes via patient_id + admission_date
+//   • admission_date is now primarily an Encounter attribute
 
 import Database from "@tauri-apps/plugin-sql";
 import { getLocalIsoDate } from "../utils/date";
@@ -34,6 +33,18 @@ async function initSchema(db: Database): Promise<void> {
     )
   `);
 
+  // encounters (Hospital Admissions)
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS encounters (
+      id              TEXT PRIMARY KEY,
+      patient_id      TEXT NOT NULL,
+      admission_date  TEXT NOT NULL,
+      discharge_date  TEXT,
+      created_at      TEXT NOT NULL,
+      FOREIGN KEY (patient_id) REFERENCES patients(id)
+    )
+  `);
+
   // notes — original schema
   await db.execute(`
     CREATE TABLE IF NOT EXISTS notes (
@@ -55,9 +66,7 @@ async function initSchema(db: Database): Promise<void> {
     )
   `);
 
-  // Phase 6: Add new ADIME domain columns — safe on existing databases
-  // SQLite does not support ADD COLUMN IF NOT EXISTS, so we catch the error
-  // "duplicate column name" and ignore it.
+  // Phase 6: Add new ADIME domain columns
   const newColumns = [
     { name: "diagnosis",        type: "TEXT" },
     { name: "intervention",     type: "TEXT" },
@@ -68,9 +77,43 @@ async function initSchema(db: Database): Promise<void> {
   for (const col of newColumns) {
     try {
       await db.execute(`ALTER TABLE notes ADD COLUMN ${col.name} ${col.type}`);
-    } catch (_e) {
-      // Column already exists — safe to ignore
+    } catch (_e) {}
+  }
+
+  // Phase 7: Add encounter_id to link notes to the parent Admission
+  try {
+    await db.execute(`ALTER TABLE notes ADD COLUMN encounter_id TEXT REFERENCES encounters(id)`);
+  } catch (_e) {}
+
+  // ── IDEMPOTENT MIGRATION ──
+  // Scan notes without an encounter_id and group them by (patient_id + admission_date)
+  const unlinkedNotes = await db.select<any[]>(
+    `SELECT id, patient_id, admission_date FROM notes WHERE encounter_id IS NULL`
+  );
+
+  for (const note of unlinkedNotes) {
+    if (!note.admission_date) continue;
+
+    // Find or create encounter
+    const existing = await db.select<any[]>(
+      `SELECT id FROM encounters WHERE patient_id = ? AND admission_date = ?`,
+      [note.patient_id, note.admission_date]
+    );
+
+    let eid: string;
+    if (existing.length > 0) {
+      eid = existing[0].id;
+    } else {
+      eid = uuid();
+      await db.execute(
+        `INSERT INTO encounters (id, patient_id, admission_date, created_at)
+         VALUES (?, ?, ?, ?)`,
+        [eid, note.patient_id, note.admission_date, new Date().toISOString()]
+      );
     }
+
+    // Link the note
+    await db.execute(`UPDATE notes SET encounter_id = ? WHERE id = ?`, [eid, note.id]);
   }
 
   // submission_requirements
@@ -121,11 +164,24 @@ export interface Patient {
   created_at: string;
 }
 
+/**
+ * Phase 7: Encounter (Admission)
+ * Represents a single hospital stay.
+ */
+export interface Encounter {
+  id: string;
+  patient_id: string;
+  admission_date: string;
+  discharge_date: string | null;
+  created_at: string;
+}
+
 export interface Note {
   id: string;
   patient_id: string;
+  encounter_id: string; // Phase 7
   note_date: string;
-  admission_date: string;
+  admission_date: string; // Legacy/redundant but kept for safety
   status: "draft" | "submitted";
   version: number;
   parent_note_id: string | null;
@@ -219,6 +275,27 @@ export async function deletePatient(patientId: string): Promise<void> {
 
 // ─── Note commands ────────────────────────────────────────────────────────────
 
+/**
+ * Finds an existing encounter for a patient on a specific date, or creates one.
+ */
+export async function getOrCreateEncounter(patientId: string, admissionDate: string): Promise<string> {
+  const db = await getDb();
+  const existing = await db.select<any[]>(
+    `SELECT id FROM encounters WHERE patient_id = ? AND admission_date = ?`,
+    [patientId, admissionDate]
+  );
+
+  if (existing.length > 0) return existing[0].id;
+
+  const eid = uuid();
+  await db.execute(
+    `INSERT INTO encounters (id, patient_id, admission_date, created_at)
+     VALUES (?, ?, ?, ?)`,
+    [eid, patientId, admissionDate, new Date().toISOString()]
+  );
+  return eid;
+}
+
 export async function createNote(payload: {
   patient_id: string;
   note_date?: string;
@@ -226,12 +303,17 @@ export async function createNote(payload: {
 }): Promise<Note> {
   const db = await getDb();
   const today = getLocalIsoDate();
+  const admDate = payload.admission_date ?? today;
+
+  // Phase 7: Ensure encounter exists first
+  const eid = await getOrCreateEncounter(payload.patient_id, admDate);
 
   const note: Note = {
     id:               uuid(),
     patient_id:       payload.patient_id,
+    encounter_id:     eid, // Phase 7
     note_date:        payload.note_date      ?? today,
-    admission_date:   payload.admission_date ?? today,
+    admission_date:   admDate,
     status:           "draft",
     version:          1,
     parent_note_id:   null,
@@ -250,13 +332,13 @@ export async function createNote(payload: {
 
   await db.execute(
     `INSERT INTO notes
-       (id, patient_id, note_date, admission_date, status, version,
+       (id, patient_id, encounter_id, note_date, admission_date, status, version,
         parent_note_id, anthro, labs, clinical, dietary, dexa_scans,
         diagnosis, intervention, monitor_evaluate, standards,
         created_at, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      note.id, note.patient_id, note.note_date, note.admission_date,
+      note.id, note.patient_id, note.encounter_id, note.note_date, note.admission_date,
       note.status, note.version, note.parent_note_id,
       note.anthro, note.labs, note.clinical, note.dietary, note.dexa_scans,
       note.diagnosis, note.intervention, note.monitor_evaluate, note.standards,
@@ -269,7 +351,7 @@ export async function createNote(payload: {
 
 /**
  * Auto-save a single domain column for an existing note.
- * Phase 6 extends the domain union to include the new ADIME columns.
+ * Phase 7: admission_date updates also sync to the parent encounter.
  */
 export async function autosaveNote(
   noteId: string,
@@ -289,10 +371,41 @@ export async function autosaveNote(
     ? JSON.stringify(data)
     : (data as string);
 
+  // If updating admission_date, sync it to the parent encounter record too
+  if (domain === "admission_date") {
+    const note = await getNoteById(noteId);
+    if (note?.encounter_id) {
+      await db.execute(
+        `UPDATE encounters SET admission_date = ? WHERE id = ?`,
+        [value, note.encounter_id]
+      );
+    }
+  }
+
   await db.execute(
     `UPDATE notes SET ${domain} = ? WHERE id = ?`,
     [value, noteId]
   );
+}
+
+/**
+ * Fetches the most recent note before the specified one in the same encounter.
+ */
+export async function getPreviousNoteInEncounter(noteId: string): Promise<Note | null> {
+  const currentNote = await getNoteById(noteId);
+  if (!currentNote || !currentNote.encounter_id) return null;
+
+  const db = await getDb();
+  const rows = await db.select<Note[]>(
+    `SELECT * FROM notes 
+     WHERE encounter_id = ? 
+     AND (note_date < ? OR (note_date = ? AND created_at < ?))
+     ORDER BY note_date DESC, created_at DESC
+     LIMIT 1`,
+    [currentNote.encounter_id, currentNote.note_date, currentNote.note_date, currentNote.created_at]
+  );
+
+  return rows[0] ?? null;
 }
 
 import { validatePES } from "../../features/diagnosis/etiologyData";
@@ -388,6 +501,14 @@ export async function getNotesByPatient(patientId: string): Promise<Note[]> {
   );
 }
 
+export async function getEncountersByPatient(patientId: string): Promise<Encounter[]> {
+  const db = await getDb();
+  return await db.select<Encounter[]>(
+    `SELECT * FROM encounters WHERE patient_id = ? ORDER BY admission_date DESC`,
+    [patientId]
+  );
+}
+
 export async function getAllNotes(): Promise<NoteWithPatient[]> {
   const db = await getDb();
   return await db.select<NoteWithPatient[]>(
@@ -426,6 +547,7 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
   const revision: Note = {
     id:               uuid(),
     patient_id:       original.patient_id,
+    encounter_id:     original.encounter_id, // Phase 7
     note_date:        original.note_date,
     admission_date:   original.admission_date,
     status:           "draft",
@@ -435,7 +557,7 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
     labs:             original.labs,
     clinical:         original.clinical,
     dietary:          original.dietary,
-    dexa_scans:       original.dexa_scans,
+    dexa_scans:       original.dexa_sc_ans,
     diagnosis:        original.diagnosis,
     intervention:     original.intervention,
     monitor_evaluate: original.monitor_evaluate,
@@ -446,13 +568,13 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
 
   await db.execute(
     `INSERT INTO notes
-       (id, patient_id, note_date, admission_date, status, version,
+       (id, patient_id, encounter_id, note_date, admission_date, status, version,
         parent_note_id, anthro, labs, clinical, dietary, dexa_scans,
         diagnosis, intervention, monitor_evaluate, standards,
         created_at, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
-      revision.id, revision.patient_id, revision.note_date, revision.admission_date,
+      revision.id, revision.patient_id, revision.encounter_id, revision.note_date, revision.admission_date,
       revision.status, revision.version, revision.parent_note_id,
       revision.anthro, revision.labs, revision.clinical, revision.dietary, revision.dexa_scans,
       revision.diagnosis, revision.intervention, revision.monitor_evaluate, revision.standards,

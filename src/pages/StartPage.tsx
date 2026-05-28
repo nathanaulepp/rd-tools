@@ -30,7 +30,10 @@ export default function StartPage({
       <div className="start-page-content">
 
         <div className="start-header">
-          <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "-20px" }}>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginBottom: "-20px" }}>
+            <button className="btn-outline" onClick={() => setCurrentView("SETTINGS")} style={{ fontSize: "0.8rem", padding: "4px 12px" }}>
+              Settings
+            </button>
             <button className="btn-outline" onClick={handleLogout} style={{ fontSize: "0.8rem", padding: "4px 12px" }}>
               Log Out
             </button>

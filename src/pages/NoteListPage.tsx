@@ -20,13 +20,19 @@ interface NoteListPageProps {
   onOpenNote: (patientId: string, noteId: string, patient: Patient, note: Note) => void;
 }
 
+interface EncounterGroup {
+  id: string;
+  admission_date: string;
+  notes: NoteWithPatient[];
+}
+
 interface PatientGroup {
   id: string;
   first_name: string;
   last_name: string;
   dob: string;
   mrn: string;
-  notes: NoteWithPatient[];
+  encounters: EncounterGroup[];
 }
 
 type ViewMode = "patient" | "date";
@@ -144,62 +150,76 @@ function ByPatientView({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.9rem" }}>
-      {patientGroups.map(group => (
-        <div key={group.id} className="patient-card" style={s.patientCard}>
-          {/* Patient header row */}
-          <div style={s.patientHeader} onClick={() => toggle(group.id)}>
-            <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
-              <span className="text-muted" style={{ fontSize: "0.7rem", width: "1rem" }}>
-                {expandedPatients.has(group.id) ? "▼" : "▶"}
-              </span>
-              <span className="title" style={{ fontSize: "1.05rem", fontWeight: 700 }}>
-                {group.last_name}, {group.first_name}
-              </span>
-              <span className="subtitle" style={{ fontSize: "0.85rem" }}>
-                MRN: {group.mrn || "---"} · DOB: {group.dob}
+      {patientGroups.map(group => {
+        const totalNotes = group.encounters.reduce((acc, e) => acc + e.notes.length, 0);
+        
+        return (
+          <div key={group.id} className="patient-card" style={s.patientCard}>
+            {/* Patient header row */}
+            <div style={s.patientHeader} onClick={() => toggle(group.id)}>
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <span className="text-muted" style={{ fontSize: "0.7rem", width: "1rem" }}>
+                  {expandedPatients.has(group.id) ? "▼" : "▶"}
+                </span>
+                <span className="title" style={{ fontSize: "1.05rem", fontWeight: 700 }}>
+                  {group.last_name}, {group.first_name}
+                </span>
+                <span className="subtitle" style={{ fontSize: "0.85rem" }}>
+                  MRN: {group.mrn || "---"} · DOB: {group.dob}
+                </span>
+              </div>
+              <span className="noteCountBadge" style={s.noteCountBadge}>
+                {totalNotes} {totalNotes === 1 ? "Note" : "Notes"}
               </span>
             </div>
-            <span className="noteCountBadge" style={s.noteCountBadge}>
-              {group.notes.length} {group.notes.length === 1 ? "Note" : "Notes"}
-            </span>
-          </div>
 
-          {/* Notes list */}
-          {expandedPatients.has(group.id) && (
-            <div style={{ background: "var(--bg-alt, #fafafa)", borderTop: "1px solid var(--border, #f1f5f9)" }}>
-              {group.notes.map(n => (
-                <div key={n.id} className="note-row" style={s.noteRow}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap" }}>
-                    {/* Tree indent */}
-                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted, #cbd5e1)", paddingLeft: "2.5rem" }}>└──</span>
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <span className="note-date-text" style={{ fontSize: "0.9rem", fontWeight: 600 }}>
-                        {n.note_date || "---"}
-                      </span>
-                      <span className="text-muted" style={{ fontSize: "0.7rem", fontWeight: 700 }}>
-                        v{n.version}
-                        {n.parent_note_id ? " (revision)" : ""}
-                      </span>
+            {/* Encounters & Notes list */}
+            {expandedPatients.has(group.id) && (
+              <div style={{ background: "var(--bg-alt, #fafafa)", borderTop: "1px solid var(--border, #f1f5f9)" }}>
+                {group.encounters.map(encounter => (
+                  <div key={encounter.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                    {/* Encounter Header */}
+                    <div style={{ background: "#f8fafc", padding: "0.5rem 1.5rem", fontSize: "0.72rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                      <span style={{ fontSize: "0.9rem" }}>🏥</span>
+                      Admission Date: {encounter.admission_date}
                     </div>
-                    <StatusBadge status={n.status} />
-                  </div>
 
-                  <NoteActions
-                    note={n}
-                    actionLoading={actionLoading}
-                    noteToDelete={noteToDelete}
-                    onResume={onResume}
-                    onRevise={onRevise}
-                    onDeleteRequest={onDeleteRequest}
-                    onDeleteConfirm={onDeleteConfirm}
-                    onDeleteCancel={onDeleteCancel}
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ))}
+                    {encounter.notes.map(n => (
+                      <div key={n.id} className="note-row" style={s.noteRow}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "1.25rem", flexWrap: "wrap" }}>
+                          {/* Tree indent */}
+                          <span style={{ fontSize: "0.75rem", color: "var(--text-muted, #cbd5e1)", paddingLeft: "1.5rem" }}>└──</span>
+                          <div style={{ display: "flex", flexDirection: "column" }}>
+                            <span className="note-date-text" style={{ fontSize: "0.9rem", fontWeight: 600 }}>
+                              {n.note_date || "---"}
+                            </span>
+                            <span className="text-muted" style={{ fontSize: "0.7rem", fontWeight: 700 }}>
+                              v{n.version}
+                              {n.parent_note_id ? " (revision)" : ""}
+                            </span>
+                          </div>
+                          <StatusBadge status={n.status} />
+                        </div>
+
+                        <NoteActions
+                          note={n}
+                          actionLoading={actionLoading}
+                          noteToDelete={noteToDelete}
+                          onResume={onResume}
+                          onRevise={onRevise}
+                          onDeleteRequest={onDeleteRequest}
+                          onDeleteConfirm={onDeleteConfirm}
+                          onDeleteCancel={onDeleteCancel}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -313,25 +333,51 @@ export default function NoteListPage({ handleExitToStart, onOpenNote }: NoteList
     }
   };
 
-  // Group by patient (for By Patient view)
+  // Group by patient -> then by encounter (for By Patient view)
   const patientGroups = useMemo<PatientGroup[]>(() => {
-    const groups: Record<string, PatientGroup> = {};
+    const pGroups: Record<string, PatientGroup> = {};
+    
     allNotes.forEach(n => {
-      if (!groups[n.patient_id]) {
-        groups[n.patient_id] = {
+      // 1. Resolve Patient
+      if (!pGroups[n.patient_id]) {
+        pGroups[n.patient_id] = {
           id: n.patient_id,
           first_name: n.first_name,
           last_name: n.last_name,
           dob: n.dob,
           mrn: n.mrn,
-          notes: [],
+          encounters: [],
         };
       }
-      groups[n.patient_id].notes.push(n);
+      
+      const p = pGroups[n.patient_id];
+
+      // 2. Resolve Encounter
+      let enc = p.encounters.find(e => e.id === n.encounter_id);
+      if (!enc) {
+        enc = {
+          id: n.encounter_id,
+          admission_date: n.admission_date,
+          notes: [],
+        };
+        p.encounters.push(enc);
+      }
+      
+      enc.notes.push(n);
     });
-    return Object.values(groups).sort((a, b) =>
-      a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name)
-    );
+
+    // Sort: Patients A-Z, then Encounters (latest admission first), then Notes (latest date first)
+    return Object.values(pGroups)
+      .sort((a, b) => a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name))
+      .map(p => ({
+        ...p,
+        encounters: p.encounters
+          .sort((a, b) => b.admission_date.localeCompare(a.admission_date))
+          .map(e => ({
+            ...e,
+            notes: e.notes.sort((a, b) => b.note_date.localeCompare(a.note_date))
+          }))
+      }));
   }, [allNotes]);
 
   // ── Actions ──────────────────────────────────────────────────────────────────

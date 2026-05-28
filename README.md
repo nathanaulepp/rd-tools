@@ -21,7 +21,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 ## Roadmap & To-Do List
 
 ### RD Workstation
-- [ ] **add** restructuring informatics, grouping data by unique patient and admission --> encounter/admissionDate/noteDate 
+- [x] **add** restructuring informatics, grouping data by unique patient and admission --> encounter/admissionDate/noteDate 
 - [ ] **add** Add keyboard shortcuts (root call is "ctrl + .")
 - [ ] **add** Split panes function
 
@@ -67,10 +67,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [ ] **add** Basic renal adjustments
 
 ### Dietitian Tools
-- [ ] **add** METs Calorie Estimator
 - [ ] **add** Mercury safety calculator 
-  - Goal: Better activity factor to estimate patient calories.
-  - Formula: `TDEE = MSJ_RMR * SUM(0-24 hours of (activity * MET / 24))`
 
 ---
 

@@ -7,7 +7,7 @@
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import type { Patient, Note } from "../shared/api/db";
-import { autosaveNote, submitNote } from "../shared/api/db";
+import { autosaveNote, submitNote, deleteNote } from "../shared/api/db";
 import { useEscapeBackout } from "../shared/utils/ShortcutContext";
 
 import PatientHeader from "../widgets/PatientHeader";
@@ -60,7 +60,7 @@ interface CreateNotePageProps {
   setStandards: (s: any) => void;
 
   calculatedMetrics: any;
-  handleExitToStart: () => void;
+  handleExitToStart: (skipConfirm?: boolean) => void;
 }
 
 // ─── Domain label map ─────────────────────────────────────────────────────────
@@ -77,6 +77,57 @@ const DOMAIN_LABELS: Record<DomainKey, string> = {
 
 // ─── Debounce delay for background dietary saves (ms) ─────────────────────────
 const DIETARY_DEBOUNCE_MS = 1200;
+
+// ─── Exit Modal ───────────────────────────────────────────────────────────────
+interface ExitModalProps {
+  onClose: () => void;
+  onConfirmExit: () => void;
+  onDiscard: () => void;
+}
+
+function ExitModal({ onClose, onConfirmExit, onDiscard }: ExitModalProps) {
+  useEscapeBackout(onClose);
+  const [showConfirmDiscard, setShowConfirmDiscard] = useState(false);
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 2000,
+    }}>
+      <div style={{
+        background: "#fff", borderRadius: "14px", padding: "2rem",
+        maxWidth: "420px", width: "90%",
+        boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+      }}>
+        {!showConfirmDiscard ? (
+          <>
+            <h3 style={{ margin: "0 0 0.5rem", color: "#0f172a", fontSize: "1.1rem" }}>Exit Documentation?</h3>
+            <p style={{ margin: "0 0 1.5rem", fontSize: "0.88rem", color: "#64748b", lineHeight: 1.5 }}>
+              Your progress has been automatically saved as a draft.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+              <button onClick={onConfirmExit} style={{ ...btnStyles.primary, width: "100%" }}>Save Draft &amp; Exit</button>
+              <button onClick={() => setShowConfirmDiscard(true)} style={{ ...btnStyles.outline, color: "#e74c3c", border: "1px solid #e74c3c", width: "100%" }}>Discard &amp; Delete Note</button>
+              <button onClick={onClose} style={{ ...btnStyles.outline, border: "none", width: "100%" }}>Cancel (Stay here)</button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h3 style={{ margin: "0 0 0.5rem", color: "#c0392b", fontSize: "1.1rem" }}>⚠️ Delete this note permanently?</h3>
+            <p style={{ margin: "0 0 1.5rem", fontSize: "0.88rem", color: "#64748b", lineHeight: 1.5 }}>
+              This action cannot be undone. All data entered for this session will be lost.
+            </p>
+            <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
+              <button onClick={() => setShowConfirmDiscard(false)} style={btnStyles.outline}>Wait, Go Back</button>
+              <button onClick={onDiscard} style={{ ...btnStyles.primary, background: "#e74c3c" }}>Yes, Delete Permanentely</button>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ─── Submit Modal ─────────────────────────────────────────────────────────────
 interface SubmitModalProps {
@@ -178,13 +229,23 @@ export default function CreateNotePage({
   const [isSaving, setIsSaving] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
+  const [exitModalOpen, setExitModalOpen] = useState(false);
   const [modalState, setModalState] = useState<"confirm" | "saving" | "error" | "success">("confirm");
   const [missingFields, setMissingFields] = useState<string[]>([]);
   const [noteStatus, setNoteStatus] = useState<"draft" | "submitted">(
     (note?.status as "draft" | "submitted") ?? "draft"
   );
 
-  useEscapeBackout(handleExitToStart);
+  // Custom local exit handler to show modal
+  const handleExitRequest = () => {
+    if (noteStatus === "submitted") {
+      handleExitToStart(true); // Exit immediately if already submitted
+    } else {
+      setExitModalOpen(true);
+    }
+  };
+
+  useEscapeBackout(handleExitRequest);
 
   // Refs for stale-closure-safe saves
   const anthroRef       = useRef(anthro);
@@ -262,42 +323,24 @@ export default function CreateNotePage({
   }, [noteId]);
 
   // ── PATCH: Debounced autosave for the dietary domain ─────────────────────
-  // Because D12 and D13 are internal tabs inside the D1 subdomain, switching
-  // between them does NOT trigger the normal subdomain-change save path.
-  // This effect watches `dietary` and flushes it to SQLite after the user
-  // pauses for DIETARY_DEBOUNCE_MS, regardless of which internal tab is active.
   const dietaryDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    // Skip on initial mount / when there is no note to save to yet
     if (!noteId) return;
-
-    // Cancel any previously scheduled save
-    if (dietaryDebounceRef.current) {
-      clearTimeout(dietaryDebounceRef.current);
-    }
+    if (dietaryDebounceRef.current) clearTimeout(dietaryDebounceRef.current);
 
     dietaryDebounceRef.current = setTimeout(async () => {
       try {
         await autosaveNote(noteId, "dietary", dietaryRef.current);
-        // Silently succeed — no toast to avoid noise during rapid typing
       } catch (e) {
         console.error("Debounced dietary autosave failed:", e);
-        // Only surface an error toast if we're still on the dietary domain
-        // so the message is contextually relevant
-        if (activeDomain === "D") {
-          showToast("⚠ Dietary save failed — check connection");
-        }
+        if (activeDomain === "D") showToast("⚠ Dietary save failed — check connection");
       }
     }, DIETARY_DEBOUNCE_MS);
 
-    // Clean up on unmount or before next effect run
     return () => {
-      if (dietaryDebounceRef.current) {
-        clearTimeout(dietaryDebounceRef.current);
-      }
+      if (dietaryDebounceRef.current) clearTimeout(dietaryDebounceRef.current);
     };
-    // dietary is the only trigger; activeDomain is captured for the error toast
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dietary, noteId]);
 
@@ -314,7 +357,6 @@ export default function CreateNotePage({
     if (!noteId || !patientId) return;
     setModalState("saving");
 
-    // Cancel any pending debounced dietary save — we're about to do a full save
     if (dietaryDebounceRef.current) {
       clearTimeout(dietaryDebounceRef.current);
       dietaryDebounceRef.current = null;
@@ -339,28 +381,17 @@ export default function CreateNotePage({
   };
 
   const handleModalClose = () => {
-    if (modalState === "success") {
-      handleExitToStart();
-    } else {
-      setModalOpen(false);
-    }
+    if (modalState === "success") handleExitToStart(true);
+    else setModalOpen(false);
   };
 
   const handleDomainSwitch = async (nextDomain: DomainKey) => {
     if (nextDomain === activeDomain) return;
-
-    if (activeDomain === "Dx") {
-      processNoteEtiologies(diagnosisRef.current);
-    }
-
-    // For the dietary domain we flush the debounce immediately on switch,
-    // then the normal saveDomain call below also persists it. This ensures
-    // zero data loss even if the debounce hadn't fired yet.
+    if (activeDomain === "Dx") processNoteEtiologies(diagnosisRef.current);
     if (activeDomain === "D" && dietaryDebounceRef.current) {
       clearTimeout(dietaryDebounceRef.current);
       dietaryDebounceRef.current = null;
     }
-
     const ok = await saveDomain(activeDomain);
     if (ok) showToast(`${DOMAIN_LABELS[activeDomain]} saved ✓`);
     setActiveDomain(nextDomain);
@@ -377,6 +408,28 @@ export default function CreateNotePage({
     const ok = await saveDomain(activeDomain);
     if (ok) showToast(`${DOMAIN_LABELS[activeDomain]} saved ✓`);
     setActiveSubDomain(nextSub);
+  };
+
+  const handleConfirmExit = async () => {
+    setExitModalOpen(false);
+    if (dietaryDebounceRef.current) {
+      clearTimeout(dietaryDebounceRef.current);
+      dietaryDebounceRef.current = null;
+    }
+    const saved = await saveAllDomains();
+    if (saved) handleExitToStart(true);
+  };
+
+  const handleConfirmDiscard = async () => {
+    if (!noteId) return;
+    setExitModalOpen(false);
+    try {
+      await deleteNote(noteId);
+      handleExitToStart(true);
+    } catch (e) {
+      console.error("Discard failed:", e);
+      alert("Failed to delete note. You can try again or save it as a draft.");
+    }
   };
 
   const isSubmitted = noteStatus === "submitted";
@@ -499,11 +552,17 @@ export default function CreateNotePage({
                 Submit Note
               </button>
             )}
+            
+            <button 
+              onClick={handleExitRequest} 
+              style={{ width: "100%", marginTop: "0.75rem", padding: "0.6rem", background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}
+            >
+              ⚙ App Settings
+            </button>
           </div>
         </div>
       </nav>
 
-      {/* ── MAIN WORKSPACE ── */}
       <main className="main-workspace">
         <header className="top-nav">
           <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}>☰</button>
@@ -515,7 +574,7 @@ export default function CreateNotePage({
           patientData={patientData}
           setPatientData={setPatientData}
           clinical={clinical}
-          onExit={handleExitToStart}
+          onExit={handleExitRequest}
           onSubmit={handleSubmitClick}
           isSubmitted={isSubmitted}
           isSaving={isSaving}
@@ -574,6 +633,10 @@ export default function CreateNotePage({
 
       {modalOpen && (
         <SubmitModal state={modalState} missingFields={missingFields} onConfirm={handleConfirmSubmit} onClose={handleModalClose} />
+      )}
+
+      {exitModalOpen && (
+        <ExitModal onClose={() => setExitModalOpen(false)} onConfirmExit={handleConfirmExit} onDiscard={handleConfirmDiscard} />
       )}
     </div>
   );

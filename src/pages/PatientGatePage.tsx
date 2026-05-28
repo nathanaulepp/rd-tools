@@ -53,7 +53,7 @@ export default function PatientGatePage({ onEnterWorkspace, onCancel }: PatientG
       const note = await createNote({
         patient_id:     patient.id,
         note_date:      today(),
-        admission_date: today(),
+        admission_date: data.admission_date || today(),
       });
       onEnterWorkspace(patient.id, note.id, patient, note);
     } catch (e: any) {
@@ -64,14 +64,14 @@ export default function PatientGatePage({ onEnterWorkspace, onCancel }: PatientG
     }
   };
 
-  const handleSelectExisting = async (selectedPatient: Patient) => {
+  const handleSelectExisting = async (selectedPatient: Patient, admissionDate: string) => {
     setError("");
     setLoading(true);
     try {
       const note = await createNote({
         patient_id:     selectedPatient.id,
         note_date:      today(),
-        admission_date: today(),
+        admission_date: admissionDate,
       });
       onEnterWorkspace(selectedPatient.id, note.id, selectedPatient, note);
     } catch (e: any) {

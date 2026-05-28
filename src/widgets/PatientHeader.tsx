@@ -3,12 +3,13 @@
 // Note date and admission date are editable and auto-save on change.
 // Validation: admissionDate must be >= patient DOB and <= noteDate.
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import type { Patient, Note } from "../shared/api/db";
-import { autosaveNote } from "../shared/api/db";
+import { autosaveNote, isFirstEncounterNote } from "../shared/api/db";
 
 import { validateDateBoundaries } from "../shared/utils/dateValidation";
 import { formatAge } from "../shared/utils/date";
+import { Tooltip } from "../shared/ui/Tooltip";
 
 interface PatientHeaderProps {
   patient: Patient | null;
@@ -35,6 +36,13 @@ export default function PatientHeader({
   isSaving,
 }: PatientHeaderProps) {
   const [dateError, setDateError] = useState<string>("");
+  const [isInitial, setIsInitial] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (note?.id) {
+      isFirstEncounterNote(note.id).then(setIsInitial);
+    }
+  }, [note?.id]);
 
   if (!patient) return null;
 
@@ -119,23 +127,27 @@ export default function PatientHeader({
           />
         </div>
 
-        {/* Admission Date (editable) */}
+        {/* Admission Date (editable only if initial) */}
         <div className="vital-stat" style={{ minWidth: "120px" }}>
           <span className="label">Admission Date</span>
-          <input
-            type="date"
-            value={patientData.admissionDate || ""}
-            onChange={e => handleDateChange("admissionDate", e.target.value)}
-            style={{
-              fontSize: "0.82rem",
-              fontWeight: 700,
-              border: "none",
-              background: "transparent",
-              color: "var(--primary)",
-              padding: 0,
-              width: "100%",
-            }}
-          />
+          <Tooltip text={!isInitial ? "Admission date is locked for follow-up notes." : ""}>
+            <input
+              type="date"
+              value={patientData.admissionDate || ""}
+              onChange={e => handleDateChange("admissionDate", e.target.value)}
+              disabled={!isInitial}
+              style={{
+                fontSize: "0.82rem",
+                fontWeight: 700,
+                border: "none",
+                background: "transparent",
+                color: !isInitial ? "var(--text-muted)" : "var(--primary)",
+                padding: 0,
+                width: "100%",
+                cursor: !isInitial ? "not-allowed" : "text",
+              }}
+            />
+          </Tooltip>
         </div>
 
         {/* Vital signs (from clinical state — live, read-only display) */}
