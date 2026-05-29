@@ -408,6 +408,14 @@ export async function getPreviousNoteInEncounter(noteId: string): Promise<Note |
   return rows[0] ?? null;
 }
 
+/**
+ * Returns true if the given note is the first one (by date/time) in its encounter.
+ */
+export async function isFirstEncounterNote(noteId: string): Promise<boolean> {
+  const prev = await getPreviousNoteInEncounter(noteId);
+  return prev === null;
+}
+
 import { validatePES } from "../../features/diagnosis/etiologyData";
 
 // ... (rest of imports)
@@ -557,7 +565,7 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
     labs:             original.labs,
     clinical:         original.clinical,
     dietary:          original.dietary,
-    dexa_scans:       original.dexa_sc_ans,
+    dexa_scans:       original.dexa_scans,
     diagnosis:        original.diagnosis,
     intervention:     original.intervention,
     monitor_evaluate: original.monitor_evaluate,
