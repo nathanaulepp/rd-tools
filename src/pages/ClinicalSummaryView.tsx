@@ -270,6 +270,8 @@ export default function ClinicalSummaryView({
                 {renderRow("Oral/Chewing", clinical.chewing)}
                 {renderRow("Oral Hygiene", clinical.oralHygiene)}
                 {renderRow("Swallowing", clinical.swallowing)}
+                {renderRow("FEV1 % Predicted", clinical.fev1)}
+                {renderRow("TBSA Burned", clinical.tbsa, "%")}
               </div>
             </div>
 
@@ -281,6 +283,8 @@ export default function ClinicalSummaryView({
                 {renderVital("SpO2", clinical.spo2, "%")}
                 {renderVital("BP", clinical.bp, "mmHg")}
                 {renderVital("RR", clinical.rr, "bpm")}
+                {renderVital("Max Temp", clinical.tempMax, "°F")}
+                {renderVital("Ve", clinical.ve, "L/min")}
               </div>
             </div>
 

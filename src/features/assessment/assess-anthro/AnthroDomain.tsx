@@ -8,13 +8,34 @@ import GrowthVelocityTable from '../assess-anthro/GrowthVelocityTable';
 import { DomainHeader } from '../../../shared/ui/DomainHeader';
 import { formatAge } from '../../../shared/utils/date';
 
+const AMPUTATION_DATA = [
+  { label: "Hand", pct: 0.7 },
+  { label: "Forearm", pct: 2.3 },
+  { label: "Entire Arm", pct: 5.0 },
+  { label: "Foot", pct: 1.5 },
+  { label: "BKA (Below Knee)", pct: 5.9 },
+  { label: "AKA (Above Knee)", pct: 11.0 },
+  { label: "Entire Leg", pct: 16.0 }
+];
+
 export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScans, calculatedMetrics, patientData, activeSubDomain }: any) {
-  const handleUpdate = (field: string, val: string) => setAnthro({ ...anthro, [field]: val });
+  const handleUpdate = (field: string, val: any) => setAnthro({ ...anthro, [field]: val });
 
   const addDexaScan = () => setDexaScans([...dexaScans, { id: Date.now(), date: "", bmd: "", fatMass: "", leanMass: "", bodyFatPct: "" }]);
   const updateDexa = (id: number, field: string, val: string) => {
     setDexaScans(dexaScans.map((scan:any) => scan.id === id ? { ...scan, [field]: val } : scan));
   };
+
+  const toggleAmputation = (label: string) => {
+    const current = anthro.amputations || [];
+    if (current.includes(label)) {
+      handleUpdate("amputations", current.filter((l: string) => l !== label));
+    } else {
+      handleUpdate("amputations", [...current, label]);
+    }
+  };
+
+  const adjIbw = calculatedMetrics?.adjIbw;
 
 // --- NEW: Dynamic Weight Change Percentage Calculation ---
   const wtChangeDetails = useMemo(() => {
@@ -98,6 +119,69 @@ export default function AnthroDomain({ anthro, setAnthro, dexaScans, setDexaScan
                     value={anthro.ubwDate} 
                     onChange={e => handleUpdate("ubwDate", e.target.value)} 
                   />
+                </div>
+              </div>
+
+              {/* NEW: Fluid Shift & Amputation Support */}
+              <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap' }}>
+                  <div style={{ flex: '1', minWidth: '300px' }}>
+                    <div className="input-group" style={{ flexDirection: 'row', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                      <input 
+                        type="checkbox" 
+                        id="fluidShift" 
+                        checked={anthro.isFluidShift} 
+                        onChange={e => handleUpdate("isFluidShift", e.target.checked)}
+                        style={{ width: 'auto', margin: 0 }}
+                      />
+                      <label htmlFor="fluidShift" style={{ margin: 0, fontWeight: 700, cursor: 'pointer' }}>[x] Fluid Shift / Renal Patient</label>
+                    </div>
+
+                    {anthro.isFluidShift && (
+                      <div className="fade-in" style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '4px', display: 'block' }}>
+                          Estimated Dry Weight (EDW) / Target Weight
+                        </label>
+                        <div className="input-group-row">
+                          <input 
+                            type="number" 
+                            value={anthro.edw} 
+                            onChange={e => handleUpdate("edw", e.target.value)} 
+                            placeholder="Target weight"
+                          />
+                          <select style={{width: '70px'}} value={anthro.edwUnit} onChange={e => handleUpdate("edwUnit", e.target.value)}>
+                            <option>kg</option><option>lbs</option>
+                          </select>
+                        </div>
+                        <p style={{ fontSize: '0.65rem', color: '#64748b', marginTop: '4px' }}>
+                          Overrides "Current Weight" for nutrition calculations (kcal/kg).
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ flex: '2', minWidth: '400px' }}>
+                    <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px', display: 'block' }}>
+                      Amputation / Body Segment Loss
+                    </label>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                      {AMPUTATION_DATA.map(amp => (
+                        <button
+                          key={amp.label}
+                          onClick={() => toggleAmputation(amp.label)}
+                          className={`chip ${anthro.amputations?.includes(amp.label) ? 'active' : ''}`}
+                          style={{ cursor: 'pointer', border: '1px solid #e2e8f0', background: anthro.amputations?.includes(amp.label) ? 'var(--primary)' : 'white' }}
+                        >
+                          {amp.label} ({amp.pct}%)
+                        </button>
+                      ))}
+                    </div>
+                    {adjIbw && (
+                      <div className="mt-1" style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0f172a' }}>
+                        Estimated/Adjusted IBW: <span style={{ color: '#2ab3a3' }}>{adjIbw}kg</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

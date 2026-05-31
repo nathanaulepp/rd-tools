@@ -1,9 +1,7 @@
 // src/pages/CreateNotePage.tsx
 // Phase 6: Added Diagnosis (Dx), Intervention (I), Monitor/Eval (ME) domains
-// + Settings link in sidebar
-// FIX: Added missing standards/setStandards to props interface and destructuring
-// PATCH: Debounced autosave for dietary domain so D12/D13 tab changes persist
-//        without requiring an explicit subdomain switch.
+// Phase 8: Added onCrossDomainUpdate prop wiring for cross-domain auto-pull write-back
+//          (tempMax/ve → clinical; hgb → labs; tbsa/fev1 → clinical)
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import type { Patient, Note } from "../shared/api/db";
@@ -19,7 +17,7 @@ import DiagnosisDomain from "../features/diagnosis/DiagnosisDomain";
 import { processNoteEtiologies } from "../features/diagnosis/etiologyData";
 import InterventionDomain from "../features/intervention/InterventionDomain";
 import MonitorEvalDomain from "../features/monitor-evalue/MonitorEvalDomain";
-import NutritionStandardsDomain from "../features/assessment/assess-standards/NutritionStandardsDomain";
+import NutritionStandardsDomain, { CrossDomainUpdate } from "../features/assessment/assess-standards/NutritionStandardsDomain";
 
 import {
   DIETARY_CATEGORIES,
@@ -49,7 +47,6 @@ interface CreateNotePageProps {
   setClinical: (c: any) => void;
   dietary: any;
   setDietary: (d: any) => void;
-  // Phase 6
   diagnosis: any;
   setDiagnosis: (d: any) => void;
   intervention: any;
@@ -63,7 +60,6 @@ interface CreateNotePageProps {
   handleExitToStart: (skipConfirm?: boolean) => void;
 }
 
-// ─── Domain label map ─────────────────────────────────────────────────────────
 const DOMAIN_LABELS: Record<DomainKey, string> = {
   A:  "Anthropometrics",
   B:  "Biochemical",
@@ -75,10 +71,10 @@ const DOMAIN_LABELS: Record<DomainKey, string> = {
   ME: "Monitor & Evaluate",
 };
 
-// ─── Debounce delay for background dietary saves (ms) ─────────────────────────
 const DIETARY_DEBOUNCE_MS = 1200;
 
 // ─── Exit Modal ───────────────────────────────────────────────────────────────
+
 interface ExitModalProps {
   onClose: () => void;
   onConfirmExit: () => void;
@@ -90,16 +86,8 @@ function ExitModal({ onClose, onConfirmExit, onDiscard }: ExitModalProps) {
   const [showConfirmDiscard, setShowConfirmDiscard] = useState(false);
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 2000,
-    }}>
-      <div style={{
-        background: "#fff", borderRadius: "14px", padding: "2rem",
-        maxWidth: "420px", width: "90%",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
-      }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+      <div style={{ background: "#fff", borderRadius: "14px", padding: "2rem", maxWidth: "420px", width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.25)" }}>
         {!showConfirmDiscard ? (
           <>
             <h3 style={{ margin: "0 0 0.5rem", color: "#0f172a", fontSize: "1.1rem" }}>Exit Documentation?</h3>
@@ -120,7 +108,7 @@ function ExitModal({ onClose, onConfirmExit, onDiscard }: ExitModalProps) {
             </p>
             <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end" }}>
               <button onClick={() => setShowConfirmDiscard(false)} style={btnStyles.outline}>Wait, Go Back</button>
-              <button onClick={onDiscard} style={{ ...btnStyles.primary, background: "#e74c3c" }}>Yes, Delete Permanentely</button>
+              <button onClick={onDiscard} style={{ ...btnStyles.primary, background: "#e74c3c" }}>Yes, Delete Permanently</button>
             </div>
           </>
         )}
@@ -130,6 +118,7 @@ function ExitModal({ onClose, onConfirmExit, onDiscard }: ExitModalProps) {
 }
 
 // ─── Submit Modal ─────────────────────────────────────────────────────────────
+
 interface SubmitModalProps {
   state: "confirm" | "saving" | "error" | "success";
   missingFields: string[];
@@ -140,16 +129,8 @@ interface SubmitModalProps {
 function SubmitModal({ state, missingFields, onConfirm, onClose }: SubmitModalProps) {
   useEscapeBackout(onClose);
   return (
-    <div style={{
-      position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 2000,
-    }}>
-      <div style={{
-        background: "#fff", borderRadius: "14px", padding: "2rem",
-        maxWidth: "460px", width: "90%",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.2)",
-      }}>
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 2000 }}>
+      <div style={{ background: "#fff", borderRadius: "14px", padding: "2rem", maxWidth: "460px", width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
         {state === "confirm" && (
           <>
             <h3 style={{ margin: "0 0 0.5rem", color: "#0f172a", fontSize: "1.1rem" }}>Submit Note?</h3>
@@ -189,9 +170,7 @@ function SubmitModal({ state, missingFields, onConfirm, onClose }: SubmitModalPr
             <p style={{ margin: "0 0 1.5rem", fontSize: "0.85rem", color: "#64748b", lineHeight: 1.5 }}>
               The note has been saved and marked as <strong>Submitted</strong>.
             </p>
-            <button onClick={onClose} style={{ ...btnStyles.primary, background: "#27ae60" }}>
-              Return to Home
-            </button>
+            <button onClick={onClose} style={{ ...btnStyles.primary, background: "#27ae60" }}>Return to Home</button>
           </div>
         )}
       </div>
@@ -236,10 +215,9 @@ export default function CreateNotePage({
     (note?.status as "draft" | "submitted") ?? "draft"
   );
 
-  // Custom local exit handler to show modal
   const handleExitRequest = () => {
     if (noteStatus === "submitted") {
-      handleExitToStart(true); // Exit immediately if already submitted
+      handleExitToStart(true);
     } else {
       setExitModalOpen(true);
     }
@@ -258,7 +236,6 @@ export default function CreateNotePage({
   const monitorEvalRef  = useRef(monitorEval);
   const standardsRef    = useRef(standards);
 
-  // Keep refs in sync with latest prop values on every render
   anthroRef.current       = anthro;
   dexaRef.current         = dexaScans;
   labsRef.current         = labs;
@@ -269,7 +246,6 @@ export default function CreateNotePage({
   monitorEvalRef.current  = monitorEval;
   standardsRef.current    = standards;
 
-  // ── DRY Domain Save Map ──────────────────────────────────────────────────
   const DOMAIN_SAVE_MAP = [
     { domain: "A",  noteKey: "anthro",           ref: anthroRef },
     { domain: "A",  noteKey: "dexa_scans",        ref: dexaRef   },
@@ -322,7 +298,7 @@ export default function CreateNotePage({
     }
   }, [noteId]);
 
-  // ── PATCH: Debounced autosave for the dietary domain ─────────────────────
+  // ── Debounced dietary autosave ────────────────────────────────────────────
   const dietaryDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -344,7 +320,20 @@ export default function CreateNotePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dietary, noteId]);
 
-  // ─────────────────────────────────────────────────────────────────────────
+  // ── Phase 8: Cross-domain update handler ─────────────────────────────────
+  // Called by NutritionStandardsDomain when a user edits an auto-pulled field,
+  // writing the value back to clinical or labs state.
+  const handleCrossDomainUpdate = useCallback(({ domain, key, value }: CrossDomainUpdate) => {
+    if (domain === "clinical") {
+      setClinical((prev: any) => ({ ...prev, [key]: value }));
+    } else if (domain === "labs") {
+      // Labs are keyed like { "Hgb": { current: "...", historical: "..." } }
+      setLabs((prev: any) => ({
+        ...prev,
+        [key]: { ...(prev[key] || { current: "", historical: "" }), current: value },
+      }));
+    }
+  }, [setClinical, setLabs]);
 
   const handleSubmitClick = () => {
     if (noteStatus === "submitted") return;
@@ -434,7 +423,7 @@ export default function CreateNotePage({
 
   const isSubmitted = noteStatus === "submitted";
 
-  const singleDomains: { key: DomainKey; label: string; badge?: string }[] = [
+  const singleDomains: { key: DomainKey; label: string }[] = [
     { key: "Dx", label: "Dx. Nutrition Diagnosis" },
     { key: "I",  label: "I. Intervention" },
     { key: "ME", label: "ME. Monitor & Evaluate" },
@@ -453,7 +442,6 @@ export default function CreateNotePage({
           Assessment
         </div>
         <div className="nav-section">
-          {/* Domain A */}
           <div className={`nav-item ${activeDomain === "A" ? "active" : ""}`} onClick={() => handleDomainSwitch("A")}>
             A. Anthropometrics
           </div>
@@ -475,7 +463,6 @@ export default function CreateNotePage({
             </div>
           )}
 
-          {/* Domain B */}
           <div className={`nav-item ${activeDomain === "B" ? "active" : ""}`} onClick={() => handleDomainSwitch("B")}>
             B. Biochemical Data
           </div>
@@ -489,7 +476,6 @@ export default function CreateNotePage({
             </div>
           )}
 
-          {/* Domain C */}
           <div className={`nav-item ${activeDomain === "C" ? "active" : ""}`} onClick={() => handleDomainSwitch("C")}>
             C. Clinical &amp; NFPE
           </div>
@@ -503,7 +489,6 @@ export default function CreateNotePage({
             </div>
           )}
 
-          {/* Domain D */}
           <div className={`nav-item ${activeDomain === "D" ? "active" : ""}`} onClick={() => handleDomainSwitch("D")}>
             D. Dietary Data
           </div>
@@ -517,31 +502,23 @@ export default function CreateNotePage({
             </div>
           )}
 
-          {/* Nutrition Standards (S) */}
           <div className={`nav-item ${activeDomain === "S" ? "active" : ""}`} onClick={() => handleDomainSwitch("S")}>
             Comparative Standards
           </div>
 
           <div style={{ margin: "0.5rem 0.75rem 0.25rem", fontSize: "0.62rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            Diagnosis & Planning
+            Diagnosis &amp; Planning
           </div>
-          {singleDomains.map(({ key, label, badge }) => (
+          {singleDomains.map(({ key, label }) => (
             <div
               key={key}
               className={`nav-item ${activeDomain === key ? "active" : ""}`}
               onClick={() => handleDomainSwitch(key)}
-              style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
             >
-              <span>{label}</span>
-              {badge && (
-                <span style={{ fontSize: "0.55rem", fontWeight: 800, background: "#3498db", color: "#fff", borderRadius: "4px", padding: "1px 5px" }}>
-                  {badge}
-                </span>
-              )}
+              {label}
             </div>
           ))}
 
-          {/* Submit section */}
           <div style={{ margin: "1rem 0.75rem 0.5rem", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "0.75rem" }}>
             {isSubmitted ? (
               <div style={{ background: "rgba(46,204,113,0.15)", border: "1px solid rgba(46,204,113,0.4)", borderRadius: "8px", padding: "0.6rem 0.75rem", fontSize: "0.78rem", color: "#2ecc71", fontWeight: 700, textAlign: "center" }}>
@@ -552,9 +529,8 @@ export default function CreateNotePage({
                 Submit Note
               </button>
             )}
-            
-            <button 
-              onClick={handleExitRequest} 
+            <button
+              onClick={handleExitRequest}
               style={{ width: "100%", marginTop: "0.75rem", padding: "0.6rem", background: "rgba(255,255,255,0.1)", color: "#fff", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px", fontSize: "0.8rem", fontWeight: 600, cursor: "pointer" }}
             >
               ⚙ App Settings
@@ -608,6 +584,8 @@ export default function CreateNotePage({
               clinical={clinical}
               standards={standards}
               setStandards={setStandards}
+              onCrossDomainUpdate={handleCrossDomainUpdate}
+              labs={labs}
             />
           )}
           {activeDomain === "Dx" && (
@@ -634,7 +612,6 @@ export default function CreateNotePage({
       {modalOpen && (
         <SubmitModal state={modalState} missingFields={missingFields} onConfirm={handleConfirmSubmit} onClose={handleModalClose} />
       )}
-
       {exitModalOpen && (
         <ExitModal onClose={() => setExitModalOpen(false)} onConfirmExit={handleConfirmExit} onDiscard={handleConfirmDiscard} />
       )}

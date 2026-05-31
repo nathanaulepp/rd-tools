@@ -76,6 +76,10 @@ const MASTER_DOMAINS = [
       { key: "chewing", label: "Chewing Ability" },
       { key: "swallowing", label: "Swallowing Ability" },
       { key: "imaging_smi", label: "Imaging: SMI" },
+      { key: "tempMax", label: "Vital: Max Temp past 24h" },
+      { key: "ve", label: "Vital: Minute Ventilation (Ve)" },
+      { key: "fev1", label: "FEV1 % Predicted" },
+      { key: "tbsa", label: "TBSA Burned (%)" },
       { key: "clinicalNotes", label: "General Clinical Notes" },
     ]
   },

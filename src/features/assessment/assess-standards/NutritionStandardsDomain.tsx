@@ -1,9 +1,9 @@
 // src/features/assessment/assess-standards/NutritionStandardsDomain.tsx
-// Condition-driven Nutrition Rx Evaluator
-// UPDATED: Replaced NutrientScorecardItem with NutrientBarChart (grouped bars + whiskers)
-// IC logic: IC trumps weight-based for kcal note; protein note never references IC
+// Phase 8: Two-way cross-domain sync for tempMax/ve/fev1/tbsa/hgb
+//          PSU 2003b eeSource label, checkbox inputs, auto-pull from clinical/labs
+// UPDATED: Added onCrossDomainUpdate prop + wired rendering for all new extra-input types
 
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
   evaluateNutritionRx,
   calcIBW,
@@ -33,6 +33,14 @@ function toCm(val: number, unit: string): number {
   return val;
 }
 
+// ─── Cross-domain update descriptor ──────────────────────────────────────────
+
+export interface CrossDomainUpdate {
+  domain: "clinical" | "labs";
+  key: string;
+  value: string;
+}
+
 // ─── Status Badge ─────────────────────────────────────────────────────────────
 
 const STATUS_THEME: Record<EvalStatus, { color: string; bg: string; label: string }> = {
@@ -57,21 +65,17 @@ function CompactStatus({ status }: { status: EvalStatus }) {
 }
 
 // ─── Grouped Bar Chart with Whiskers ──────────────────────────────────────────
-// One chart covering ALL results. Each nutrient = a pair of horizontal bars:
-//   Bar A (TEAL):  Target range midpoint, with error whiskers to low/high
-//   Bar B (STATUS-colored): Current intake value
-// X-axis is shared across all nutrients (normalized 0–maxVal per nutrient group)
 
 interface NutrientBarChartProps {
   results: EvalResult[];
   icUsedForKcal: boolean;
+  eeSource?: string;
 }
 
-function NutrientBarChart({ results, icUsedForKcal }: NutrientBarChartProps) {
+function NutrientBarChart({ results, icUsedForKcal, eeSource }: NutrientBarChartProps) {
   if (!results.length) return null;
 
-  // Colors
-  const TARGET_COLOR = "#2ab3a3";   // teal — always the "needs" bar
+  const TARGET_COLOR = "#2ab3a3";
   const TARGET_FILL  = "#c8f2ee";
   const STATUS_COLORS: Record<EvalStatus, { bar: string; fill: string; label: string }> = {
     LOW:   { bar: "#3b82f6", fill: "#dbeafe", label: "Low" },
@@ -81,16 +85,16 @@ function NutrientBarChart({ results, icUsedForKcal }: NutrientBarChartProps) {
   };
 
   const BAR_HEIGHT = 22;
-  const BAR_GAP = 8;        // gap between the two bars in a group
-  const GROUP_GAP = 28;     // gap between nutrient groups
-  const LEFT_LABEL = 90;    // px reserved for nutrient label
-  const RIGHT_PAD = 50;     // px after the longest bar
-  const CHART_W = 560;      // total chart content width
+  const BAR_GAP = 8;
+  const GROUP_GAP = 28;
+  const LEFT_LABEL = 90;
+  const RIGHT_PAD = 50;
+  const CHART_W = 560;
   const BAR_AREA = CHART_W - LEFT_LABEL - RIGHT_PAD;
   const TOP_PAD = 12;
   const TICK_LINES = 5;
+  const WHISKER_CAP = 6;
 
-  // Build per-nutrient data
   const groups = results.map((r) => {
     const rangeMatch = r.target.match(/([\d.]+)(?:–([\d.]+))?/);
     const lo = rangeMatch ? parseFloat(rangeMatch[1]) : 0;
@@ -100,23 +104,19 @@ function NutrientBarChart({ results, icUsedForKcal }: NutrientBarChartProps) {
     return { result: r, lo, hi, mid, maxVal };
   });
 
-  // Layout: compute Y positions
-  const rowHeight = BAR_HEIGHT * 2 + BAR_GAP;
-  let y = TOP_PAD + 32; // leave room for legend at top
+  let y = TOP_PAD + 32;
   const rows = groups.map((g) => {
     const yStart = y;
-    y += rowHeight + GROUP_GAP;
+    y += BAR_HEIGHT * 2 + BAR_GAP + GROUP_GAP;
     return { ...g, yStart };
   });
 
   const totalH = y + 8;
-
-  // X scale per nutrient (each has its own maxVal for clarity)
   const xScale = (val: number, maxVal: number) =>
     Math.min((val / maxVal) * BAR_AREA, BAR_AREA);
 
-  // Whisker cap height
-  const WHISKER_CAP = 6;
+  // Determine label for energy source
+  const energySourceLabel = eeSource === "IC" ? "IC" : eeSource || "MSJ×AF";
 
   return (
     <div>
@@ -132,6 +132,11 @@ function NutrientBarChart({ results, icUsedForKcal }: NutrientBarChartProps) {
             <span>Current intake ({theme.label})</span>
           </div>
         ))}
+        {eeSource && eeSource !== "MSJ×AF" && (
+          <div style={{ fontSize: "0.7rem", fontWeight: 700, color: "#92400e", background: "#fffbeb", border: "1px solid #fef3c7", borderRadius: "6px", padding: "2px 8px" }}>
+            EE via {energySourceLabel}
+          </div>
+        )}
       </div>
 
       {/* SVG Chart */}
@@ -140,7 +145,7 @@ function NutrientBarChart({ results, icUsedForKcal }: NutrientBarChartProps) {
         viewBox={`0 0 ${CHART_W} ${totalH}`}
         style={{ overflow: "visible" }}
         role="img"
-        aria-label={`Grouped bar chart comparing target nutrition ranges to current intake for ${results.map(r => r.label).join(", ")}`}
+        aria-label={`Grouped bar chart comparing target nutrition ranges to current intake`}
       >
         {rows.map((row) => {
           const { result, lo, hi, mid, maxVal, yStart } = row;
@@ -149,10 +154,9 @@ function NutrientBarChart({ results, icUsedForKcal }: NutrientBarChartProps) {
           const xLo = xScale(lo, maxVal);
           const xHi = xScale(hi, maxVal);
           const xCurrent = xScale(result.current, maxVal);
-          const yTarget = yStart;
-          const yCurrent = yStart + BAR_HEIGHT + BAR_GAP;
+          const yCurrent = yStart;
+          const yTarget = yStart + BAR_HEIGHT + BAR_GAP;
 
-          // Tick positions (5 ticks across bar area)
           const ticks = Array.from({ length: TICK_LINES + 1 }, (_, i) => ({
             x: LEFT_LABEL + (i / TICK_LINES) * BAR_AREA,
             val: Math.round((maxVal * i) / TICK_LINES),
@@ -160,188 +164,57 @@ function NutrientBarChart({ results, icUsedForKcal }: NutrientBarChartProps) {
 
           return (
             <g key={result.label}>
-              {/* Nutrient label */}
-              <text
-                x={LEFT_LABEL - 8}
-                y={yStart + BAR_HEIGHT}
-                textAnchor="end"
-                dominantBaseline="middle"
-                fontSize="12"
-                fontWeight="600"
-                fill="#334155"
-              >
+              <text x={LEFT_LABEL - 8} y={yStart + BAR_HEIGHT} textAnchor="end" dominantBaseline="middle" fontSize="12" fontWeight="600" fill="#334155">
                 {result.label}
               </text>
-
-              {/* Gridlines (subtle) */}
               {ticks.map((t, i) => (
-                <line
-                  key={i}
-                  x1={t.x}
-                  y1={yStart - 4}
-                  x2={t.x}
-                  y2={yCurrent + BAR_HEIGHT + 2}
-                  stroke="#e2e8f0"
-                  strokeWidth="0.5"
-                />
+                <line key={i} x1={t.x} y1={yStart - 4} x2={t.x} y2={yTarget + BAR_HEIGHT + 2} stroke="#e2e8f0" strokeWidth="0.5" />
               ))}
-
-              {/* ── TARGET BAR (teal) with whisker ── */}
-              {/* Full range as a lighter background band */}
-              <rect
-                x={LEFT_LABEL + xLo}
-                y={yTarget}
-                width={Math.max(xHi - xLo, 1)}
-                height={BAR_HEIGHT}
-                fill={TARGET_FILL}
-                rx="2"
-              />
-              {/* Midpoint bar */}
-              <rect
-                x={LEFT_LABEL}
-                y={yTarget}
-                width={xMid}
-                height={BAR_HEIGHT}
-                fill={TARGET_COLOR}
-                rx="2"
-              />
-              {/* Whisker line */}
-              <line
-                x1={LEFT_LABEL + xLo}
-                y1={yTarget + BAR_HEIGHT / 2}
-                x2={LEFT_LABEL + xHi}
-                y2={yTarget + BAR_HEIGHT / 2}
-                stroke={"#000000"}
-                strokeWidth="2"
-              />
-              {/* Whisker caps */}
-              <line x1={LEFT_LABEL + xLo} y1={yTarget + BAR_HEIGHT / 2 - WHISKER_CAP / 2} x2={LEFT_LABEL + xLo} y2={yTarget + BAR_HEIGHT / 2 + WHISKER_CAP / 2} stroke={"#000000"} strokeWidth="2" />
-              <line x1={LEFT_LABEL + xHi} y1={yTarget + BAR_HEIGHT / 2 - WHISKER_CAP / 2} x2={LEFT_LABEL + xHi} y2={yTarget + BAR_HEIGHT / 2 + WHISKER_CAP / 2} stroke={"#000000"} strokeWidth="2.5" />
-              {/* Target range label */}
-              <text
-                x={LEFT_LABEL + xHi + 6}
-                y={yTarget + BAR_HEIGHT / 2}
-                dominantBaseline="middle"
-                fontSize="10"
-                fill="#64748b"
-                fontWeight="500"
-              >
-                {result.target}
-              </text>
-              {/* "Target" micro-label */}
-              <text
-                x={LEFT_LABEL + 4}
-                y={yTarget + BAR_HEIGHT / 2}
-                dominantBaseline="middle"
-                fontSize="9"
-                fill="white"
-                fontWeight="700"
-              >
-                TARGET
-              </text>
-
-              {/* ── CURRENT INTAKE BAR (status-colored) ── */}
-              <rect
-                x={LEFT_LABEL}
-                y={yCurrent}
-                width={xCurrent}
-                height={BAR_HEIGHT}
-                fill={statusTheme.bar}
-                rx="2"
-              />
-              {/* Value label at end */}
-              <text
-                x={LEFT_LABEL + xCurrent + 6}
-                y={yCurrent + BAR_HEIGHT / 2}
-                dominantBaseline="middle"
-                fontSize="11"
-                fill={statusTheme.bar}
-                fontWeight="700"
-              >
-                {Math.round(result.current)}
-              </text>
-              {/* "Current" micro-label inside bar */}
+              
+              {/* CURRENT BAR (TOP) */}
+              <rect x={LEFT_LABEL} y={yCurrent} width={xCurrent} height={BAR_HEIGHT} fill={statusTheme.bar} rx="2" />
+              <text x={LEFT_LABEL + xCurrent + 6} y={yCurrent + BAR_HEIGHT / 2} dominantBaseline="middle" fontSize="11" fill={statusTheme.bar} fontWeight="700">{Math.round(result.current)}</text>
               {xCurrent > 55 && (
-                <text
-                  x={LEFT_LABEL + 4}
-                  y={yCurrent + BAR_HEIGHT / 2}
-                  dominantBaseline="middle"
-                  fontSize="9"
-                  fill="white"
-                  fontWeight="700"
-                >
-                  CURRENT
-                </text>
+                <text x={LEFT_LABEL + 4} y={yCurrent + BAR_HEIGHT / 2} dominantBaseline="middle" fontSize="9" fill="white" fontWeight="700">CURRENT</text>
               )}
-
-              {/* Status badge (foreignObject for HTML rendering) */}
-              <foreignObject
-                x={CHART_W - RIGHT_PAD + 2}
-                y={yCurrent + 2}
-                width={RIGHT_PAD - 4}
-                height={BAR_HEIGHT - 4}
-              >
-                <div
-                  style={{
-                    background: statusTheme.fill,
-                    color: statusTheme.bar,
-                    borderRadius: 3,
-                    fontSize: "0.6rem",
-                    fontWeight: 700,
-                    textTransform: "uppercase" as const,
-                    letterSpacing: "0.04em",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: "100%",
-                    width: "100%",
-                  }}
-                >
+              <foreignObject x={CHART_W - RIGHT_PAD + 2} y={yCurrent + 2} width={RIGHT_PAD - 4} height={BAR_HEIGHT - 4}>
+                <div style={{ background: statusTheme.fill, color: statusTheme.bar, borderRadius: 3, fontSize: "0.6rem", fontWeight: 700, textTransform: "uppercase" as const, letterSpacing: "0.04em", display: "flex", alignItems: "center", justifyContent: "center", height: "100%", width: "100%" }}>
                   {statusTheme.label}
                 </div>
               </foreignObject>
 
-              {/* Separator line between groups */}
-              <line
-                x1={LEFT_LABEL - 85}
-                y1={yCurrent + BAR_HEIGHT + GROUP_GAP / 2}
-                x2={CHART_W - 2}
-                y2={yCurrent + BAR_HEIGHT + GROUP_GAP / 2}
-                stroke="#f1f5f9"
-                strokeWidth="1"
-              />
+              {/* TARGET RANGE (BOTTOM) */}
+              <rect x={LEFT_LABEL + xLo} y={yTarget} width={Math.max(xHi - xLo, 1)} height={BAR_HEIGHT} fill={TARGET_FILL} rx="2" />
+              <rect x={LEFT_LABEL} y={yTarget} width={xMid} height={BAR_HEIGHT} fill={TARGET_COLOR} rx="2" />
+              <line x1={LEFT_LABEL + xLo} y1={yTarget + BAR_HEIGHT / 2} x2={LEFT_LABEL + xHi} y2={yTarget + BAR_HEIGHT / 2} stroke="#000000" strokeWidth="2" />
+              <line x1={LEFT_LABEL + xLo} y1={yTarget + BAR_HEIGHT / 2 - WHISKER_CAP / 2} x2={LEFT_LABEL + xLo} y2={yTarget + BAR_HEIGHT / 2 + WHISKER_CAP / 2} stroke="#000000" strokeWidth="2" />
+              <line x1={LEFT_LABEL + xHi} y1={yTarget + BAR_HEIGHT / 2 - WHISKER_CAP / 2} x2={LEFT_LABEL + xHi} y2={yTarget + BAR_HEIGHT / 2 + WHISKER_CAP / 2} stroke="#000000" strokeWidth="2.5" />
+              <text x={LEFT_LABEL + xHi + 6} y={yTarget + BAR_HEIGHT / 2} dominantBaseline="middle" fontSize="10" fill="#64748b" fontWeight="500">{result.target}</text>
+              <text x={LEFT_LABEL + 4} y={yTarget + BAR_HEIGHT / 2} dominantBaseline="middle" fontSize="9" fill="white" fontWeight="700">TARGET</text>
+              
+              <line x1={LEFT_LABEL - 85} y1={yTarget + BAR_HEIGHT + GROUP_GAP / 2} x2={CHART_W - 2} y2={yTarget + BAR_HEIGHT + GROUP_GAP / 2} stroke="#f1f5f9" strokeWidth="1" />
             </g>
           );
         })}
 
-        {/* Bottom X-axis tick labels (for the last group) */}
         {rows.length > 0 && (() => {
           const lastRow = rows[rows.length - 1];
           const { maxVal, yStart } = lastRow;
           const bottomY = yStart + BAR_HEIGHT * 2 + BAR_GAP + 4;
-          const unit = lastRow.result.unit.split("/")[0];
           return Array.from({ length: TICK_LINES + 1 }, (_, i) => (
-            <text
-              key={i}
-              x={LEFT_LABEL + (i / TICK_LINES) * BAR_AREA}
-              y={bottomY + 14}
-              textAnchor="middle"
-              fontSize="9"
-              fill="#94a3b8"
-            >
+            <text key={i} x={LEFT_LABEL + (i / TICK_LINES) * BAR_AREA} y={bottomY + 14} textAnchor="middle" fontSize="9" fill="#94a3b8">
               {Math.round((maxVal * i) / TICK_LINES)}
             </text>
           ));
         })()}
       </svg>
 
-      {/* Per-nutrient "based on" notes */}
+      {/* Per-nutrient notes */}
       <div style={{ marginTop: "8px", display: "flex", flexDirection: "column" as const, gap: "4px" }}>
         {results.map((r) => {
-          // IC trumps any other kcal note; protein note never references IC
           const isKcal = r.label.toLowerCase().includes("energy");
           const noteText = isKcal && icUsedForKcal
-            ? `⚡ IC override: ${r.note}`
+            ? `⚡ ${energySourceLabel} override: ${r.note}`
             : r.note || null;
           return noteText ? (
             <div key={r.label} style={{ fontSize: "0.7rem", color: "#64748b", display: "flex", gap: "6px", alignItems: "flex-start" }}>
@@ -362,42 +235,149 @@ function ReferenceToggles() {
   const toggle = (key: string) => setOpen(open === key ? null : key);
 
   return (
-    <div style={{ marginTop: "1rem", display: "flex", gap: "10px" }}>
+    <div style={{ marginTop: "1rem", display: "flex", gap: "10px", position: "relative" }}>
       <button onClick={() => toggle('factors')} style={btnRefStyle}>
         {open === 'factors' ? "Hide" : "Show"} Activity Factors
       </button>
       {open === 'factors' && (
         <div style={refPanelStyle}>
-           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
-             <div>
-                <h5 style={refHeaderStyle}>Clinical Activity Factors (CAF)</h5>
-                {IC_ACTIVITY_FACTORS.map((r, i) => (
-                  <div key={i} style={refRowStyle}>
-                    <span style={{ fontWeight: 600 }}>{r.condition}</span>
-                    <span style={{ color: "#2563eb" }}>×{r.cafLow}–{r.cafHigh}</span>
-                  </div>
-                ))}
-             </div>
-             <div>
-                <h5 style={refHeaderStyle}>MSJ Activity Factors (AF)</h5>
-                {MSJ_ACTIVITY_FACTORS.map((r, i) => (
-                  <div key={i} style={refRowStyle}>
-                    <span style={{ fontWeight: 600 }}>{r.label}</span>
-                    <span style={{ color: "#16a34a" }}>×{r.af}</span>
-                  </div>
-                ))}
-             </div>
-           </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
+            <div>
+              <h5 style={refHeaderStyle}>Clinical Activity Factors (CAF)</h5>
+              {IC_ACTIVITY_FACTORS.map((r, i) => (
+                <div key={i} style={refRowStyle}>
+                  <span style={{ fontWeight: 600 }}>{r.condition}</span>
+                  <span style={{ color: "#2563eb" }}>×{r.cafLow}–{r.cafHigh}</span>
+                </div>
+              ))}
+            </div>
+            <div>
+              <h5 style={refHeaderStyle}>MSJ Activity Factors (AF)</h5>
+              {MSJ_ACTIVITY_FACTORS.map((r, i) => (
+                <div key={i} style={refRowStyle}>
+                  <span style={{ fontWeight: 600 }}>{r.label}</span>
+                  <span style={{ color: "#16a34a" }}>×{r.af}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>
   );
 }
 
-const btnRefStyle = { background: "none", border: "1px solid #e2e8f0", borderRadius: "6px", padding: "4px 10px", fontSize: "0.7rem", color: "#64748b", cursor: "pointer", fontWeight: 600 };
+const btnRefStyle: React.CSSProperties = { background: "none", border: "1px solid #e2e8f0", borderRadius: "6px", padding: "4px 10px", fontSize: "0.7rem", color: "#64748b", cursor: "pointer", fontWeight: 600 };
 const refPanelStyle: React.CSSProperties = { position: "absolute", bottom: "100%", left: 0, right: 0, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "10px", padding: "1rem", boxShadow: "0 -10px 30px rgba(0,0,0,0.1)", zIndex: 100, marginBottom: "10px" };
-const refHeaderStyle = { margin: "0 0 8px", fontSize: "0.68rem", color: "#94a3b8", textTransform: "uppercase" as any, letterSpacing: "0.05em" };
-const refRowStyle = { display: "flex", justifyContent: "space-between", fontSize: "0.75rem", padding: "4px 0", borderBottom: "1px solid #f1f5f9" };
+const refHeaderStyle: React.CSSProperties = { margin: "0 0 8px", fontSize: "0.68rem", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" };
+const refRowStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", fontSize: "0.75rem", padding: "4px 0", borderBottom: "1px solid #f1f5f9" };
+
+// ─── Extra-input renderer ──────────────────────────────────────────────────────
+// Handles number, checkbox, and auto-pull inputs with two-way write-back
+
+interface ExtraInputRendererProps {
+  condition: ConditionKey | "";
+  extraInputs: Record<string, string>;
+  setExtraInputs: (ei: Record<string, string>) => void;
+  onCrossDomainUpdate?: (update: CrossDomainUpdate) => void;
+  /** Live values from clinical / labs for auto-pull display */
+  clinicalValues?: Record<string, string>;
+  labValues?: Record<string, { current: string; historical: string }>;
+}
+
+function ExtraInputRenderer({
+  condition,
+  extraInputs,
+  setExtraInputs,
+  onCrossDomainUpdate,
+  clinicalValues = {},
+  labValues = {},
+}: ExtraInputRendererProps) {
+  if (!condition) return null;
+  const fields = CONDITION_EXTRA_INPUTS[condition as ConditionKey] || [];
+  if (fields.length === 0) return null;
+
+  const handleChange = (key: string, value: string, autoPullFrom?: string) => {
+    setExtraInputs({ ...extraInputs, [key]: value });
+
+    // Two-way write-back: if this field has an autoPullFrom, also update the source domain
+    if (autoPullFrom && onCrossDomainUpdate) {
+      const [domain, fieldKey] = autoPullFrom.split(".");
+      if (domain === "clinical" || domain === "labs") {
+        onCrossDomainUpdate({ domain: domain as "clinical" | "labs", key: fieldKey, value });
+      }
+    }
+  };
+
+  // Determine "auto-pulled" display value for a field
+  const getAutoPulledValue = (autoPullFrom?: string): string => {
+    if (!autoPullFrom) return "";
+    const [domain, fieldKey] = autoPullFrom.split(".");
+    if (domain === "clinical") return clinicalValues[fieldKey] || "";
+    if (domain === "labs") return labValues[fieldKey]?.current || "";
+    return "";
+  };
+
+  return (
+    <>
+      {fields.map(f => {
+        // Special case: PSU 2003b fields only show if mech vent is checked
+        if (condition === "critical_illness" && (f.key === "tempMax" || f.key === "ve")) {
+          const isVented = extraInputs.isMechVent === "true";
+          if (!isVented) return null;
+        }
+
+        const autoPulledRaw = getAutoPulledValue(f.autoPullFrom);
+        // Prefer explicit user override, then auto-pull, then empty
+        const currentVal = extraInputs[f.key] ?? autoPulledRaw;
+
+        if (f.type === "checkbox") {
+          return (
+            <div key={f.key} className="input-group" style={{ flexDirection: "row", alignItems: "center", gap: "8px" }}>
+              <input
+                type="checkbox"
+                id={`extra-${f.key}`}
+                checked={currentVal === "true"}
+                onChange={e => handleChange(f.key, e.target.checked ? "true" : "false", f.autoPullFrom)}
+                style={{ width: "auto", margin: 0 }}
+              />
+              <label htmlFor={`extra-${f.key}`} style={{ margin: 0, fontSize: "0.8rem", fontWeight: 600, color: "#334155", cursor: "pointer", textTransform: "none" }}>
+                {f.label}
+              </label>
+            </div>
+          );
+        }
+
+        const isPulled = !extraInputs[f.key] && !!autoPulledRaw;
+
+        return (
+          <div key={f.key} className="input-group">
+            <label style={{ ...tinyLabelStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span>{f.label}</span>
+              {isPulled && (
+                <span style={{ fontSize: "0.6rem", background: "#dbeafe", color: "#1d4ed8", borderRadius: "4px", padding: "1px 5px", fontWeight: 700 }}>
+                  auto-pulled
+                </span>
+              )}
+            </label>
+            <input
+              type="number"
+              value={currentVal}
+              onChange={e => handleChange(f.key, e.target.value, f.autoPullFrom)}
+              placeholder={f.hint || ""}
+              style={{
+                ...inputStyle,
+                borderColor: isPulled ? "#93c5fd" : "#e2e8f0",
+                background: isPulled ? "#eff6ff" : "#fff",
+              }}
+            />
+            {f.hint && <span style={{ fontSize: "0.62rem", color: "#94a3b8", marginTop: 2 }}>{f.hint}</span>}
+          </div>
+        );
+      })}
+    </>
+  );
+}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -409,6 +389,10 @@ interface NutritionStandardsDomainProps {
   clinical: any;
   standards: any;
   setStandards: (s: any) => void;
+  /** Called when an extra-input writes back to clinical or labs */
+  onCrossDomainUpdate?: (update: CrossDomainUpdate) => void;
+  /** Live lab values for auto-pull */
+  labs?: Record<string, { current: string; historical: string }>;
 }
 
 export default function NutritionStandardsDomain({
@@ -419,9 +403,11 @@ export default function NutritionStandardsDomain({
   clinical,
   standards,
   setStandards,
+  onCrossDomainUpdate,
+  labs = {},
 }: NutritionStandardsDomainProps) {
   if (!standards) return <div>Loading standards...</div>;
-  
+
   const wtKg = useMemo(() => toKg(parseFloat(anthro.wt) || 0, anthro.wtUnit || "kg"), [anthro.wt, anthro.wtUnit]);
   const htCm = useMemo(() => toCm(parseFloat(anthro.ht) || 0, anthro.htUnit || "cm"), [anthro.ht, anthro.htUnit]);
   const sexRaw: "M" | "F" | "" = patientData?.sex || "";
@@ -435,83 +421,109 @@ export default function NutritionStandardsDomain({
   const [currentProtein, setCurrentProtein] = useState(standards.currentProtein || "");
   const [currentFluid, setCurrentFluid] = useState(standards.currentFluid || "");
   const [icKcal, setIcKcal] = useState(standards.icKcal || "");
-  const [dryWt, setDryWt] = useState(standards.dryWt || "");
-  const [renalDryWeight, setRenalDryWeight] = useState(standards.renalDryWeight || "");
+  const [icCaf, setIcCaf] = useState(standards.icCaf || "1.0");
   const [extraInputs, setExtraInputs] = useState<Record<string, string>>(standards.extraInputs || {});
-  
+
   const [evaluation, setEvaluation] = useState<NutritionEvaluation | null>(null);
 
-  const syncToParent = () => {
-    setStandards({
-      condition, variant, currentKcal, currentProtein, currentFluid,
-      icKcal, dryWt, renalDryWeight, extraInputs
-    });
-  };
+  // ── Sync to parent ──────────────────────────────────────────────────────────
+  const syncToParent = useCallback(() => {
+    setStandards({ condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs });
+  }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs]);
 
+  // ── Auto-populate from dietary on first load ────────────────────────────────
   useEffect(() => {
     if (!currentKcal && dietary?.oralCalories) {
-      const val = String(Math.round(parseFloat(dietary.oralCalories) || 0) || "");
-      setCurrentKcal(val);
+      setCurrentKcal(String(Math.round(parseFloat(dietary.oralCalories) || 0) || ""));
     }
     if (!currentProtein && dietary?.oralProtein) {
-      const val = String(parseFloat(dietary.oralProtein) || "");
-      setCurrentProtein(val);
+      setCurrentProtein(String(parseFloat(dietary.oralProtein) || ""));
     }
   }, [dietary]);
 
-  // ── Auto-link BMI to Sub-types ──────────────────────────────────────────────
+  // ── Auto-pull cross-domain values INTO extraInputs on first load ────────────
+  // This ensures fields show auto-pulled values without the user needing to type
+  useEffect(() => {
+    if (!condition) return;
+    const fields = CONDITION_EXTRA_INPUTS[condition as ConditionKey] || [];
+    const updates: Record<string, string> = { ...extraInputs };
+    let changed = false;
+
+    for (const f of fields) {
+      if (!f.autoPullFrom) continue;
+      // Only auto-fill if user hasn't already set a value
+      if (updates[f.key] !== undefined && updates[f.key] !== "") continue;
+
+      const [domain, fieldKey] = f.autoPullFrom.split(".");
+      let pulled = "";
+      if (domain === "clinical") pulled = clinical?.[fieldKey] || "";
+      if (domain === "labs") pulled = labs?.[fieldKey]?.current || "";
+
+      if (pulled) {
+        updates[f.key] = pulled;
+        changed = true;
+      }
+    }
+
+    if (changed) setExtraInputs(updates);
+  }, [condition, clinical, labs]);
+
+  // ── Auto-link BMI & Age to sub-types ─────────────────────────────────────────
   useEffect(() => {
     if (!bmi || bmi <= 0) return;
 
     if (condition === "critical_illness") {
-      let bmiGroup = "";
-      if (bmi < 30) bmiGroup = "bmi_lt30";
-      else if (bmi <= 50) bmiGroup = "bmi_30_50";
-      else bmiGroup = "bmi_gt50";
-      
-      if (variant !== bmiGroup) {
-        setVariant(bmiGroup);
-      }
+      const bmiGroup = bmi < 30 ? "bmi_lt30" : bmi <= 50 ? "bmi_30_50" : "bmi_gt50";
+      if (variant !== bmiGroup) setVariant(bmiGroup);
     } else if (condition === "pregnancy") {
-      // Only auto-update if variant is unset or already a T2/3 variant
-      // This avoids overriding Trimester 1 (t1) if explicitly selected.
-      const isT23 = !variant || variant.startsWith("t2_t3_");
+      const isT23 = !variant || variant.startsWith("t2") || variant.startsWith("t3");
       if (isT23) {
-        let bmiGroup = "";
-        if (bmi < 18.5) bmiGroup = "t2_t3_uw";
-        else if (bmi < 25) bmiGroup = "t2_t3_nw";
-        else if (bmi < 30) bmiGroup = "t2_t3_ow";
-        else bmiGroup = "t2_t3_ob";
+        const bmiGroup = bmi < 18.5 ? "t2_t3_uw" : bmi < 25 ? "t2_t3_nw" : bmi < 30 ? "t2_t3_ow" : "t2_t3_ob";
+        if (variant !== bmiGroup) setVariant(bmiGroup);
+      }
+    } else if (condition === "masld_mash") {
+      if (!variant || variant.startsWith("bmi_")) {
+        const bmiGroup = bmi < 30 ? "bmi_lt30" : bmi <= 40 ? "bmi_30_40" : "bmi_gt40";
+        if (variant !== bmiGroup) setVariant(bmiGroup);
+      }
+    } else if (condition === "sickle_cell" && ageYears > 0) {
+      if (ageYears < 18 && !variant.startsWith("peds_")) setVariant("peds_stable");
+      if (ageYears >= 18 && !variant.startsWith("adult_")) setVariant("adult_stable");
+    } else if (condition === "hsct" && ageYears > 0) {
+      let v = "adult";
+      if (ageYears < 6) v = "infant_child";
+      else if (ageYears <= 16) v = "child_16";
+      else if (ageYears < 18) v = "older_adol";
+      if (variant !== v && variant !== "post_engraft") setVariant(v);
+    }
+  }, [condition, bmi, variant, ageYears]);
 
-        if (variant !== bmiGroup) {
-          setVariant(bmiGroup);
-        }
+  // ── Effective weight ────────────────────────────────────────────────────────
+  const { effectiveWeight, weightBasis, nfpeWarning } = useMemo(() => {
+    // NEW: Fluid Shift / EDW override from Anthro domain
+    if (anthro.isFluidShift && anthro.edw) {
+      const edwKg = toKg(parseFloat(anthro.edw) || 0, anthro.edwUnit || "kg");
+      if (edwKg > 0) {
+        return { effectiveWeight: edwKg, weightBasis: "Target/Dry Weight", nfpeWarning: false };
       }
     }
-  }, [condition, bmi, variant]);
 
-  const { effectiveWeight, weightBasis, nfpeWarning } = useMemo(() => {
-    if (renalDryWeight) {
-      return { effectiveWeight: parseFloat(renalDryWeight), weightBasis: "Renal Dry Weight", nfpeWarning: false };
-    }
-    if (dryWt) {
-      return { effectiveWeight: parseFloat(dryWt), weightBasis: "Dry Weight", nfpeWarning: false };
-    }
     let reduction = 0;
     if (clinical.ascites === "Mild") reduction += 0.05;
     else if (clinical.ascites === "Moderate") reduction += 0.10;
     else if (clinical.ascites === "Severe") reduction += 0.15;
     if (clinical.pedalEdema === "Yes") reduction += 0.05;
     const calculatedWeight = wtKg * (1 - reduction);
-    const isCirrhosis = condition === "cirrhosis";
+    const isCirrhosis = condition === "cirrhosis_updated";
     const missingNfpe = isCirrhosis && !clinical.ascites && !clinical.pedalEdema;
     return {
       effectiveWeight: calculatedWeight,
-      weightBasis: reduction > 0 ? `Estimated Dry Weight (Actual - ${Math.round(reduction * 100)}%)` : "Actual Weight",
-      nfpeWarning: missingNfpe
+      weightBasis: reduction > 0 ? `Estimated Dry Weight (Actual − ${Math.round(reduction * 100)}%)` : "Actual Weight",
+      nfpeWarning: missingNfpe,
     };
-  }, [renalDryWeight, dryWt, wtKg, condition, clinical]);
+  }, [anthro.isFluidShift, anthro.edw, anthro.edwUnit, wtKg, condition, clinical]);
 
+  // ── Missing anthro check ────────────────────────────────────────────────────
   const missingAnthro = useMemo(() => {
     const fields = [];
     if (!sexRaw) fields.push("Sex");
@@ -523,58 +535,79 @@ export default function NutritionStandardsDomain({
 
   const isReady = missingAnthro.length === 0 && !!condition;
 
-  const runEvaluation = () => {
+  // ── Run evaluation ──────────────────────────────────────────────────────────
+  const runEvaluation = useCallback(() => {
     if (!isReady) return;
     const result = evaluateNutritionRx({
       condition: condition as ConditionKey,
       variant: variant || undefined,
-      patient: { 
-        wtKg: effectiveWeight, 
-        htCm, 
-        ageYears, 
-        sex, 
-        bmi, 
+      patient: {
+        wtKg: effectiveWeight,
+        htCm,
+        ageYears,
+        sex,
+        bmi,
         weightLabel: weightBasis,
-        dryWtKg: dryWt ? parseFloat(dryWt) : undefined, 
-        icMeasuredKcal: icKcal ? parseFloat(icKcal) : undefined 
+        icMeasuredKcal: icKcal ? parseFloat(icKcal) : undefined,
+        icCaf: parseFloat(icCaf) || 1.0,
       },
       currentRx: {
         kcalPerDay: parseFloat(currentKcal) || 0,
         proteinGPerDay: parseFloat(currentProtein) || 0,
-        fluidMlPerDay: currentFluid ? parseFloat(currentFluid) : undefined
+        fluidMlPerDay: currentFluid ? parseFloat(currentFluid) : undefined,
       },
       extraInputs: Object.fromEntries(Object.entries(extraInputs).map(([k, v]) => [k, parseFloat(v) || v])),
     });
-    (result as any).weightBasis = weightBasis;
     setEvaluation(result);
-  };
+  }, [isReady, condition, variant, effectiveWeight, htCm, ageYears, sex, bmi, weightBasis, icKcal, icCaf, currentKcal, currentProtein, currentFluid, extraInputs]);
 
-  useEffect(() => { 
-    if (isReady) runEvaluation(); 
+  useEffect(() => {
+    if (isReady) runEvaluation();
     syncToParent();
-  }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, dryWt, renalDryWeight, extraInputs, wtKg, htCm, effectiveWeight]);
+  }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs, wtKg, htCm, effectiveWeight]);
 
   const variants = condition ? (CONDITION_VARIANTS[condition] || []) : [];
-  const extraFields = condition ? (CONDITION_EXTRA_INPUTS[condition] || []) : [];
+  
+  // NEW: Filter variants by demographics
+  const filteredVariants = useMemo(() => {
+    return variants.filter(v => {
+      if (v.sex && sex && v.sex !== sex) return false;
+      if (v.minAge !== undefined && ageYears < v.minAge) return false;
+      if (v.maxAge !== undefined && ageYears > v.maxAge) return false;
+      return true;
+    });
+  }, [variants, sex, ageYears]);
 
-  // Determine if IC was used for kcal
   const icUsedForKcal = !!icKcal && parseFloat(icKcal) > 0;
+  const isPSU = evaluation?.eeSource === "PSU 2003b";
+
+  // Helper to check if condition is allowed for demographics
+  const isConditionVisible = (key: ConditionKey) => {
+    if (key === "pregnancy" || key === "breastfeeding") {
+      if (sex === "M") return false;
+      if (ageYears > 0 && ageYears < 12) return false;
+    }
+    return true;
+  };
+
+  // Determine CAF label based on current icCaf
+  const activeCafVal = parseFloat(icCaf) || 1.0;
+  const cafLabel = useMemo(() => {
+    const factor = IC_ACTIVITY_FACTORS.find(f => activeCafVal >= f.cafLow && activeCafVal <= f.cafHigh);
+    return factor ? factor.condition : "Custom adjustment";
+  }, [activeCafVal]);
 
   return (
     <div className="fade-in" style={{ padding: "0.25rem 0", position: "relative" }}>
 
       {/* ── HEADER ── */}
-      <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "flex-end",
-        borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem", marginBottom: "1.5rem",
-      }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", borderBottom: "1px solid #e2e8f0", paddingBottom: "1rem", marginBottom: "1.5rem" }}>
         <div>
-           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
-             <h3 style={{ margin: 0, fontWeight: 800, fontSize: "1.1rem", color: "#1e293b" }}>Comparative Standards</h3>
-           </div>
-           <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b" }}>Evaluate nutrition prescription against condition-specific evidence.</p>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "4px" }}>
+            <h3 style={{ margin: 0, fontWeight: 800, fontSize: "1.1rem", color: "#1e293b" }}>Comparative Standards</h3>
+          </div>
+          <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b" }}>Evaluate nutrition prescription against condition-specific evidence.</p>
         </div>
-        
         <div style={{ display: "flex", gap: "12px", textAlign: "right" }}>
           <QuickStat label="IBW" value={htCm > 0 ? `${calcIBW(htCm, sex)}kg` : "—"} />
           <QuickStat label="MSJ REE" value={wtKg > 0 && ageYears > 0 ? `${Math.round(calcMSJ(wtKg, htCm, ageYears, sex))}kcal` : "—"} />
@@ -590,10 +623,9 @@ export default function NutritionStandardsDomain({
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#854d0e" }}>Evaluation Inactive</div>
               <div style={{ fontSize: "0.72rem", color: "#a16207" }}>
-                {missingAnthro.length > 0 
-                  ? `Missing: ${missingAnthro.join(", ")} (Update in Header/A1)` 
-                  : "Select a condition to begin evaluation."
-                }
+                {missingAnthro.length > 0
+                  ? `Missing: ${missingAnthro.join(", ")} (Update in Header/A1)`
+                  : "Select a condition to begin evaluation."}
               </div>
             </div>
           </div>
@@ -601,37 +633,118 @@ export default function NutritionStandardsDomain({
       )}
 
       <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: "1.5rem" }}>
-        
+
         {/* ── LEFT COLUMN: INPUTS ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-          
+
+          <div className="card" style={{ padding: "1rem", border: "1.5px solid #f59e0b", background: "#fffdfa" }}>
+            <label style={{ ...subHeaderStyle, color: "#b45309" }}>⚡ Indirect Calorimetry (mREE)</label>
+            <div className="input-group" style={{ margin: 0 }}>
+              <label style={{ ...tinyLabelStyle, color: icUsedForKcal ? "#b45309" : "#94a3b8" }}>
+                Measured Resting Energy Expenditure
+              </label>
+              <input
+                type="number"
+                value={icKcal}
+                onChange={e => setIcKcal(e.target.value)}
+                style={{ ...inputStyle, border: icUsedForKcal ? "1.5px solid #f59e0b" : inputStyle.border, background: icUsedForKcal ? "#fffbeb" : "#fff" }}
+                placeholder="mREE kcal/day"
+              />
+            </div>
+
+            {icUsedForKcal && (
+              <div className="fade-in" style={{ marginTop: "12px", paddingTop: "12px", borderTop: "1px dashed #fcd34d" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                  <label style={{ ...tinyLabelStyle, color: "#92400e", marginBottom: 0 }}>Clinical Activity Factor (CAF)</label>
+                  <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#b45309" }}>×{activeCafVal.toFixed(2)}</span>
+                </div>
+                
+                <input
+                  type="range"
+                  min="1.0"
+                  max="1.8"
+                  step="0.05"
+                  value={icCaf}
+                  onChange={e => setIcCaf(e.target.value)}
+                  style={{ width: "100%", accentColor: "#f59e0b", cursor: "pointer" }}
+                />
+                
+                <div style={{ fontSize: "0.62rem", color: "#b45309", marginTop: "4px", fontWeight: 600, textAlign: "center", fontStyle: "italic" }}>
+                  {cafLabel}
+                </div>
+
+                <div style={{ fontSize: "0.62rem", color: "#92400e", marginTop: 8, fontWeight: 700, background: "#fef3c7", padding: "4px 8px", borderRadius: "4px" }}>
+                  Floor Target: {Math.round(parseFloat(icKcal) * activeCafVal)} kcal/day
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="card" style={{ padding: "1rem" }}>
             <label style={subHeaderStyle}>1. Clinical Setting</label>
+
             <div className="input-group">
-              <select value={condition} onChange={e => setCondition(e.target.value as ConditionKey)} style={selectStyle}>
+              <select value={condition} onChange={e => { setCondition(e.target.value as ConditionKey); setVariant(""); }} style={selectStyle}>
                 <option value="">Select Condition...</option>
-                {Object.entries(CONDITION_LABELS).map(([k, l]) => <option key={k} value={k}>{l}</option>)}
+                {/* Group by category for usability */}
+                <optgroup label="Acute / Critical Care">
+                  {(["critical_illness", "aki", "acute_pancreatitis", "burns", "trauma", "stroke"] as ConditionKey[]).filter(isConditionVisible).map(k => (
+                    <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Chronic Disease">
+                  {(["copd", "heart_failure", "ckd_3_5", "ckd_5d", "kidney_transplant", "cirrhosis", "liver_transplant", "masld_mash", "cystic_fibrosis", "sickle_cell"] as ConditionKey[]).filter(isConditionVisible).map(k => (
+                    <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Oncology / Transplant">
+                  {(["oncology", "hsct"] as ConditionKey[]).filter(isConditionVisible).map(k => (
+                    <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="GI / Malabsorption">
+                  {(["short_bowel"] as ConditionKey[]).filter(isConditionVisible).map(k => (
+                    <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Nutritional Status">
+                  {(["pressure_injuries", "severe_malnutrition", "obesity_stable"] as ConditionKey[]).filter(isConditionVisible).map(k => (
+                    <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Life Stage">
+                  {(["pregnancy", "breastfeeding", "healthy"] as ConditionKey[]).filter(isConditionVisible).map(k => (
+                    <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
+                  ))}
+                </optgroup>
               </select>
             </div>
-            {condition === "healthy" ? (
+
+            {condition === "healthy" || condition === "heart_failure" ? (
               <PalSlider
-                value={Number(extraInputs.pal) || 2.0}
+                value={Number(extraInputs.pal) || (condition === "heart_failure" ? 1.3 : 2.0)}
                 onChange={(val) => setExtraInputs(prev => ({ ...prev, pal: val.toString() }))}
               />
-            ) : variants.length > 0 && (
+            ) : filteredVariants.length > 0 && (
               <div className="input-group">
                 <select value={variant} onChange={e => setVariant(e.target.value)} style={selectStyle}>
                   <option value="">Select Sub-type...</option>
-                  {variants.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
+                  {filteredVariants.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
                 </select>
               </div>
             )}
-            {extraFields.map(f => (
-              <div key={f.key} className="input-group">
-                <label style={{ fontSize: "0.68rem", fontWeight: 700, color: "#64748b" }}>{f.label}</label>
-                <input type={f.type} value={extraInputs[f.key] || ""} onChange={e => setExtraInputs(prev => ({ ...prev, [f.key]: e.target.value }))} style={inputStyle} />
-              </div>
-            ))}
+
+            {/* Render extra inputs via new renderer */}
+            {condition && condition !== "healthy" && condition !== "heart_failure" && (
+              <ExtraInputRenderer
+                condition={condition}
+                extraInputs={extraInputs}
+                setExtraInputs={setExtraInputs}
+                onCrossDomainUpdate={onCrossDomainUpdate}
+                clinicalValues={clinical}
+                labValues={labs}
+              />
+            )}
           </div>
 
           <div className="card" style={{ padding: "1rem" }}>
@@ -651,42 +764,6 @@ export default function NutritionStandardsDomain({
               <input type="number" value={currentFluid} onChange={e => setCurrentFluid(e.target.value)} style={inputStyle} placeholder="Optional" />
             </div>
           </div>
-
-          <div className="card" style={{ padding: "1rem", background: "#f8fafc" }}>
-            <label style={subHeaderStyle}>Advanced Overrides</label>
-            {/* IC input with prominent label */}
-            <div className="input-group">
-              <label style={{ ...tinyLabelStyle, color: icUsedForKcal ? "#b45309" : "#94a3b8" }}>
-                {icUsedForKcal ? "⚡ Indirect Calorimetry (mREE) — ACTIVE" : "Indirect Calorimetry (mREE)"}
-              </label>
-              <input
-                type="number"
-                value={icKcal}
-                onChange={e => setIcKcal(e.target.value)}
-                style={{
-                  ...inputStyle,
-                  border: icUsedForKcal ? "1.5px solid #f59e0b" : inputStyle.border,
-                  background: icUsedForKcal ? "#fffbeb" : "#fff",
-                }}
-                placeholder="Measured kcal"
-              />
-              {icUsedForKcal && (
-                <span style={{ fontSize: "0.62rem", color: "#92400e", marginTop: 2 }}>
-                  Overrides weight-based kcal calculation
-                </span>
-              )}
-            </div>
-            <div className="input-group">
-              <label style={tinyLabelStyle}>Renal Dry Weight (kg)</label>
-              <input type="number" value={renalDryWeight} onChange={e => setRenalDryWeight(e.target.value)} style={inputStyle} placeholder="Prescribed (Dialysis)" />
-            </div>
-            {(condition === "cirrhosis" || condition === "liver_transplant") && (
-              <div className="input-group">
-                <label style={tinyLabelStyle}>Dry Weight (kg)</label>
-                <input type="number" value={dryWt} onChange={e => setDryWt(e.target.value)} style={inputStyle} />
-              </div>
-            )}
-          </div>
         </div>
 
         {/* ── RIGHT COLUMN: CHART ── */}
@@ -695,8 +772,16 @@ export default function NutritionStandardsDomain({
             <div className="fade-in">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
                 <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#1e293b" }}>Evaluation Results</div>
-                <div style={{ fontSize: "0.65rem", color: "#94a3b8" }}>
-                  Basis: {evaluation.eeSource} · {weightBasis} ({effectiveWeight.toFixed(1)}kg)
+                <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                  {/* PSU 2003b badge */}
+                  {isPSU && (
+                    <span style={{ fontSize: "0.65rem", fontWeight: 800, background: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe", borderRadius: "6px", padding: "2px 8px" }}>
+                      PSU 2003b
+                    </span>
+                  )}
+                  <div style={{ fontSize: "0.65rem", color: "#94a3b8" }}>
+                    {evaluation.eeSource} · {weightBasis} ({effectiveWeight.toFixed(1)}kg)
+                  </div>
                 </div>
               </div>
 
@@ -709,9 +794,18 @@ export default function NutritionStandardsDomain({
                 </div>
               )}
 
+              {/* PSU 2003b info banner */}
+              {isPSU && (
+                <div style={{ background: "#ede9fe", border: "1px solid #ddd6fe", borderRadius: "8px", padding: "0.65rem 1rem", marginBottom: "1rem", fontSize: "0.75rem", color: "#4c1d95", lineHeight: 1.5 }}>
+                  <strong>Penn State 2003b:</strong> MSJ REE × 0.96 + T<sub>max</sub>(°C) × 167 + V<sub>E</sub> × 31 − 6212.
+                  Used when mechanically ventilated with both T<sub>max</sub> and V<sub>E</sub> entered.
+                </div>
+              )}
+
               <NutrientBarChart
                 results={evaluation.results}
                 icUsedForKcal={icUsedForKcal}
+                eeSource={evaluation.eeSource}
               />
 
               {evaluation.flags.length > 0 && (
@@ -747,7 +841,7 @@ export default function NutritionStandardsDomain({
 
 // ─── Sub-styles ──────────────────────────────────────────────────────────────
 
-function QuickStat({ label, value }: { label: string, value: string }) {
+function QuickStat({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: "flex", flexDirection: "column" }}>
       <span style={{ fontSize: "0.6rem", fontWeight: 800, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" }}>{label}</span>
@@ -756,7 +850,7 @@ function QuickStat({ label, value }: { label: string, value: string }) {
   );
 }
 
-const subHeaderStyle = { display: "block", fontSize: "0.72rem", fontWeight: 900, color: "#1e3a5f", textTransform: "uppercase" as any, letterSpacing: "0.06em", marginBottom: "10px" };
-const tinyLabelStyle = { fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" as any, marginBottom: "4px", display: "block" };
-const selectStyle = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box" as any, background: "#fff", color: "#1e293b" };
+const subHeaderStyle: React.CSSProperties = { display: "block", fontSize: "0.72rem", fontWeight: 900, color: "#1e3a5f", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" };
+const tinyLabelStyle: React.CSSProperties = { fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", marginBottom: "4px", display: "block" };
+const selectStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box", background: "#fff", color: "#1e293b" };
 const inputStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box" };

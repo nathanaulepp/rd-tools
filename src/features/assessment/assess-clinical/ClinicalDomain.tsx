@@ -134,6 +134,14 @@ export default function ClinicalDomain({ clinical, setClinical, activeSubDomain 
                 <label>Swallowing</label>
                 <input type="text" value={clinical.swallowing} onChange={e => handleUpdate("swallowing", e.target.value)} placeholder="e.g. painful oropharyngeal swallow" />
               </div>
+              <div className="input-group">
+                <label>FEV₁ % Predicted</label>
+                <input type="text" value={clinical.fev1} onChange={e => handleUpdate("fev1", e.target.value)} placeholder="For CF equation" />
+              </div>
+              <div className="input-group">
+                <label>TBSA Burned (%)</label>
+                <input type="text" value={clinical.tbsa} onChange={e => handleUpdate("tbsa", e.target.value)} placeholder="For Curreri formula" />
+              </div>
             </div>
           </div>
         );

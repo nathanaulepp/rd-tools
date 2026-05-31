@@ -30,11 +30,22 @@ import {
   defaultStandards,
 } from "../entities/note/defaults";
 import { initDrugSync } from "../features/drugs/DrugLookupTool";
+import { calcIBW } from "../features/assessment/assess-standards/nutritionStandards";
 
 export type ViewState =
   | "LOGIN" | "START" | "PATIENT_GATE" | "VIEW_NOTES"
   | "CREATE_NOTE" | "VIEW_SUMMARY" | "TOOLS"
   | "SETTINGS";
+
+const AMPUTATION_DATA = [
+  { label: "Hand", pct: 0.7 },
+  { label: "Forearm", pct: 2.3 },
+  { label: "Entire Arm", pct: 5.0 },
+  { label: "Foot", pct: 1.5 },
+  { label: "BKA (Below Knee)", pct: 5.9 },
+  { label: "AKA (Above Knee)", pct: 11.0 },
+  { label: "Entire Leg", pct: 16.0 }
+];
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -157,6 +168,18 @@ export default function App() {
     const wtKg = anthro.wtUnit === "lbs" ? Number(anthro.wt) / 2.205 : Number(anthro.wt);
     const bmi = htCm > 0 && wtKg > 0 ? (wtKg / Math.pow(htCm / 100, 2)).toFixed(1) : "--";
 
+    const sex: "M" | "F" = patientData.sex === "F" ? "F" : "M";
+    const ibw = htCm > 0 ? calcIBW(htCm, sex) : 0;
+
+    let adjIbw: number | null = null;
+    if (ibw > 0 && (anthro.amputations || []).length > 0) {
+      const totalAmputationPct = (anthro.amputations || []).reduce((acc: number, label: string) => {
+        const data = AMPUTATION_DATA.find(d => d.label === label);
+        return acc + (data?.pct || 0);
+      }, 0);
+      adjIbw = Number((ibw * (100 - totalAmputationPct) / 100).toFixed(1));
+    }
+
     let ageDays: number | null = null;
     if (patientData.dob && patientData.noteDate) {
       const dDob  = new Date(patientData.dob);
@@ -171,8 +194,8 @@ export default function App() {
       ubwTimeframeDays = Math.floor((dNote.getTime() - dUbw.getTime()) / (1000 * 60 * 60 * 24));
     }
 
-    return { bmi, ageDays, ubwTimeframeDays };
-  }, [anthro.ht, anthro.htUnit, anthro.wt, anthro.wtUnit, anthro.ubwDate, patientData.dob, patientData.noteDate]);
+    return { bmi, ibw, adjIbw, ageDays, ubwTimeframeDays };
+  }, [anthro.ht, anthro.htUnit, anthro.wt, anthro.wtUnit, anthro.ubwDate, anthro.amputations, patientData.dob, patientData.noteDate, patientData.sex]);
 
   // ── Shared props ───────────────────────────────────────────────────────────
   const sharedNoteProps = {
