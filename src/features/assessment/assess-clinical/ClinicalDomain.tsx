@@ -1,322 +1,69 @@
-import React from 'react';
-import { ChipGroup } from '../../../shared/ui/ChipGroup';
-import { DomainHeader } from '../../../shared/ui/DomainHeader';
-import { CLINICAL_CATEGORIES } from '../../../shared/constants/adimeSideBarCategories';
-import DrugLookupTool from '../../drugs/DrugLookupTool';
+// src/features/assessment/assess-clinical/ClinicalDomain.tsx
+// Phase 3 refactor: pure container — delegates to sub-components.
+//
+//   C1, C2 → ClinicalC1C2
+//   C3, C4 → ClinicalC3C4
+//   C5     → ClinicalC5NFPE
+//   C6     → ClinicalC6Imaging
 
-export default function ClinicalDomain({ clinical, setClinical, activeSubDomain }: any) {
+import React from "react";
+import { DomainHeader } from "../../../shared/ui/DomainHeader";
+import { CLINICAL_CATEGORIES } from "../../../shared/constants/adimeSideBarCategories";
+
+import ClinicalC1C2 from "./ClinicalC1C2";
+import ClinicalC3C4 from "./ClinicalC3C4";
+import ClinicalC5NFPE from "./ClinicalC5NFPE";
+import ClinicalC6Imaging from "./ClinicalC6Imaging";
+
+interface ClinicalDomainProps {
+  clinical: any;
+  setClinical: (updates: any) => void;
+  activeSubDomain: string;
+}
+
+export default function ClinicalDomain({
+  clinical,
+  setClinical,
+  activeSubDomain,
+}: ClinicalDomainProps) {
   const handleUpdate = (field: string, val: string | string[]) =>
     setClinical({ ...clinical, [field]: val });
 
-  const nfpeOptions = ["Normal", "Mild", "Moderate", "Severe"];
-
-  const withDefaults = (options: string[]) => ["WNL", ...options, "Other"];
-  const micronutrientCategories = [
-    { area: "Hair", options: withDefaults(["Alopecia", "Depigmentation", "Flag Sign", "Thinning", "Corkscrew", "Hirsutism"]) },
-    { area: "Eyes", options: withDefaults(["Pale Conjunctiva", "Nyctalopia", "Bitot's Spots", "Corneal Xerosis", "Keratomalacia", "Opthalmoplegia", "Kayser-Fleischer Rings", "Corneal Vascularization", "Xanthelasma", "Corneal Arcus"]) },
-    { area: "MouthLips", options: withDefaults(["Angular Stomatitis", "Cheilitis", "Sore/Swelling", "Excessive Saliva", "Pale Mucosa"]) },
-    { area: "Tongue", options: withDefaults(["Glossitis", "Scorbutic", "Pale", "Magenta", "Beefy Red, Smooth", "Thrush", "Geographic", "Strawberry", "Dysguesia"]) },
-    { area: "TeethGums", options: withDefaults(["Gingivitis, Scorbutic", "Dark Spots", "Mottling", "White streaks", "Delayed Tooth Eruption", "Caries", "White or Yellow Bands"]) },
-    { area: "HeadNeck", options: withDefaults(["Goiter", "Moon Face", "Sialadenosis"]) },
-    { area: "Nails", options: withDefaults(["Koilonychia", "Beau's Lines", "Muehrcke Lines", "Mees Lines", "Splinter Hemorrhage", "Brittle", "Vertical Ridges", "Clubbing", "Leukonychia", "Half and Half", "Terry's Nail", "Pitting"]) },
-    { area: "Skin", options: withDefaults(["Delayed Wound Healing", "Bedsore", "Seborrheic Dermatitis", "Reddish-purple Spots", "Bruising", "Pallor", "Follicular Hyperkeratosis", "Hypopigmentation", "Hyperpigmentation", "Pellagra", "Bilateral edema", "Poor Turgor ", "Carotenemia ", "Jaundice ", "Acanthosis Nigricans"]) },
-  ];
-
-  const severityMap = {
-    "Normal": "success", "None": "success", "Mild": "warning-bg", "Moderate": "warning", "Severe": "danger", "Edema": "danger",
-    "+1": "warning-bg", "+2": "warning", "+3": "danger", "+4": "danger"
-  };
+  const title =
+    CLINICAL_CATEGORIES.find((c) => c.id === activeSubDomain)?.title ??
+    "Clinical Findings & NFPE";
 
   const renderContent = () => {
     switch (activeSubDomain) {
       case "C1":
-        return (
-          <div className="card">
-            <h4 className="mb-1">C1: Medical Context</h4>
-            <div className="grid-2-col">
-              <div className="input-group">
-                <label>Chief Complaint</label>
-                <textarea style={{ minHeight: "150px" }} value={clinical.chiefComplaint} onChange={e => handleUpdate("chiefComplaint", e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label>Medical History</label>
-                <textarea style={{ minHeight: "150px" }} value={clinical.medHx} onChange={e => handleUpdate("medHx", e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label>Family History</label>
-                <textarea style={{ minHeight: "150px" }} value={clinical.familyHx} onChange={e => handleUpdate("familyHx", e.target.value)} placeholder="e.g. mother and father HTN, maternal father cancer..."/>
-              </div>
-              <div className="input-group">
-                <label>Social History</label>
-                <textarea style={{ minHeight: "150px" }} value={clinical.socialHx} onChange={e => handleUpdate("socialHx", e.target.value)} placeholder="e.g. occupation, education, social support, living situation..." />
-              </div>
-              <div className="input-group">
-                <label>Allergies/Intolerances</label>
-                <textarea style={{ minHeight: "150px" }} value={clinical.allergiesIntolerances} onChange={e => handleUpdate("allergiesIntolerances", e.target.value)} placeholder="e.g. latex, milk, soy..." />
-              </div>
-              <div className="input-group">
-                <label>Medical Devices/Prosthetics</label>
-                <textarea style={{ minHeight: "150px" }} value={clinical.medicalDevices} onChange={e => handleUpdate("medicalDevices", e.target.value)} placeholder="e.g. hearing aids, pacemaker, dental prosthetics..." />
-              </div>
-            </div>
-          </div>
-        );
-
       case "C2":
         return (
-          <div className="card">
-            <h4 className="mb-1">C2: Vital Signs & Screenings</h4>
-            <div className="grid-5-col">
-              <div className="input-group">
-                <label>Temp (°F)</label>
-                <input type="text" value={clinical.temp} onChange={e => handleUpdate("temp", e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label>HR (bpm)</label>
-                <input type="text" value={clinical.hr} onChange={e => handleUpdate("hr", e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label>SpO<sub>2</sub> (%)</label>
-                <input type="text" value={clinical.spo2} onChange={e => handleUpdate("spo2", e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label>BP (mmHg)</label>
-                <input type="text" value={clinical.bp} onChange={e => handleUpdate("bp", e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label>RR (bpm)</label>
-                <input type="text" value={clinical.rr} onChange={e => handleUpdate("rr", e.target.value)} />
-              </div>
-            </div>
-            <div className="input-group mt-1">
-              <label>Screenings</label>
-              <textarea 
-                style={{ minHeight: "100px" }} 
-                value={clinical.screenings} 
-                onChange={e => handleUpdate("screenings", e.target.value)} 
-                placeholder="e.g. MSS, malnutrition screening, etc."
-              />
-            </div>
-          </div>
+          <ClinicalC1C2
+            clinical={clinical}
+            handleUpdate={handleUpdate}
+            activeSubDomain={activeSubDomain as "C1" | "C2"}
+          />
         );
-
       case "C3":
-        return (
-          <div className="card">
-            <DrugLookupTool
-              label="C3: Medications"
-              value={clinical.medications || ""}
-              onChange={v => handleUpdate("medications", v)}
-              showDoseFields={true}
-              multiEntry={true}
-            />
-          </div>
-        );
-
       case "C4":
         return (
-          <div className="card">
-            <h4 className="mb-1">C4: GI & Systemic Function</h4>
-            <div className="grid-2-col">
-              <div className="input-group">
-                <label>GI Distress</label>
-                <input type="text" value={clinical.giDistress} onChange={e => handleUpdate("giDistress", e.target.value)} placeholder="e.g. n/v/d/c/bm" />
-              </div>
-              <div className="input-group">
-                <label>Oral/Chewing</label>
-                <input type="text" value={clinical.chewing} onChange={e => handleUpdate("chewing", e.target.value)} placeholder="e.g. missing molars/incisors" />
-              </div>
-              <div className="input-group">
-                <label>Oral Hygiene</label>
-                <input type="text" value={clinical.oralHygiene} onChange={e => handleUpdate("oralHygiene", e.target.value)} placeholder="e.g. brushes teeth, no flossing" />
-              </div>
-              <div className="input-group">
-                <label>Swallowing</label>
-                <input type="text" value={clinical.swallowing} onChange={e => handleUpdate("swallowing", e.target.value)} placeholder="e.g. painful oropharyngeal swallow" />
-              </div>
-              <div className="input-group">
-                <label>FEV₁ % Predicted</label>
-                <input type="text" value={clinical.fev1} onChange={e => handleUpdate("fev1", e.target.value)} placeholder="For CF equation" />
-              </div>
-              <div className="input-group">
-                <label>TBSA Burned (%)</label>
-                <input type="text" value={clinical.tbsa} onChange={e => handleUpdate("tbsa", e.target.value)} placeholder="For Curreri formula" />
-              </div>
-            </div>
-          </div>
+          <ClinicalC3C4
+            clinical={clinical}
+            handleUpdate={handleUpdate}
+            activeSubDomain={activeSubDomain as "C3" | "C4"}
+          />
         );
-
       case "C5":
         return (
-          <div className="fade-in">
-            <div className="card mb-1">
-              <h4 className="mb-1">C51: Muscle Mass Wasting</h4>
-              <div className="grid-2-col">
-                {["Temples", "Clavicles", "Shoulders", "Scapula", "Interosseous", "Thighs", "Calves"].map(muscle => {
-                  const key = muscle.toLowerCase();
-                  return (
-                    <div className="input-group" key={muscle}>
-                      <label className="flex-between">{muscle}</label>
-                      <ChipGroup
-                        multiSelect={false}
-                        options={nfpeOptions}
-                        value={clinical[key]}
-                        onChange={v => handleUpdate(key, v)}
-                        severityMap={severityMap}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="card mb-1">
-              <h4 className="mb-1">C52: Subcutaneous Fat Loss</h4>
-              <div className="grid-2-col">
-                {["Orbital", "Cheek", "TricepsFat", "MidAxillary"].map(fatStr => {
-                  const key = fatStr.charAt(0).toLowerCase() + fatStr.slice(1);
-                  return (
-                    <div className="input-group" key={fatStr}>
-                      <label>{fatStr.replace("Fat", "")}</label>
-                      <ChipGroup
-                        multiSelect={false}
-                        options={nfpeOptions}
-                        value={clinical[key]}
-                        onChange={v => handleUpdate(key, v)}
-                        severityMap={severityMap}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="card mb-1">
-              <h4 className="mb-1">C53: Fluid Accumulation</h4>
-              <div className="input-group">
-                <label>Pitting Edema</label>
-                <ChipGroup
-                  multiSelect={false}
-                  options={["None", "+1", "+2", "+3", "+4"]}
-                  value={clinical.pittingEdema}
-                  onChange={v => handleUpdate("pittingEdema", v)}
-                  severityMap={severityMap}
-                />
-              </div>
-              <div className="input-group mt-1">
-                <label>Pedal Edema</label>
-                <ChipGroup
-                  multiSelect={false}
-                  options={["Yes", "No"]}
-                  value={clinical.pedalEdema}
-                  onChange={v => handleUpdate("pedalEdema", v)}
-                  severityMap={{ "Yes": "danger", "No": "success" }}
-                />
-              </div>
-              <div className="input-group mt-1">
-                <label>Edema Description (Optional)</label>
-                <input 
-                  type="text" 
-                  value={clinical.edemaDescription} 
-                  onChange={e => handleUpdate("edemaDescription", e.target.value)}
-                  placeholder="e.g. bilateral legs"
-                />
-              </div>
-              <div className="input-group mt-1">
-                <label>Ascites</label>
-                <ChipGroup
-                  multiSelect={false}
-                  options={["None", "Mild", "Moderate", "Severe"]}
-                  value={clinical.ascites}
-                  onChange={v => handleUpdate("ascites", v)}
-                  severityMap={severityMap}
-                />
-              </div>
-            </div>
-
-            <div className="card mb-1">
-              <h4 className="mb-1">C54: Functional Status</h4>
-              <div className="input-group">
-                <label>Functional Grip Strength</label>
-                <ChipGroup
-                  multiSelect={false}
-                  options={["WNL", "Measurably Reduced"]}
-                  value={clinical.gripStrength}
-                  onChange={v => handleUpdate("gripStrength", v)}
-                  severityMap={{ "Measurably Reduced": "warning" }}
-                />
-              </div>
-            </div>
-
-            <div className="card mb-1">
-              <h4 className="mb-1">C55: Micronutrient Signs (Physical Exam)</h4>
-              <div className="grid-3-col">
-                {micronutrientCategories.map(({ area, options }) => {
-                  const key = area.replace(/^(.)/, (c: string) => c.toLowerCase());
-                  return (
-                    <div className="input-group" key={area}>
-                      <label>{area.replace(/([A-Z])/g, ' $1').trim()}</label>
-                      <ChipGroup
-                        options={options}
-                        value={clinical[key] || []}
-                        onChange={v => handleUpdate(key, v)}
-                        severityMap={severityMap}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="input-group mt-1">
-                <label>Clinical Notes (Nuance)</label>
-                <textarea
-                  style={{ minHeight: "100px" }}
-                  value={clinical.clinicalNotes}
-                  onChange={e => handleUpdate("clinicalNotes", e.target.value)}
-                  placeholder="Add nuance for physical findings..."
-                />
-              </div>
-            </div>
-          </div>
+          <ClinicalC5NFPE clinical={clinical} handleUpdate={handleUpdate} />
         );
-
       case "C6":
         return (
-          <div className="card">
-            <h4 className="mb-1">C6: Radiology & Imaging</h4>
-            <div className="grid-2-col">
-              <div className="input-group">
-                <label>Skeletal Muscle Index (SMI)</label>
-                <input type="text" value={clinical.imaging_smi} onChange={e => handleUpdate("imaging_smi", e.target.value)} placeholder="cm²/m²" />
-              </div>
-              <div className="input-group">
-                <label>L3 Muscle Area</label>
-                <input type="text" value={clinical.imaging_muscleArea} onChange={e => handleUpdate("imaging_muscleArea", e.target.value)} placeholder="cm²" />
-              </div>
-              <div className="input-group">
-                <label>Muscle Attenuation</label>
-                <input type="text" value={clinical.imaging_muscleAttenuation} onChange={e => handleUpdate("imaging_muscleAttenuation", e.target.value)} placeholder="Hounsfield Units (HU)" />
-              </div>
-              <div className="input-group">
-                <label>IMAT (Intermuscular Fat)</label>
-                <input type="text" value={clinical.imaging_imat} onChange={e => handleUpdate("imaging_imat", e.target.value)} />
-              </div>
-              <div className="input-group">
-                <label>VAT (Visceral Fat Area)</label>
-                <input type="text" value={clinical.imaging_vat} onChange={e => handleUpdate("imaging_vat", e.target.value)} placeholder="cm²" />
-              </div>
-            </div>
-            <div className="input-group mt-1">
-              <label>Imaging / Radiology Notes</label>
-              <textarea 
-                style={{ minHeight: "100px" }} 
-                value={clinical.imaging_notes} 
-                onChange={e => handleUpdate("imaging_notes", e.target.value)} 
-                placeholder="Details on myosteatosis, sarcopenia severity, or other imaging findings..."
-              />
-            </div>
-          </div>
+          <ClinicalC6Imaging
+            clinical={clinical}
+            handleUpdate={handleUpdate}
+          />
         );
-
       default:
         return <div>Select a sub-domain from the sidebar.</div>;
     }
@@ -324,7 +71,7 @@ export default function ClinicalDomain({ clinical, setClinical, activeSubDomain 
 
   return (
     <div className="fade-in">
-      <DomainHeader title={CLINICAL_CATEGORIES.find(c => c.id === activeSubDomain)?.title || "Clinical Findings & NFPE"} />
+      <DomainHeader title={title} />
       {renderContent()}
     </div>
   );
