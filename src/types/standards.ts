@@ -34,7 +34,8 @@ export type ConditionKey =
   | "severe_malnutrition"
   | "sickle_cell"
   | "diabetes"
-  | "hsct";
+  | "hsct"
+  | "bpd";
 
 // ─── Evaluation Engine — Input Contracts ─────────────────────────────────────
 

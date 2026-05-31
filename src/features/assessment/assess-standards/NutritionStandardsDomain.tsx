@@ -648,7 +648,7 @@ export default function NutritionStandardsDomain() {
               <select value={condition} onChange={e => { setCondition(e.target.value as ConditionKey); setVariant(""); }} style={selectStyle}>
                 <option value="">Select Condition...</option>
                 <optgroup label="Acute / Critical Care">
-                  {(["critical_illness", "aki", "acute_pancreatitis", "burns", "trauma", "stroke"] as ConditionKey[]).filter(isConditionVisible).map(k => (
+                  {(["critical_illness", "aki", "acute_pancreatitis", "bpd", "burns", "trauma", "stroke"] as ConditionKey[]).filter(isConditionVisible).map(k => (
                     <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
                   ))}
                 </optgroup>

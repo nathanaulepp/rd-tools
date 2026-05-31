@@ -209,6 +209,7 @@ export const CONDITION_LABELS: Record<ConditionKey, string> = {
   sickle_cell: "Sickle Cell Disease",
   diabetes: "Diabetes Mellitus",
   hsct: "Hematopoietic Stem Cell Transplant (HSCT)",
+  bpd: "Bronchopulmonary Dysplasia (BPD)",
 };
 
 // ─── Condition Variants ───────────────────────────────────────────────────────
@@ -1408,6 +1409,41 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
         flags.push("HSCT fluid: increase with fever, excessive GI losses, hypermetabolism, nephrotoxic meds.");
         flags.push("Post-transplant complications (GvHD) can significantly increase energy and protein requirements — reassess frequently.");
       }
+      break;
+    }
+
+    // ── BRONCHOPULMONARY DYSPLASIA (BPD) ──────────────────────────────────────
+    case "bpd": {
+      if (!isPeds) {
+        flags.push("⚠ BPD is a pediatric condition. Adult patients should not be assigned this condition.");
+        kcalLow = wtKg * 25; kcalHigh = wtKg * 35;
+        protLow = wtKg * 0.8; protHigh = wtKg * 1.2;
+        break;
+      }
+
+      // Energy: 120–150 kcal/kg/day — high to support catch-up growth
+      // and compensate for elevated caloric expenditure from increased work
+      // of breathing. Scale down as respiratory status improves.
+      kcalLow = wtKg * 120;
+      kcalHigh = wtKg * 150;
+      eeKcal = wtKg * 135; // midpoint for eeKcal display
+      eeSource = "Schofield WH×SF"; // closest available label; formula is kcal/kg
+
+      // Protein: 3.5–4.5 g/kg/day — supports lean mass accrual and
+      // respiratory muscle development. Titrate down once stable.
+      protLow = wtKg * 3.5;
+      protHigh = wtKg * 4.5;
+
+      // Fluid: restrict to 130–150 mL/kg/day to reduce pulmonary edema risk
+      // while still meeting growth needs. Requires calorically dense formula.
+      fluidLow = wtKg * 130;
+      fluidHigh = wtKg * 150;
+      fluidNote = `Restrict to 130–150 mL/kg/day (${Math.round(wtKg * 130)}–${Math.round(wtKg * 150)} mL). Use calorically dense formula (≥1 kcal/mL) to meet energy targets within fluid limit.`;
+
+      flags.push("ℹ BPD targets: 120–150 kcal/kg and 3.5–4.5 g/kg/day protein. Both titrate DOWN as respiratory status stabilises and growth velocity normalises.");
+      flags.push("⚠ Fluid restriction (130–150 mL/kg/day) requires calorically dense enteral formula (≥1 kcal/mL, consider 1.5–2 kcal/mL) to close the energy gap.");
+      flags.push("ℹ Monitor growth velocity weekly. If weight gain <15–20 g/day in VLBW infants, reassess energy density before increasing volume.");
+      flags.push("Source: Gipson DR et al. BMJ Nutr Prev Health. 2025;:e000913. doi:10.1136/bmjnph-2024-000913");
       break;
     }
 

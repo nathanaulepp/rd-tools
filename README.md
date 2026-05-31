@@ -54,7 +54,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [x] **add** Improve user flow of UI
 - [x] **add** Automate linking patient BMI to comparative standards' clinical context options
 - [x] **add** more conditions to consider (now 26)
-- [ ] **add** bronchopulmonary dysplasia for pediatrics under 5
+- [x] **add** bronchopulmonary dysplasia for pediatrics
 
 ### Diagnosis
 - [x] **add** PES statement builder
