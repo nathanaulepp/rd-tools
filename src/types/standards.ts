@@ -25,7 +25,7 @@ export type ConditionKey =
   | "ckd_5d"
   | "kidney_transplant"
   | "copd"
-  | "cirrhosis_updated"
+  | "cirrhosis"
   | "liver_transplant"
   | "critical_illness"
   | "pregnancy"
@@ -40,6 +40,7 @@ export type ConditionKey =
   | "obesity_stable"
   | "severe_malnutrition"
   | "sickle_cell"
+  | "diabetes"
   | "hsct";
 
 // ─── Evaluation Engine — Input Contracts ─────────────────────────────────────

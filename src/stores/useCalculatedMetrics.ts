@@ -14,6 +14,10 @@ import {
   calculatePediatricHealthyProtein, 
   calculateHollidaySegar 
 } from "../shared/utils/pediatricHealthyMath";
+import { classifyPediatricWeightStatus } from "../shared/utils/pediatricWeightStatus";
+import cdcBmiageRaw from "../shared/assets/datafiles_cleaned_csv/24_240_months/bmiagerev.csv?raw";
+import whoBfaBoysRaw from "../shared/assets/datafiles_cleaned_csv/0_730_days/bmi_for_age-boys-zscore-expanded-tables.csv?raw";
+import whoBfaGirlsRaw from "../shared/assets/datafiles_cleaned_csv/0_730_days/bmi_for_age-girls-zscore-expanded-tables.csv?raw";
 import {
   calculateSchofieldWH,
   getPediatricStressFactor,
@@ -199,18 +203,22 @@ export function useCalculatedMetrics(): CalculatedMetrics {
   if (isPediatric && ageDays !== null) {
     const pal = parseFloat(standards.extraInputs.pal) || 1.2;
 
-    if (condition === "healthy") {
-      // ── Healthy Pediatric DRI/EER ───────────────────────────────────────────
+    if (condition === "healthy" || condition === "obesity_stable") {
+      // ── Healthy Pediatric DRI/EER (Redirection for Obesity) ────────────────
       const bmiNum = parseFloat(bmi) || 0;
-      const isOverweight = ageDays >= 730 && bmiNum >= 25;
-
+      const weightStatus = classifyPediatricWeightStatus({
+        ageDays,
+        bmi: bmiNum,
+        sex,
+      });
+ 
       pediatricEER = calculatePediatricHealthyEER({
         ageDays,
         weightKg: wtKg,
         heightCm: htCm,
         sex,
         pal,
-        isOverweight,
+        isOverweight: weightStatus.useOverweightEER,
       });
 
       pediatricProtein = calculatePediatricHealthyProtein(ageDays, wtKg);
@@ -229,6 +237,10 @@ export function useCalculatedMetrics(): CalculatedMetrics {
         const insensible = calculatePediatricInsensibleLoss(bsa);
         const output = parseFloat(standards.extraInputs.urineOutputMlDay) || 0;
         pediatricFluid = output + insensible;
+      } else if (condition === "diabetes") {
+        // Diabetes redirects to healthy EER baseline
+        pediatricEER = calculateSchofieldWH({ ageDays, weightKg: wtKg, heightCm: htCm, sex }) * 1.3;
+        pediatricFluid = calculateHollidaySegar(wtKg);
       } else {
         // 1. Energy (Schofield WH Baseline)
         const bmr = calculateSchofieldWH({ ageDays, weightKg: wtKg, heightCm: htCm, sex });

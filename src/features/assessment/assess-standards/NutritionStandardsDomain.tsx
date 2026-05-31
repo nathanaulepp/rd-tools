@@ -678,7 +678,7 @@ export default function NutritionStandardsDomain() {
                   ))}
                 </optgroup>
                 <optgroup label="Chronic Disease">
-                  {(["copd", "heart_failure", "ckd_3_5", "ckd_5d", "kidney_transplant", "cirrhosis", "liver_transplant", "masld_mash", "cystic_fibrosis", "sickle_cell"] as ConditionKey[]).filter(isConditionVisible).map(k => (
+                  {(["copd", "heart_failure", "ckd_3_5", "ckd_5d", "kidney_transplant", "cirrhosis", "liver_transplant", "masld_mash", "cystic_fibrosis", "sickle_cell", "diabetes"] as ConditionKey[]).filter(isConditionVisible).map(k => (
                     <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
                   ))}
                 </optgroup>
