@@ -949,5 +949,4 @@ export const MSJ_ACTIVITY_FACTORS: { label: string; af: number; description: str
   { label: "Moderately active", af: 1.55, description: "Moderate exercise 3–5 days/week" },
   { label: "Very active", af: 1.725, description: "Hard exercise 6–7 days/week" },
   { label: "Extra active", af: 1.9, description: "Very hard exercise / physical job" },
-];" },
 ];
