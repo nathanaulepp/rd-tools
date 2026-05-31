@@ -1,23 +1,56 @@
 /**
  * Pediatric Healthy DRI/EER Calculations
- * 
- * This utility provides the mathematical logic for the 'Healthy' pediatric path.
- * Equations derived from DRI standards.
+ * src/shared/utils/pediatricHealthyMath.ts
+ *
+ * Mathematical logic for the healthy pediatric path (condition === 'healthy', age < 18).
+ * Equations derived from DRI/EER standards.
+ *
+ * No imports from feature folders.
  */
 
-/** 
- * Map pediatric PAL value (1.0 to 2.5) to discrete PA coefficients for ages >= 3 years.
- * For infants < 36 months, PA is typically bypassed or set to 1.0.
- */
-export function mapPediatricPA(pal: number): number {
-  if (pal < 1.40) return 1.00; // Sedentary
-  if (pal < 1.60) return 1.13; // Low Active
-  if (pal < 1.90) return 1.26; // Active
-  return 1.42;               // Very Active (1.90 to 2.50)
-}
+import { calcHolidaySegar } from "./clinicalMath";
+
+// ─── PA Coefficient Mapping ───────────────────────────────────────────────────
 
 /**
- * Calculate Energy Needs (EER/TEE) for healthy pediatric patients.
+ * Map a continuous PAL slider value (1.0–2.5) to discrete DRI PA coefficients.
+ * Applies to ages >= 3 years only. Infants (< 36 months) bypass PA entirely.
+ *
+ * Sedentary   (1.00–1.39) → 1.00
+ * Low Active  (1.40–1.59) → 1.13
+ * Active      (1.60–1.89) → 1.26
+ * Very Active (1.90–2.50) → 1.42
+ */
+export function mapPediatricPA(pal: number): number {
+  if (pal < 1.40) return 1.00;
+  if (pal < 1.60) return 1.13;
+  if (pal < 1.90) return 1.26;
+  return 1.42;
+}
+
+// ─── Energy ───────────────────────────────────────────────────────────────────
+
+/**
+ * Calculate EER/TEE for healthy pediatric patients.
+ *
+ * Infant brackets (no PA factor):
+ *   0–3 mo:    TEE = (89 × wt) + 75
+ *   3–6 mo:    TEE = (89 × wt) − 44
+ *   6–12 mo:   TEE = (89 × wt) − 78
+ *   12–36 mo:  TEE = (89 × wt) + 20
+ *
+ * Ages 3–17.99y — Normal Weight Boys:
+ *   EER = 88.5 − (61.9 × age) + PA × (26.7 × wt + 903 × ht[m]) + growth
+ *
+ * Ages 3–17.99y — Normal Weight Girls:
+ *   EER = 135.3 − (30.8 × age) + PA × (10 × wt + 934 × ht[m]) + growth
+ *   (growth energy: +20 kcal age < 9y, +25 kcal age 9–18y)
+ *
+ * Ages 3–17.99y — Overweight Boys:
+ *   TEE = 114 − (50.9 × age) + PA × (19.5 × wt + 1161.4 × ht[m])
+ *
+ * Ages 3–17.99y — Overweight Girls:
+ *   TEE = 389 − (41.2 × age) + PA × (15 × wt + 701.6 × ht[m])
  */
 export function calculatePediatricHealthyEER(opts: {
   ageDays: number;
@@ -29,79 +62,70 @@ export function calculatePediatricHealthyEER(opts: {
 }): number {
   const { ageDays, weightKg, heightCm, sex, pal, isOverweight } = opts;
   const ageYears = ageDays / 365.25;
-  const heightM = heightCm / 100;
+  const heightM  = heightCm / 100;
 
-  // 0 to 3.00 months
-  if (ageDays <= 91.3125) { // 3 * 30.4375 approx
-    return (89 * weightKg) + 75;
-  }
-  // 3.01 to 6.00 months
-  if (ageDays <= 182.625) {
-    return (89 * weightKg) - 44;
-  }
-  // 6.01 to 12.00 months
-  if (ageDays <= 365.25) {
-    return (89 * weightKg) - 78;
-  }
-  // 12.01 to 35.999 months
-  if (ageDays < 1095.75) { // 3 years
-    return (89 * weightKg) + 20;
-  }
+  // 0–3 months (≤ 91.3125 days)
+  if (ageDays <= 91.3125) return 89 * weightKg + 75;
 
-  // Ages 3.00 to 17.99 years
-  const pa = mapPediatricPA(pal);
+  // 3–6 months
+  if (ageDays <= 182.625) return 89 * weightKg - 44;
+
+  // 6–12 months
+  if (ageDays <= 365.25) return 89 * weightKg - 78;
+
+  // 12–35.99 months (< 3 years)
+  if (ageDays < 1095.75) return 89 * weightKg + 20;
+
+  // 3–17.99 years
+  const pa     = mapPediatricPA(pal);
   const isMale = sex === "M";
 
   if (isOverweight) {
     if (isMale) {
-      // Overweight Boys (3-18y): TEE = 114 - (50.9 x age[yrs]) + PA x (19.5 x weight[kg] + 1161.4 x height[m])
       return 114 - (50.9 * ageYears) + pa * (19.5 * weightKg + 1161.4 * heightM);
-    } else {
-      // Overweight Girls (3-18y): TEE = 389 - (41.2 x age[yrs]) + PA x (15 x weight[kg] + 701.6 x height[m])
-      return 389 - (41.2 * ageYears) + pa * (15 * weightKg + 701.6 * heightM);
     }
-  } else {
-    const growthEnergy = ageYears < 9 ? 20 : 25;
-    if (isMale) {
-      // Normal Weight Boys: EER = 88.5 - (61.9 x age[yrs]) + PA x (26.7 x weight[kg] + 903 x height[m]) + Growth
-      return 88.5 - (61.9 * ageYears) + pa * (26.7 * weightKg + 903 * heightM) + growthEnergy;
-    } else {
-      // Normal Weight Girls: EER = 135.3 - (30.8 x age[yrs]) + PA x (10 x weight[kg] + 934 x height[m]) + Growth
-      return 135.3 - (30.8 * ageYears) + pa * (10 * weightKg + 934 * heightM) + growthEnergy;
-    }
+    return 389 - (41.2 * ageYears) + pa * (15 * weightKg + 701.6 * heightM);
   }
+
+  const growthEnergy = ageYears < 9 ? 20 : 25;
+  if (isMale) {
+    return 88.5 - (61.9 * ageYears) + pa * (26.7 * weightKg + 903 * heightM) + growthEnergy;
+  }
+  return 135.3 - (30.8 * ageYears) + pa * (10 * weightKg + 934 * heightM) + growthEnergy;
 }
 
-/**
- * Calculate Protein Requirements (RDA) for healthy pediatric patients.
- */
-export function calculatePediatricHealthyProtein(ageDays: number, weightKg: number): number {
-  const ageYears = ageDays / 365.25;
-  
-  let gPerKg = 0.85; // Default for 14-18y
+// ─── Protein ──────────────────────────────────────────────────────────────────
 
-  if (ageDays <= 182.625) { // 0-6 months
-    gPerKg = 1.52;
-  } else if (ageDays <= 365.25) { // 6-12 months
-    gPerKg = 1.20;
-  } else if (ageDays < 1461) { // 12 months to 4 years (approx 4 * 365.25)
-    gPerKg = 1.05;
-  } else if (ageYears < 14) { // 4-14 years
-    gPerKg = 0.95;
-  }
-  
+/**
+ * Protein RDA for healthy pediatric patients.
+ *
+ * 0–6 mo:       1.52 g/kg
+ * 6–12 mo:      1.20 g/kg
+ * 12 mo–4 y:    1.05 g/kg
+ * 4–14 y:       0.95 g/kg
+ * 14–18 y:      0.85 g/kg
+ */
+export function calculatePediatricHealthyProtein(
+  ageDays: number,
+  weightKg: number
+): number {
+  const ageYears = ageDays / 365.25;
+
+  let gPerKg = 0.85; // 14–18y default
+
+  if (ageDays <= 182.625)  gPerKg = 1.52; // 0–6 mo
+  else if (ageDays <= 365.25)  gPerKg = 1.20; // 6–12 mo
+  else if (ageDays < 1461)     gPerKg = 1.05; // 12 mo–4 y
+  else if (ageYears < 14)      gPerKg = 0.95; // 4–14 y
+
   return weightKg * gPerKg;
 }
 
+// ─── Fluid ────────────────────────────────────────────────────────────────────
+
 /**
- * Calculate Fluid Requirements (Holliday-Segar) for pediatric patients.
+ * Holliday-Segar fluid requirement.
+ * Re-exported from clinicalMath.ts — canonical implementation lives there.
+ * Kept here for backwards compatibility with existing imports.
  */
-export function calculateHollidaySegar(weightKg: number): number {
-  if (weightKg <= 10) {
-    return weightKg * 100;
-  }
-  if (weightKg <= 20) {
-    return 1000 + (weightKg - 10) * 50;
-  }
-  return 1500 + (weightKg - 20) * 20;
-}
+export { calcHolidaySegar as calculateHollidaySegar };

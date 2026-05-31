@@ -8,12 +8,23 @@
 import { useAnthroStore } from "./useAnthroStore";
 import { useNoteStore } from "./useNoteStore";
 import { useStandardsStore } from "./useStandardsStore";
-import { calcIBW } from "../features/assessment/assess-standards/nutritionStandards";
+import { calcIBW, calcBSA } from "../features/assessment/assess-standards/nutritionStandards";
 import { 
   calculatePediatricHealthyEER, 
   calculatePediatricHealthyProtein, 
   calculateHollidaySegar 
 } from "../shared/utils/pediatricHealthyMath";
+import {
+  calculateSchofieldWH,
+  getPediatricStressFactor,
+  calculatePediatricDiseaseProtein,
+  calculatePediatricAKIEnergy,
+  calculatePediatricInsensibleLoss
+} from "../shared/utils/pediatricDiseaseMath";
+import {
+  calculateAdultAKIEnergy,
+  calculateAdultFluidWithFever
+} from "../shared/utils/adultDiseaseMath";
 
 // ─── Amputation lookup table ──────────────────────────────────────────────────
 
@@ -100,6 +111,13 @@ export interface CalculatedMetrics {
   pediatricProteinMin?: number | null;
   pediatricProteinMax?: number | null;
   pediatricFluid: number | null;
+
+  // Adult targets
+  adultEERMin: number | null;
+  adultEERMax: number | null;
+  adultProteinMin: number | null;
+  adultProteinMax: number | null;
+  adultFluid: number | null;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -162,35 +180,94 @@ export function useCalculatedMetrics(): CalculatedMetrics {
   const isAdult = ageDays !== null && ageDays >= 6570; // 18 * 365.25 ≈ 6570
   const isPediatric = !isAdult;
 
-  // ── Healthy Pediatric DRI/EER ─────────────────────────────────────────────
   const standards = useStandardsStore((s) => s.standards);
   const condition = standards.condition;
+  const variant = standards.variant;
 
   let pediatricEER: number | null = null;
   let pediatricProtein: number | null = null;
+  let pediatricProteinMin: number | null = null;
+  let pediatricProteinMax: number | null = null;
   let pediatricFluid: number | null = null;
 
-  if (isPediatric && condition === "healthy" && ageDays !== null) {
+  let adultEERMin: number | null = null;
+  let adultEERMax: number | null = null;
+  let adultProteinMin: number | null = null;
+  let adultProteinMax: number | null = null;
+  let adultFluid: number | null = null;
+
+  if (isPediatric && ageDays !== null) {
     const pal = parseFloat(standards.extraInputs.pal) || 1.2;
 
-    // Basic weight status check for EER stratification (3-18y)
-    // In a full implementation, this would use growth chart Z-scores.
-    // For now, we use BMI >= 25 as a proxy for overweight if age >= 2, 
-    // or just default to false if younger.
-    const bmiNum = parseFloat(bmi) || 0;
-    const isOverweight = ageDays >= 730 && bmiNum >= 25;
+    if (condition === "healthy") {
+      // ── Healthy Pediatric DRI/EER ───────────────────────────────────────────
+      const bmiNum = parseFloat(bmi) || 0;
+      const isOverweight = ageDays >= 730 && bmiNum >= 25;
 
-    pediatricEER = calculatePediatricHealthyEER({
-      ageDays,
-      weightKg: wtKg,
-      heightCm: htCm,
-      sex,
-      pal,
-      isOverweight,
-    });
+      pediatricEER = calculatePediatricHealthyEER({
+        ageDays,
+        weightKg: wtKg,
+        heightCm: htCm,
+        sex,
+        pal,
+        isOverweight,
+      });
 
-    pediatricProtein = calculatePediatricHealthyProtein(ageDays, wtKg);
-    pediatricFluid = calculateHollidaySegar(wtKg);
+      pediatricProtein = calculatePediatricHealthyProtein(ageDays, wtKg);
+      pediatricProteinMin = pediatricProtein;
+      pediatricProteinMax = pediatricProtein;
+      pediatricFluid = calculateHollidaySegar(wtKg);
+    } else if (condition) {
+      // ── Unhealthy/Disease Pediatric Path ────────────────────────────────────
+
+      if (condition === "aki") {
+        // AKI Energy Override: Schofield WH x 1.3
+        pediatricEER = calculatePediatricAKIEnergy({ ageDays, weightKg: wtKg, heightCm: htCm, sex });
+        
+        // AKI Fluid Target: Measured Output + Insensible Losses (400 x BSA)
+        const bsa = calcBSA(htCm, wtKg);
+        const insensible = calculatePediatricInsensibleLoss(bsa);
+        const output = parseFloat(standards.extraInputs.urineOutputMlDay) || 0;
+        pediatricFluid = output + insensible;
+      } else {
+        // 1. Energy (Schofield WH Baseline)
+        const bmr = calculateSchofieldWH({ ageDays, weightKg: wtKg, heightCm: htCm, sex });
+        const stressFactor = getPediatricStressFactor(pal, condition);
+        pediatricEER = bmr * stressFactor;
+
+        // 3. Fluid (Holliday-Segar Baseline)
+        pediatricFluid = calculateHollidaySegar(wtKg);
+      }
+
+      // 2. Protein (Surgical Overrides & ASPEN Critical Care)
+      const protRange = calculatePediatricDiseaseProtein({
+        ageDays,
+        weightKg: wtKg,
+        condition,
+        variant,
+        extraInputs: standards.extraInputs
+      });
+      pediatricProteinMin = protRange.min;
+      pediatricProteinMax = protRange.max;
+      pediatricProtein = (protRange.min + protRange.max) / 2;
+    }
+  } else if (isAdult && condition) {
+    // ── Adult Disease Path ────────────────────────────────────────────────────
+    
+    if (condition === "aki") {
+      // Adult AKI Energy: Conservative MSJ (1.0 - 1.1) or 20-25 kcal/kg
+      const energy = calculateAdultAKIEnergy({ 
+        wtKg, htCm, ageYears: ageDays ? ageDays/365.25 : 40, sex 
+      });
+      adultEERMin = energy.min;
+      adultEERMax = energy.max;
+
+      // Adult AKI Fluid: Measured Output + 500 mL (with Fever override)
+      const output = parseFloat(standards.extraInputs.urineOutputMlDay) || 0;
+      const tmaxF = parseFloat(standards.extraInputs.tempMax) || 98.6;
+      const tmaxC = (tmaxF - 32) * (5 / 9);
+      adultFluid = calculateAdultFluidWithFever({ measuredOutputMl: output, tmaxC });
+    }
   }
 
   return {
@@ -210,10 +287,13 @@ export function useCalculatedMetrics(): CalculatedMetrics {
     isPediatric,
     pediatricEER,
     pediatricProtein,
+    pediatricProteinMin,
+    pediatricProteinMax,
     pediatricFluid,
+    adultEERMin,
+    adultEERMax,
+    adultProteinMin,
+    adultProteinMax,
+    adultFluid,
   };
-  }pediatricEER,
-    pediatricProtein,
-    pediatricFluid,
-  };
-  }
+}

@@ -1,80 +1,15 @@
 // src/features/assessment/assess-standards/nutritionStandards.ts
-// Phase 8: Added MASLD/MASH, Short Bowel, Cystic Fibrosis, Stroke, Heart Failure,
-//          Obesity Stable, Severe Malnutrition, Sickle Cell, HSCT, updated Oncology,
-//          updated Burns (Curreri), updated Critical Illness (PSU 2003b),
-//          updated COPD (Schofield), updated Pregnancy (split T2/T3),
-//          updated Pressure Injuries targets.
 
-export type EvalStatus = "LOW" | "WNL" | "HIGH" | "N/A";
 
-export interface PatientInputs {
-  wtKg: number;
-  htCm: number;
-  ageYears: number;
-  sex: "M" | "F";
-  bmi: number;
-  weightLabel?: string;
-  icMeasuredKcal?: number;
-  icCaf?: number;
-}
-
-export interface CurrentRx {
-  kcalPerDay: number;
-  proteinGPerDay: number;
-  fluidMlPerDay?: number;
-}
-
-export interface EvalResult {
-  label: string;
-  target: string;
-  current: number;
-  unit: string;
-  status: EvalStatus;
-  note?: string;
-}
-
-export interface NutritionEvaluation {
-  ibwKg: number;
-  reeKcal: number;
-  eeKcal: number;
-  eeSource: "IC" | "MSJ×AF" | "MSJ×CAF" | "PSU 2003b" | "Schofield×AF" | "CF Formula" | "Curreri" | "Milner" | "Galveston" | "SCD REE" | "BEE×AF" | "HSCT";
-  afUsed?: number;
-  cafUsed?: number;
-  weightUsed: number;
-  weightLabel: string;
-  results: EvalResult[];
-  flags: string[];
-}
-
-// ─── Condition Keys ───────────────────────────────────────────────────────────
-
-export type ConditionKey =
-  | "aki"
-  | "acute_pancreatitis"
-  | "breastfeeding"
-  | "burns"
-  | "oncology"
-  | "cancer"           // legacy alias — resolves to oncology logic
-  | "ckd_3_5"
-  | "ckd_5d"
-  | "kidney_transplant"
-  | "copd"
-  | "cirrhosis_updated"
-  | "liver_transplant"
-  | "critical_illness"
-  | "pregnancy"
-  | "pressure_injuries"
-  | "trauma"
-  | "healthy"
-  | "masld_mash"
-  | "short_bowel"
-  | "cystic_fibrosis"
-  | "stroke"
-  | "heart_failure"
-  | "obesity_stable"
-  | "severe_malnutrition"
-  | "sickle_cell"
-  | "hsct";
+import type { 
+  EvalStatus, 
+  PatientInputs, 
+  CurrentRx, 
+  EvalResult, 
+  NutritionEvaluation, 
+  ConditionKey,
+  EvalOptions
+} from "../../../types/standards";
 
 // ─── IBW (Hamwi) ──────────────────────────────────────────────────────────────
 
@@ -362,14 +297,6 @@ export const CONDITION_EXTRA_INPUTS: Partial<Record<ConditionKey, {
 };
 
 // ─── Main Evaluation Engine ───────────────────────────────────────────────────
-
-export interface EvalOptions {
-  condition: ConditionKey;
-  variant?: string;
-  patient: PatientInputs;
-  currentRx: CurrentRx;
-  extraInputs?: Record<string, number | string>;
-}
 
 export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
   const { variant, patient, currentRx, extraInputs = {} } = opts;
