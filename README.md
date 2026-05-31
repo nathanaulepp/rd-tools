@@ -70,7 +70,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [ ] **add** Basic renal adjustments
 
 ### Dietitian Tools
-- [ ] **add** Mercury safety calculator 
+- [x] **add** Mercury safety calculator 
 
 ---
 
