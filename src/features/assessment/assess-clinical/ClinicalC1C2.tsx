@@ -1,20 +1,18 @@
 // src/features/assessment/assess-clinical/ClinicalC1C2.tsx
-// Extracted from ClinicalDomain.tsx — C1 (Medical Context) and C2 (Vitals & Screenings).
+// Phase 5: Reads useClinicalStore directly. No props for domain state.
 
 import React from "react";
+import { useClinicalStore } from "../../../stores/useClinicalStore";
+import { useUIStore } from "../../../stores/useUIStore";
 import type { Clinical } from "../../../types";
 
-interface ClinicalC1C2Props {
-  clinical: Clinical;
-  handleUpdate: (field: string, val: string | string[]) => void;
-  activeSubDomain: "C1" | "C2";
-}
+export default function ClinicalC1C2() {
+  const { clinical, setClinical } = useClinicalStore();
+  const activeSubDomain = useUIStore((s) => s.activeSubDomain);
 
-export default function ClinicalC1C2({
-  clinical,
-  handleUpdate,
-  activeSubDomain,
-}: ClinicalC1C2Props) {
+  const handleUpdate = (field: keyof Clinical, val: string | string[]) =>
+    setClinical({ [field]: val } as Partial<Clinical>);
+
   if (activeSubDomain === "C1") {
     return (
       <div className="card">

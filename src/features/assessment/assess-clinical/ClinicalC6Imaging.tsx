@@ -1,18 +1,16 @@
 // src/features/assessment/assess-clinical/ClinicalC6Imaging.tsx
-// Extracted from ClinicalDomain.tsx — C6 (Radiology & Imaging).
+// Phase 5: Reads useClinicalStore directly. No props for domain state.
 
 import React from "react";
+import { useClinicalStore } from "../../../stores/useClinicalStore";
 import type { Clinical } from "../../../types";
 
-interface ClinicalC6ImagingProps {
-  clinical: Clinical;
-  handleUpdate: (field: string, val: string) => void;
-}
+export default function ClinicalC6Imaging() {
+  const { clinical, setClinical } = useClinicalStore();
 
-export default function ClinicalC6Imaging({
-  clinical,
-  handleUpdate,
-}: ClinicalC6ImagingProps) {
+  const handleUpdate = (field: keyof Clinical, val: string) =>
+    setClinical({ [field]: val } as Partial<Clinical>);
+
   return (
     <div className="card">
       <h4 className="mb-1">C6: Radiology & Imaging</h4>

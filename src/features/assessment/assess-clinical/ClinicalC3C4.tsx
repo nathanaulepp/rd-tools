@@ -1,21 +1,19 @@
 // src/features/assessment/assess-clinical/ClinicalC3C4.tsx
-// Extracted from ClinicalDomain.tsx — C3 (Medications) and C4 (GI & Systemic Function).
+// Phase 5: Reads useClinicalStore directly. No props for domain state.
 
 import React from "react";
 import DrugLookupTool from "../../drugs/DrugLookupTool";
+import { useClinicalStore } from "../../../stores/useClinicalStore";
+import { useUIStore } from "../../../stores/useUIStore";
 import type { Clinical } from "../../../types";
 
-interface ClinicalC3C4Props {
-  clinical: Clinical;
-  handleUpdate: (field: string, val: string | string[]) => void;
-  activeSubDomain: "C3" | "C4";
-}
+export default function ClinicalC3C4() {
+  const { clinical, setClinical } = useClinicalStore();
+  const activeSubDomain = useUIStore((s) => s.activeSubDomain);
 
-export default function ClinicalC3C4({
-  clinical,
-  handleUpdate,
-  activeSubDomain,
-}: ClinicalC3C4Props) {
+  const handleUpdate = (field: keyof Clinical, val: string | string[]) =>
+    setClinical({ [field]: val } as Partial<Clinical>);
+
   if (activeSubDomain === "C3") {
     return (
       <div className="card">

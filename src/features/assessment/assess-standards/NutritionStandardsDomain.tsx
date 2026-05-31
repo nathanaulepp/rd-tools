@@ -1,7 +1,5 @@
 // src/features/assessment/assess-standards/NutritionStandardsDomain.tsx
-// Phase 8: Two-way cross-domain sync for tempMax/ve/fev1/tbsa/hgb
-//          PSU 2003b eeSource label, checkbox inputs, auto-pull from clinical/labs
-// UPDATED: Added onCrossDomainUpdate prop + wired rendering for all new extra-input types
+// Phase 5: Reads all stores directly. No props for domain state.
 
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 import {
@@ -19,6 +17,14 @@ import {
   ConditionKey,
 } from "./nutritionStandards";
 import { PalSlider } from "./PalSlider";
+
+import { useStandardsStore } from "../../../stores/useStandardsStore";
+import { useAnthroStore } from "../../../stores/useAnthroStore";
+import { useNoteStore } from "../../../stores/useNoteStore";
+import { useDietaryStore } from "../../../stores/useDietaryStore";
+import { useClinicalStore } from "../../../stores/useClinicalStore";
+import { useLabsStore } from "../../../stores/useLabsStore";
+import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -279,20 +285,16 @@ interface ExtraInputRendererProps {
   condition: ConditionKey | "";
   extraInputs: Record<string, string>;
   setExtraInputs: (ei: Record<string, string>) => void;
-  onCrossDomainUpdate?: (update: CrossDomainUpdate) => void;
-  /** Live values from clinical / labs for auto-pull display */
-  clinicalValues?: Record<string, string>;
-  labValues?: Record<string, { current: string; historical: string }>;
 }
 
 function ExtraInputRenderer({
   condition,
   extraInputs,
   setExtraInputs,
-  onCrossDomainUpdate,
-  clinicalValues = {},
-  labValues = {},
 }: ExtraInputRendererProps) {
+  const { clinical, setClinical } = useClinicalStore();
+  const { labs, setLabs } = useLabsStore();
+
   if (!condition) return null;
   const fields = CONDITION_EXTRA_INPUTS[condition as ConditionKey] || [];
   if (fields.length === 0) return null;
@@ -301,10 +303,15 @@ function ExtraInputRenderer({
     setExtraInputs({ ...extraInputs, [key]: value });
 
     // Two-way write-back: if this field has an autoPullFrom, also update the source domain
-    if (autoPullFrom && onCrossDomainUpdate) {
+    if (autoPullFrom) {
       const [domain, fieldKey] = autoPullFrom.split(".");
-      if (domain === "clinical" || domain === "labs") {
-        onCrossDomainUpdate({ domain: domain as "clinical" | "labs", key: fieldKey, value });
+      if (domain === "clinical") {
+        setClinical({ [fieldKey]: value } as any);
+      } else if (domain === "labs") {
+        setLabs({
+          ...labs,
+          [fieldKey]: { ...(labs[fieldKey] ?? { current: "", historical: "" }), current: value },
+        });
       }
     }
   };
@@ -313,8 +320,8 @@ function ExtraInputRenderer({
   const getAutoPulledValue = (autoPullFrom?: string): string => {
     if (!autoPullFrom) return "";
     const [domain, fieldKey] = autoPullFrom.split(".");
-    if (domain === "clinical") return clinicalValues[fieldKey] || "";
-    if (domain === "labs") return labValues[fieldKey]?.current || "";
+    if (domain === "clinical") return (clinical as any)[fieldKey] || "";
+    if (domain === "labs") return labs[fieldKey]?.current || "";
     return "";
   };
 
@@ -381,31 +388,15 @@ function ExtraInputRenderer({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-interface NutritionStandardsDomainProps {
-  anthro: any;
-  patientData: any;
-  calculatedMetrics: any;
-  dietary: any;
-  clinical: any;
-  standards: any;
-  setStandards: (s: any) => void;
-  /** Called when an extra-input writes back to clinical or labs */
-  onCrossDomainUpdate?: (update: CrossDomainUpdate) => void;
-  /** Live lab values for auto-pull */
-  labs?: Record<string, { current: string; historical: string }>;
-}
+export default function NutritionStandardsDomain() {
+  const { standards, setStandards } = useStandardsStore();
+  const { anthro } = useAnthroStore();
+  const { patientData } = useNoteStore();
+  const calculatedMetrics = useCalculatedMetrics();
+  const { dietary } = useDietaryStore();
+  const { clinical } = useClinicalStore();
+  const { labs } = useLabsStore();
 
-export default function NutritionStandardsDomain({
-  anthro,
-  patientData,
-  calculatedMetrics,
-  dietary,
-  clinical,
-  standards,
-  setStandards,
-  onCrossDomainUpdate,
-  labs = {},
-}: NutritionStandardsDomainProps) {
   if (!standards) return <div>Loading standards...</div>;
 
   const wtKg = useMemo(() => toKg(parseFloat(anthro.wt) || 0, anthro.wtUnit || "kg"), [anthro.wt, anthro.wtUnit]);
@@ -426,12 +417,12 @@ export default function NutritionStandardsDomain({
 
   const [evaluation, setEvaluation] = useState<NutritionEvaluation | null>(null);
 
-  // ── Sync to parent ──────────────────────────────────────────────────────────
+  // ── Sync to parent ──
   const syncToParent = useCallback(() => {
     setStandards({ condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs });
-  }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs]);
+  }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs, setStandards]);
 
-  // ── Auto-populate from dietary on first load ────────────────────────────────
+  // ── Auto-populate from dietary on first load ──
   useEffect(() => {
     if (!currentKcal && dietary?.oralCalories) {
       setCurrentKcal(String(Math.round(parseFloat(dietary.oralCalories) || 0) || ""));
@@ -441,8 +432,7 @@ export default function NutritionStandardsDomain({
     }
   }, [dietary]);
 
-  // ── Auto-pull cross-domain values INTO extraInputs on first load ────────────
-  // This ensures fields show auto-pulled values without the user needing to type
+  // ── Auto-pull cross-domain values INTO extraInputs on first load ──
   useEffect(() => {
     if (!condition) return;
     const fields = CONDITION_EXTRA_INPUTS[condition as ConditionKey] || [];
@@ -451,12 +441,11 @@ export default function NutritionStandardsDomain({
 
     for (const f of fields) {
       if (!f.autoPullFrom) continue;
-      // Only auto-fill if user hasn't already set a value
       if (updates[f.key] !== undefined && updates[f.key] !== "") continue;
 
       const [domain, fieldKey] = f.autoPullFrom.split(".");
       let pulled = "";
-      if (domain === "clinical") pulled = clinical?.[fieldKey] || "";
+      if (domain === "clinical") pulled = (clinical as any)?.[fieldKey] || "";
       if (domain === "labs") pulled = labs?.[fieldKey]?.current || "";
 
       if (pulled) {
@@ -468,7 +457,7 @@ export default function NutritionStandardsDomain({
     if (changed) setExtraInputs(updates);
   }, [condition, clinical, labs]);
 
-  // ── Auto-link BMI & Age to sub-types ─────────────────────────────────────────
+  // ── Auto-link BMI & Age to sub-types ──
   useEffect(() => {
     if (!bmi || bmi <= 0) return;
 
@@ -498,9 +487,8 @@ export default function NutritionStandardsDomain({
     }
   }, [condition, bmi, variant, ageYears]);
 
-  // ── Effective weight ────────────────────────────────────────────────────────
+  // ── Effective weight ──
   const { effectiveWeight, weightBasis, nfpeWarning } = useMemo(() => {
-    // NEW: Fluid Shift / EDW override from Anthro domain
     if (anthro.isFluidShift && anthro.edw) {
       const edwKg = toKg(parseFloat(anthro.edw) || 0, anthro.edwUnit || "kg");
       if (edwKg > 0) {
@@ -523,7 +511,7 @@ export default function NutritionStandardsDomain({
     };
   }, [anthro.isFluidShift, anthro.edw, anthro.edwUnit, wtKg, condition, clinical]);
 
-  // ── Missing anthro check ────────────────────────────────────────────────────
+  // ── Missing anthro check ──
   const missingAnthro = useMemo(() => {
     const fields = [];
     if (!sexRaw) fields.push("Sex");
@@ -535,7 +523,7 @@ export default function NutritionStandardsDomain({
 
   const isReady = missingAnthro.length === 0 && !!condition;
 
-  // ── Run evaluation ──────────────────────────────────────────────────────────
+  // ── Run evaluation ──
   const runEvaluation = useCallback(() => {
     if (!isReady) return;
     const result = evaluateNutritionRx({
@@ -564,11 +552,10 @@ export default function NutritionStandardsDomain({
   useEffect(() => {
     if (isReady) runEvaluation();
     syncToParent();
-  }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs, wtKg, htCm, effectiveWeight]);
+  }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs, wtKg, htCm, effectiveWeight, isReady, runEvaluation, syncToParent]);
 
   const variants = condition ? (CONDITION_VARIANTS[condition] || []) : [];
   
-  // NEW: Filter variants by demographics
   const filteredVariants = useMemo(() => {
     return variants.filter(v => {
       if (v.sex && sex && v.sex !== sex) return false;
@@ -581,7 +568,6 @@ export default function NutritionStandardsDomain({
   const icUsedForKcal = !!icKcal && parseFloat(icKcal) > 0;
   const isPSU = evaluation?.eeSource === "PSU 2003b";
 
-  // Helper to check if condition is allowed for demographics
   const isConditionVisible = (key: ConditionKey) => {
     if (key === "pregnancy" || key === "breastfeeding") {
       if (sex === "M") return false;
@@ -590,7 +576,6 @@ export default function NutritionStandardsDomain({
     return true;
   };
 
-  // Determine CAF label based on current icCaf
   const activeCafVal = parseFloat(icCaf) || 1.0;
   const cafLabel = useMemo(() => {
     const factor = IC_ACTIVITY_FACTORS.find(f => activeCafVal >= f.cafLow && activeCafVal <= f.cafHigh);
@@ -740,9 +725,6 @@ export default function NutritionStandardsDomain({
                 condition={condition}
                 extraInputs={extraInputs}
                 setExtraInputs={setExtraInputs}
-                onCrossDomainUpdate={onCrossDomainUpdate}
-                clinicalValues={clinical}
-                labValues={labs}
               />
             )}
           </div>

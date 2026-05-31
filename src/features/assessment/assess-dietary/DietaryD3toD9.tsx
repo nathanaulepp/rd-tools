@@ -1,21 +1,18 @@
 // src/features/assessment/assess-dietary/DietaryD3toD9.tsx
-// Extracted from DietaryDomain.tsx — D3 through D7 and D9.
-// These sub-domains are compact enough to share a file.
+// Phase 5: Reads useDietaryStore and useUIStore directly. No props for domain state.
 
 import React from "react";
+import { useDietaryStore } from "../../../stores/useDietaryStore";
+import { useUIStore } from "../../../stores/useUIStore";
 import type { Dietary } from "../../../types";
 
-interface DietaryD3toD9Props {
-  dietary: Dietary;
-  handleUpdate: (field: string, val: any) => void;
-  activeSubDomain: "D3" | "D4" | "D5" | "D6" | "D7" | "D9";
-}
+export default function DietaryD3toD9() {
+  const { dietary, setDietary } = useDietaryStore();
+  const activeSubDomain = useUIStore((s) => s.activeSubDomain);
 
-export default function DietaryD3toD9({
-  dietary,
-  handleUpdate,
-  activeSubDomain,
-}: DietaryD3toD9Props) {
+  const handleUpdate = (field: keyof Dietary, val: any) =>
+    setDietary({ [field]: val } as Partial<Dietary>);
+
   switch (activeSubDomain) {
     case "D3":
       return (

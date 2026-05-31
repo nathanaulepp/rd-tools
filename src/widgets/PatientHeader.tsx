@@ -1,51 +1,43 @@
 // src/widgets/PatientHeader.tsx
-// Phase 2: Receives patient + note as props. Demographics are read-only.
+// Phase 5: Reads all state directly from stores — zero props.
 // Note date and admission date are editable and auto-save on change.
 // Validation: admissionDate must be >= patient DOB and <= noteDate.
 
 import React, { useState, useEffect } from "react";
-import type { Patient, Note } from "../shared/api/db";
 import { autosaveNote, isFirstEncounterNote } from "../shared/api/db";
 
 import { validateDateBoundaries } from "../shared/utils/dateValidation";
 import { formatAge } from "../shared/utils/date";
 import { Tooltip } from "../shared/ui/Tooltip";
+import { useNoteStore } from "../stores/useNoteStore";
+import { useClinicalStore } from "../stores/useClinicalStore";
+import { useUIStore } from "../stores/useUIStore";
 
-interface PatientHeaderProps {
-  patient: Patient | null;
-  note: Note | null;
-  patientData: any;
-  setPatientData: (d: any) => void;
-  clinical: any;
-  // add these:
-  onExit?: () => void;
-  onSubmit?: () => void;
-  isSubmitted?: boolean;
-  isSaving?: boolean;
-}
+export default function PatientHeader() {
+  const {
+    activePatient: patient,
+    noteId,
+    patientData,
+    setPatientData,
+    noteStatus,
+    isSaving,
+  } = useNoteStore();
 
-export default function PatientHeader({
-  patient,
-  note,
-  patientData,
-  setPatientData,
-  clinical,
-  onExit,
-  onSubmit,
-  isSubmitted,
-  isSaving,
-}: PatientHeaderProps) {
+  const { clinical } = useClinicalStore();
+  const { setSubmitModalOpen, setExitModalOpen } = useUIStore();
+
   const [dateError, setDateError] = useState<string>("");
   const [isInitial, setIsInitial] = useState<boolean>(true);
 
   useEffect(() => {
-    if (note?.id) {
-      isFirstEncounterNote(note.id).then(setIsInitial);
+    if (noteId) {
+      isFirstEncounterNote(noteId).then(setIsInitial);
     }
-  }, [note?.id]);
+  }, [noteId]);
 
   if (!patient) return null;
 
+  const isSubmitted = noteStatus === "submitted";
   const dob = patient.dob;
   const age = (() => {
     if (!dob || !patientData.noteDate) return "--";
@@ -57,27 +49,30 @@ export default function PatientHeader({
     return formatAge(days);
   })();
 
-  const handleDateChange = async (field: "noteDate" | "admissionDate", val: string) => {
+  const handleDateChange = async (
+    field: "noteDate" | "admissionDate",
+    val: string
+  ) => {
     const error = validateDateBoundaries({
       field,
       value: val,
       dob,
-      noteDate:      field === "noteDate"      ? val : patientData.noteDate,
-      admissionDate: field === "admissionDate" ? val : patientData.admissionDate
+      noteDate: field === "noteDate" ? val : patientData.noteDate,
+      admissionDate: field === "admissionDate" ? val : patientData.admissionDate,
     });
 
     if (error) {
       setDateError(error);
-      return; // Reject the change — don't update state or DB
+      return;
     }
 
     setDateError("");
     setPatientData({ ...patientData, [field]: val });
 
-    if (!note?.id) return;
+    if (!noteId) return;
     const dbField = field === "noteDate" ? "note_date" : "admission_date";
     try {
-      await autosaveNote(note.id, dbField, val);
+      await autosaveNote(noteId, dbField, val);
     } catch (e) {
       console.error("Autosave failed:", e);
     }
@@ -114,7 +109,7 @@ export default function PatientHeader({
           <input
             type="date"
             value={patientData.noteDate || ""}
-            onChange={e => handleDateChange("noteDate", e.target.value)}
+            onChange={(e) => handleDateChange("noteDate", e.target.value)}
             style={{
               fontSize: "0.82rem",
               fontWeight: 700,
@@ -130,11 +125,13 @@ export default function PatientHeader({
         {/* Admission Date (editable only if initial) */}
         <div className="vital-stat" style={{ minWidth: "120px" }}>
           <span className="label">Admission Date</span>
-          <Tooltip text={!isInitial ? "Admission date is locked for follow-up notes." : ""}>
+          <Tooltip
+            text={!isInitial ? "Admission date is locked for follow-up notes." : ""}
+          >
             <input
               type="date"
               value={patientData.admissionDate || ""}
-              onChange={e => handleDateChange("admissionDate", e.target.value)}
+              onChange={(e) => handleDateChange("admissionDate", e.target.value)}
               disabled={!isInitial}
               style={{
                 fontSize: "0.82rem",
@@ -151,7 +148,7 @@ export default function PatientHeader({
         </div>
 
         {/* Vital signs (from clinical state — live, read-only display) */}
-        {vitals.map(v => (
+        {vitals.map((v) => (
           <div className="vital-stat" key={v.label}>
             <span className="label">{v.label}</span>
             <span className="value">
@@ -161,16 +158,56 @@ export default function PatientHeader({
           </div>
         ))}
 
-        {(onExit || onSubmit) && (
-          <div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem", alignItems: "center", flexShrink: 0 }}>
-            {isSaving && <span style={{ fontSize: "0.72rem", color: "var(--text-muted)", fontWeight: 600 }}>Saving…</span>}
-            {isSubmitted && (
-              <span style={{ fontSize: "0.7rem", fontWeight: 700, background: "#d4edda", color: "#155724", border: "1px solid #c3e6cb", borderRadius: "10px", padding: "2px 8px" }}>✓ Submitted</span>
-            )}
-            {onExit && <button className="btn-outline-danger" onClick={onExit}>Exit</button>}
-            {onSubmit && !isSubmitted && <button className="btn-primary" onClick={onSubmit}>Submit</button>}
-          </div>
-        )}
+        <div
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            gap: "0.5rem",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          {isSaving && (
+            <span
+              style={{
+                fontSize: "0.72rem",
+                color: "var(--text-muted)",
+                fontWeight: 600,
+              }}
+            >
+              Saving…
+            </span>
+          )}
+          {isSubmitted && (
+            <span
+              style={{
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                background: "#d4edda",
+                color: "#155724",
+                border: "1px solid #c3e6cb",
+                borderRadius: "10px",
+                padding: "2px 8px",
+              }}
+            >
+              ✓ Submitted
+            </span>
+          )}
+          <button
+            className="btn-outline-danger"
+            onClick={() => setExitModalOpen(true)}
+          >
+            Exit
+          </button>
+          {!isSubmitted && (
+            <button
+              className="btn-primary"
+              onClick={() => setSubmitModalOpen(true)}
+            >
+              Submit
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Validation error banner — sits flush below the header */}

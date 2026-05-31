@@ -1,26 +1,20 @@
 // src/features/assessment/assess-anthro/AnthroA6A7.tsx
-// Extracted from AnthroDomain.tsx — handles A6 (Growth Velocity) and A7 (Growth Standards).
-// Phase 4: uses MeasurementInput with date support to remove repeated triple-field pattern.
+// Phase 5: Reads useAnthroStore directly. No props for domain state.
 
 import React from "react";
 import GrowthVelocityTable from "./GrowthVelocityTable";
 import GrowthStandardsTable from "./GrowthStandardsTable";
 import { MeasurementInput } from "../../../shared/ui/MeasurementInput";
+import { useAnthroStore } from "../../../stores/useAnthroStore";
+import { useNoteStore } from "../../../stores/useNoteStore";
+import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 import type { Anthro } from "../../../types";
 
-interface AnthroA6A7Props {
-  anthro: Anthro;
-  setAnthro: (updates: Partial<Anthro>) => void;
-  patientData: any;
-  calculatedMetrics: any;
-}
+export default function AnthroA6A7() {
+  const { anthro, setAnthro } = useAnthroStore();
+  const patientData = useNoteStore((s) => s.patientData);
+  const calculatedMetrics = useCalculatedMetrics();
 
-export default function AnthroA6A7({
-  anthro,
-  setAnthro,
-  patientData,
-  calculatedMetrics,
-}: AnthroA6A7Props) {
   const handleUpdate = (field: keyof Anthro, val: any) =>
     setAnthro({ [field]: val });
 

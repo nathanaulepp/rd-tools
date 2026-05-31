@@ -1,8 +1,9 @@
 // src/stores/useUIStore.ts
-// Global UI state: routing, auth, theme, zoom, sidebar, toast.
-// Replaces the scattered useState calls in App.tsx and CreateNotePage.tsx.
+// Phase 5: Added activeDomain / activeSubDomain so CreateNotePage and Sidebar
+// no longer need those as local useState. All domain routing is global UI state.
 
 import { create } from "zustand";
+import type { DomainKey } from "../widgets/Sidebar";
 
 export type ViewState =
   | "LOGIN"
@@ -29,6 +30,12 @@ interface UIState {
   currentView: ViewState;
   setCurrentView: (view: ViewState) => void;
 
+  // ── Domain navigation (Phase 5: moved out of CreateNotePage) ─────────────
+  activeDomain: DomainKey;
+  activeSubDomain: string;
+  setActiveDomain: (domain: DomainKey) => void;
+  setActiveSubDomain: (sub: string) => void;
+
   // ── Theme ────────────────────────────────────────────────────────────────────
   theme: "light" | "dark";
   setTheme: (theme: "light" | "dark") => void;
@@ -40,6 +47,12 @@ interface UIState {
   // ── Sidebar (mobile) ──────────────────────────────────────────────────────────
   sidebarOpen: boolean;
   setSidebarOpen: (open: boolean) => void;
+
+  // ── Modals (Phase 5) ───────────────────────────────────────────────────────────
+  submitModalOpen: boolean;
+  setSubmitModalOpen: (open: boolean) => void;
+  exitModalOpen: boolean;
+  setExitModalOpen: (open: boolean) => void;
 
   // ── Toast — global notification system ───────────────────────────────────────
   toasts: ToastEntry[];
@@ -61,7 +74,6 @@ export const useUIStore = create<UIState>((set, get) => ({
   logout: () => {
     set({ isAuthenticated: false });
     get().setCurrentView("LOGIN");
-    // Clear active note session on logout
     import("./useNoteStore").then(({ useNoteStore }) => {
       useNoteStore.getState()._clearNote();
     });
@@ -70,6 +82,25 @@ export const useUIStore = create<UIState>((set, get) => ({
   // ── Routing ─────────────────────────────────────────────────────────────────
   currentView: "LOGIN",
   setCurrentView: (view) => set({ currentView: view }),
+
+  // ── Domain navigation ────────────────────────────────────────────────────────
+  activeDomain: "A",
+  activeSubDomain: "A1-A5",
+
+  setActiveDomain: (domain) => {
+    const defaultSub: Partial<Record<DomainKey, string>> = {
+      A: "A1-A5",
+      B: "B1",
+      C: "C1",
+      D: "D1",
+    };
+    set({
+      activeDomain: domain,
+      activeSubDomain: defaultSub[domain] ?? "",
+    });
+  },
+
+  setActiveSubDomain: (sub) => set({ activeSubDomain: sub }),
 
   // ── Theme — persisted to localStorage ────────────────────────────────────────
   theme: (() => {
@@ -98,6 +129,12 @@ export const useUIStore = create<UIState>((set, get) => ({
   // ── Sidebar ──────────────────────────────────────────────────────────────────
   sidebarOpen: false,
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
+
+  // ── Modals ────────────────────────────────────────────────────────────────────
+  submitModalOpen: false,
+  setSubmitModalOpen: (open) => set({ submitModalOpen: open }),
+  exitModalOpen: false,
+  setExitModalOpen: (open) => set({ exitModalOpen: open }),
 
   // ── Toast ─────────────────────────────────────────────────────────────────────
   toasts: [],

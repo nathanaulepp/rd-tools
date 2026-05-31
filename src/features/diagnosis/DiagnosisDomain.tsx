@@ -1,10 +1,5 @@
 // src/features/diagnosis/DiagnosisDomain.tsx
-// Phase 7: Automated PES Builder with Auto-Suggest
-// PATCH: Enhanced Signs & Symptoms suggestions with:
-//   - Categorized hints (Anthropometric, Biochemical, Clinical/Physical, Dietary/Intake)
-//   - "Add Category..." dropdown (Smart Tag) for manual entries
-//   - Expanded contextual evidence from clinical NFPE findings
-//   - Multi-select semicolon-join logic with consistent "used" detection
+// Phase 5: Reads all stores directly. No props for domain state.
 
 import { useState, useRef, useEffect, useMemo } from "react";
 import { DomainHeader } from "../../shared/ui/DomainHeader";
@@ -12,6 +7,21 @@ import { SectionHeader } from "../../shared/ui/SectionHeader";
 import { Field } from "../../shared/ui/Field";
 import { Tooltip } from "../../shared/ui/Tooltip";
 import { formatAge } from "../../shared/utils/date";
+
+import { useDiagnosisStore } from "../../stores/useDiagnosisStore";
+import { useAnthroStore } from "../../stores/useAnthroStore";
+import { useDietaryStore } from "../../stores/useDietaryStore";
+import { useClinicalStore } from "../../stores/useClinicalStore";
+import { useCalculatedMetrics } from "../../stores/useCalculatedMetrics";
+
+import type {
+  Anthro,
+  Clinical,
+  Dietary,
+  Diagnosis,
+  CalculatedMetrics,
+  PESStatement,
+} from "../../types";
 
 import {
   evaluateWeightLoss,
@@ -58,10 +68,10 @@ interface SSHint {
 
 function buildContextualSuggestions(
   problem: string,
-  anthro: any,
-  dietary: any,
-  calculatedMetrics?: any,
-  clinical?: any
+  anthro: Anthro,
+  dietary: Dietary,
+  calculatedMetrics?: CalculatedMetrics,
+  clinical?: Clinical
 ): SSHint[] {
   const hints: SSHint[] = [];
   if (!problem) return hints;
@@ -198,7 +208,7 @@ function buildContextualSuggestions(
 
     if (relevantToMuscle || relevantToFat) {
       Object.entries(muscleFields).forEach(([key, desc]) => {
-        const val = clinical[key];
+        const val = (clinical as any)[key];
         if (val && val !== "Normal" && val !== "") {
           hints.push({
             text: `${val} ${desc} on NFPE`,
@@ -208,7 +218,7 @@ function buildContextualSuggestions(
       });
 
       Object.entries(fatFields).forEach(([key, desc]) => {
-        const val = clinical[key];
+        const val = (clinical as any)[key];
         if (val && val !== "Normal" && val !== "") {
           hints.push({
             text: `${val} ${desc} on NFPE`,
@@ -292,16 +302,14 @@ function buildContextualSuggestions(
   return hints;
 }
 
-// ─── Malnutrition Table Component (unchanged) ─────────────────────────────────
+// ─── Malnutrition Table Component ─────────────────────────────────────────────
 
-interface MalnutritionTableProps {
-  anthro: any;
-  dietary: any;
-  clinical: any;
-  calculatedMetrics: any;
-}
+function MalnutritionTable() {
+  const { anthro } = useAnthroStore();
+  const { dietary } = useDietaryStore();
+  const { clinical } = useClinicalStore();
+  const calculatedMetrics = useCalculatedMetrics();
 
-function MalnutritionTable({ anthro, dietary, clinical, calculatedMetrics }: MalnutritionTableProps) {
   const [context, setContext] = useState<ClinicalContext>("Acute");
 
   const wt  = parseFloat(anthro?.wt  || "0");
@@ -320,7 +328,7 @@ function MalnutritionTable({ anthro, dietary, clinical, calculatedMetrics }: Mal
   const getMaxNFPE = (fields: string[]): Severity => {
     let max: Severity = "None";
     for (const f of fields) {
-      const val = clinical?.[f];
+      const val = (clinical as any)?.[f];
       if (val === "Severe") return "Severe";
       if (val === "Moderate") max = "Moderate";
       else if (val === "Mild" && max === "None") max = "Moderate";
@@ -424,14 +432,14 @@ function MalnutritionTable({ anthro, dietary, clinical, calculatedMetrics }: Mal
               label: "Muscle Wasting",
               mod: "Mild-Moderate",
               sev: "Severe",
-              val: `${muscleFields.filter((f) => clinical?.[f] && clinical?.[f] !== "Normal").length} sites`,
+              val: `${muscleFields.filter((f) => (clinical as any)?.[f] && (clinical as any)?.[f] !== "Normal").length} sites`,
               outcome: criteria.muscleWasting,
             },
             {
               label: "Fat Loss",
               mod: "Mild-Moderate",
               sev: "Severe",
-              val: `${fatFields.filter((f) => clinical?.[f] && clinical?.[f] !== "Normal").length} sites`,
+              val: `${fatFields.filter((f) => (clinical as any)?.[f] && (clinical as any)?.[f] !== "Normal").length} sites`,
               outcome: criteria.fatLoss,
             },
             {
@@ -583,7 +591,7 @@ function SearchableCombobox({ value, onChange, placeholder, options, groupedOpti
   );
 }
 
-// ─── Etiology Suggestion Chips (unchanged) ────────────────────────────────────
+// ─── Etiology Suggestion Chips ────────────────────────────────────────────────
 
 interface EtiologySuggestionsProps {
   problem: string;
@@ -653,15 +661,16 @@ function EtiologySuggestions({ problem, currentEtiology, onAppend, onRemove }: E
 interface SignsSuggestionsProps {
   problem: string;
   currentSigns: string;
-  anthro: any;
-  dietary: any;
-  clinical?: any;
-  calculatedMetrics?: any;
   onAppend: (text: string) => void;
   onRemove: (text: string) => void;
 }
 
-function SignsSuggestions({ problem, currentSigns, anthro, dietary, clinical, calculatedMetrics, onAppend, onRemove }: SignsSuggestionsProps) {
+function SignsSuggestions({ problem, currentSigns, onAppend, onRemove }: SignsSuggestionsProps) {
+  const { anthro } = useAnthroStore();
+  const { dietary } = useDietaryStore();
+  const { clinical } = useClinicalStore();
+  const calculatedMetrics = useCalculatedMetrics();
+
   const allHints = useMemo(
     () => buildContextualSuggestions(problem, anthro, dietary, calculatedMetrics, clinical),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -764,10 +773,6 @@ interface PESCardProps {
   data: { problem: string; etiology: string; signsSymptoms: string };
   onChange: (field: string, val: string) => void;
   onRemove?: () => void;
-  anthro?: any;
-  dietary?: any;
-  clinical?: any;
-  calculatedMetrics?: any;
 }
 
 const ETIOLOGY_DOMAINS = [
@@ -783,7 +788,12 @@ const ETIOLOGY_DOMAINS = [
   "Physical function",
 ];
 
-function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, clinical, calculatedMetrics }: PESCardProps) {
+function PESCard({ index, isPrimary, data, onChange, onRemove }: PESCardProps) {
+  const { anthro } = useAnthroStore();
+  const { dietary } = useDietaryStore();
+  const { clinical } = useClinicalStore();
+  const calculatedMetrics = useCalculatedMetrics();
+
   const [showEtiologySuggestions, setShowEtiologySuggestions] = useState(true);
   const [showSignsSuggestions,    setShowSignsSuggestions]    = useState(true);
 
@@ -976,10 +986,6 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
             <SignsSuggestions
               problem={data.problem}
               currentSigns={data.signsSymptoms}
-              anthro={anthro}
-              dietary={dietary}
-              clinical={clinical}
-              calculatedMetrics={calculatedMetrics}
               onAppend={handleSignsAppend}
               onRemove={handleSignsRemove}
             />
@@ -992,34 +998,24 @@ function PESCard({ index, isPrimary, data, onChange, onRemove, anthro, dietary, 
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-interface DiagnosisDomainProps {
-  diagnosis: any;
-  setDiagnosis: (d: any) => void;
-  anthro?: any;
-  dietary?: any;
-  clinical?: any;
-  calculatedMetrics?: any;
-}
+export default function DiagnosisDomain() {
+  const { diagnosis, setDiagnosis } = useDiagnosisStore();
 
-let _nextId = 2;
-function newDx() {
-  return { id: _nextId++, problem: "", etiology: "", signsSymptoms: "" };
-}
-
-export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dietary, clinical, calculatedMetrics }: DiagnosisDomainProps) {
-  const update = (field: string, val: any) => setDiagnosis({ ...diagnosis, [field]: val });
+  const update = <K extends keyof Diagnosis>(field: K, val: Diagnosis[K]) =>
+    setDiagnosis({ [field]: val });
 
   const addDx = () => {
     setDiagnosis({
-      ...diagnosis,
-      additionalDiagnoses: [...(diagnosis.additionalDiagnoses || []), newDx()],
+      additionalDiagnoses: [
+        ...(diagnosis.additionalDiagnoses || []),
+        { id: Date.now(), problem: "", etiology: "", signsSymptoms: "" },
+      ],
     });
   };
 
-  const updateAdditional = (id: number, field: string, val: string) => {
+  const updateAdditional = (id: number, field: keyof PESStatement, val: string) => {
     setDiagnosis({
-      ...diagnosis,
-      additionalDiagnoses: diagnosis.additionalDiagnoses.map((d: any) =>
+      additionalDiagnoses: diagnosis.additionalDiagnoses.map((d: PESStatement) =>
         d.id === id ? { ...d, [field]: val } : d
       ),
     });
@@ -1027,15 +1023,16 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
 
   const removeAdditional = (id: number) => {
     setDiagnosis({
-      ...diagnosis,
-      additionalDiagnoses: diagnosis.additionalDiagnoses.filter((d: any) => d.id !== id),
+      additionalDiagnoses: diagnosis.additionalDiagnoses.filter(
+        (d: PESStatement) => d.id !== id
+      ),
     });
   };
 
   const pesOptions = useMemo(() => {
     const list: string[] = [];
     if (diagnosis.problem) list.push(diagnosis.problem);
-    (diagnosis.additionalDiagnoses || []).forEach((dx: any) => {
+    (diagnosis.additionalDiagnoses || []).forEach((dx: PESStatement) => {
       if (dx.problem) list.push(dx.problem);
     });
     return list;
@@ -1056,7 +1053,7 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
       <DomainHeader title="Dx. Nutrition Diagnosis" />
 
       {/* ASPEN Malnutrition Engine */}
-      <MalnutritionTable anthro={anthro} dietary={dietary} clinical={clinical} calculatedMetrics={calculatedMetrics} />
+      <MalnutritionTable />
 
       {/* PES Builder */}
       <div className="card">
@@ -1075,26 +1072,18 @@ export default function DiagnosisDomain({ diagnosis, setDiagnosis, anthro, dieta
           index={0}
           isPrimary={true}
           data={{ problem: diagnosis.problem || "", etiology: diagnosis.etiology || "", signsSymptoms: diagnosis.signsSymptoms || "" }}
-          onChange={(field, val) => update(field, val)}
-          anthro={anthro}
-          dietary={dietary}
-          clinical={clinical}
-          calculatedMetrics={calculatedMetrics}
+          onChange={(field, val) => update(field as any, val as any)}
         />
 
         {/* Additional PES */}
-        {(diagnosis.additionalDiagnoses || []).map((dx: any, i: number) => (
+        {(diagnosis.additionalDiagnoses || []).map((dx: PESStatement, i: number) => (
           <PESCard
             key={dx.id}
             index={i + 1}
             isPrimary={false}
             data={{ problem: dx.problem, etiology: dx.etiology, signsSymptoms: dx.signsSymptoms }}
-            onChange={(field, val) => updateAdditional(dx.id, field, val)}
+            onChange={(field, val) => updateAdditional(dx.id, field as any, val)}
             onRemove={() => removeAdditional(dx.id)}
-            anthro={anthro}
-            dietary={dietary}
-            clinical={clinical}
-            calculatedMetrics={calculatedMetrics}
           />
         ))}
       </div>

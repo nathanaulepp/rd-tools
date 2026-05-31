@@ -1,16 +1,14 @@
 // src/features/assessment/assess-anthro/AnthroA8.tsx
-// Extracted from AnthroDomain.tsx — handles A8 (DEXA / Body Composition).
+// Phase 5: Reads useAnthroStore directly. No props.
 
 import React from "react";
 import { AlertBanner } from "../../../shared/ui/AlertBanner";
+import { useAnthroStore } from "../../../stores/useAnthroStore";
 import type { DexaScan } from "../../../types";
 
-interface AnthroA8Props {
-  dexaScans: DexaScan[];
-  setDexaScans: (scans: DexaScan[]) => void;
-}
+export default function AnthroA8() {
+  const { dexaScans, setDexaScans } = useAnthroStore();
 
-export default function AnthroA8({ dexaScans, setDexaScans }: AnthroA8Props) {
   const addDexaScan = () =>
     setDexaScans([
       ...dexaScans,

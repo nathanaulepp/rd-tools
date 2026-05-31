@@ -1,11 +1,12 @@
 // src/features/intervention/InterventionDomain.tsx
-// Phase 6: Nutrition Intervention domain (ADIME "I")
-// Covers ND (Delivery), E (Education), C (Counseling), CC (Coordination)
+// Phase 5: Reads useInterventionStore directly. No props for domain state.
 
 import React from "react";
 import { DomainHeader } from "../../shared/ui/DomainHeader";
 import { SectionHeader } from "../../shared/ui/SectionHeader";
 import { ChipGroup } from "../../shared/ui/ChipGroup";
+import { useInterventionStore } from "../../stores/useInterventionStore";
+import type { Intervention } from "../../types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -52,13 +53,11 @@ function SubSection({ title, color, children }: { title: string; color: string; 
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-interface InterventionDomainProps {
-  intervention: any;
-  setIntervention: (i: any) => void;
-}
+export default function InterventionDomain() {
+  const { intervention, setIntervention } = useInterventionStore();
 
-export default function InterventionDomain({ intervention, setIntervention }: InterventionDomainProps) {
-  const update = (field: string, val: any) => setIntervention({ ...intervention, [field]: val });
+  const update = (field: keyof Intervention, val: any) =>
+    setIntervention({ [field]: val } as Partial<Intervention>);
 
   const i = intervention || {};
 

@@ -1,9 +1,6 @@
 // src/widgets/Sidebar.tsx
-// Extracted from CreateNotePage.tsx (Phase 3).
-// Renders the left navigation rail: domain links, sub-domain links,
-// submit button, settings button, and the mobile close button.
-//
-// All state reads come from stores (no prop drilling).
+// Phase 5: Reads useUIStore directly for navigation state. No props for routing.
+// Actions like onExitRequest and onSubmitClick are still passed from the page shell.
 
 import React from "react";
 import { useUIStore }  from "../stores/useUIStore";
@@ -37,23 +34,15 @@ const SINGLE_DOMAINS: { key: DomainKey; label: string }[] = [
 ];
 
 interface SidebarProps {
-  activeDomain: DomainKey;
-  activeSubDomain: string;
-  onDomainSwitch: (domain: DomainKey) => void;
-  onSubDomainSwitch: (sub: string) => void;
   onSubmitClick: () => void;
   onExitRequest: () => void;
 }
 
 export default function Sidebar({
-  activeDomain,
-  activeSubDomain,
-  onDomainSwitch,
-  onSubDomainSwitch,
   onSubmitClick,
   onExitRequest,
 }: SidebarProps) {
-  const { sidebarOpen, setSidebarOpen } = useUIStore();
+  const { activeDomain, activeSubDomain, setActiveDomain, setActiveSubDomain, sidebarOpen, setSidebarOpen } = useUIStore();
   const noteStatus = useNoteStore((s) => s.noteStatus);
   const calculatedMetrics = useCalculatedMetrics();
 
@@ -66,6 +55,11 @@ export default function Sidebar({
     }
     return true;
   });
+
+  const handleDomainClick = (domain: DomainKey) => {
+    setActiveDomain(domain);
+    if (window.innerWidth <= 768) setSidebarOpen(false);
+  };
 
   return (
     <nav className={`sidebar ${sidebarOpen ? "open" : ""}`}>
@@ -84,7 +78,7 @@ export default function Sidebar({
         <NavItem
           label="A. Anthropometrics"
           active={activeDomain === "A"}
-          onClick={() => onDomainSwitch("A")}
+          onClick={() => handleDomainClick("A")}
         />
         {activeDomain === "A" && (
           <div className="sub-nav">
@@ -93,7 +87,7 @@ export default function Sidebar({
                 key={cat.id}
                 label={cat.title}
                 active={activeSubDomain === cat.id}
-                onClick={() => onSubDomainSwitch(cat.id)}
+                onClick={() => setActiveSubDomain(cat.id)}
               />
             ))}
           </div>
@@ -103,7 +97,7 @@ export default function Sidebar({
         <NavItem
           label="B. Biochemical Data"
           active={activeDomain === "B"}
-          onClick={() => onDomainSwitch("B")}
+          onClick={() => handleDomainClick("B")}
         />
         {activeDomain === "B" && (
           <div className="sub-nav">
@@ -112,7 +106,7 @@ export default function Sidebar({
                 key={cat.id}
                 label={cat.title}
                 active={activeSubDomain === cat.id}
-                onClick={() => onSubDomainSwitch(cat.id)}
+                onClick={() => setActiveSubDomain(cat.id)}
               />
             ))}
           </div>
@@ -122,7 +116,7 @@ export default function Sidebar({
         <NavItem
           label="C. Clinical &amp; NFPE"
           active={activeDomain === "C"}
-          onClick={() => onDomainSwitch("C")}
+          onClick={() => handleDomainClick("C")}
         />
         {activeDomain === "C" && (
           <div className="sub-nav">
@@ -131,7 +125,7 @@ export default function Sidebar({
                 key={cat.id}
                 label={cat.title}
                 active={activeSubDomain === cat.id}
-                onClick={() => onSubDomainSwitch(cat.id)}
+                onClick={() => setActiveSubDomain(cat.id)}
               />
             ))}
           </div>
@@ -141,7 +135,7 @@ export default function Sidebar({
         <NavItem
           label="D. Dietary Data"
           active={activeDomain === "D"}
-          onClick={() => onDomainSwitch("D")}
+          onClick={() => handleDomainClick("D")}
         />
         {activeDomain === "D" && (
           <div className="sub-nav">
@@ -150,7 +144,7 @@ export default function Sidebar({
                 key={cat.id}
                 label={cat.title}
                 active={activeSubDomain === cat.id}
-                onClick={() => onSubDomainSwitch(cat.id)}
+                onClick={() => setActiveSubDomain(cat.id)}
               />
             ))}
           </div>
@@ -160,7 +154,7 @@ export default function Sidebar({
         <NavItem
           label="Comparative Standards"
           active={activeDomain === "S"}
-          onClick={() => onDomainSwitch("S")}
+          onClick={() => handleDomainClick("S")}
         />
 
         {/* Diagnosis & Planning section label */}
@@ -171,7 +165,7 @@ export default function Sidebar({
             key={key}
             label={label}
             active={activeDomain === key}
-            onClick={() => onDomainSwitch(key)}
+            onClick={() => handleDomainClick(key)}
           />
         ))}
 

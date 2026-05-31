@@ -1,10 +1,12 @@
 // src/features/monitor-evalue/MonitorEvalDomain.tsx
-// Phase 6: Monitoring & Evaluation domain (ADIME "ME")
+// Phase 5: Reads useMonitorEvalStore directly. No props for domain state.
 
 import React from "react";
 import { DomainHeader } from "../../shared/ui/DomainHeader";
 import { SectionHeader } from "../../shared/ui/SectionHeader";
 import { ChipGroup } from "../../shared/ui/ChipGroup";
+import { useMonitorEvalStore } from "../../stores/useMonitorEvalStore";
+import type { MonitorEval } from "../../types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -61,16 +63,14 @@ function CriteriaRow({ label, value, onChange }: { label: string; value: string;
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-interface MonitorEvalDomainProps {
-  monitorEval: any;
-  setMonitorEval: (me: any) => void;
-}
+export default function MonitorEvalDomain() {
+  const { monitorEval, setMonitorEval } = useMonitorEvalStore();
 
-export default function MonitorEvalDomain({ monitorEval, setMonitorEval }: MonitorEvalDomainProps) {
-  const update = (field: string, val: any) => setMonitorEval({ ...monitorEval, [field]: val });
+  const update = (field: keyof MonitorEval, val: any) =>
+    setMonitorEval({ [field]: val } as Partial<MonitorEval>);
 
   const me = monitorEval || {};
-  const progressColor = OUTCOME_COLORS[me.outcome_progress] || "#718096";
+  const progressColor = OUTCOME_COLORS[me.outcome_progress as string] || "#718096";
 
   return (
     <div className="fade-in">

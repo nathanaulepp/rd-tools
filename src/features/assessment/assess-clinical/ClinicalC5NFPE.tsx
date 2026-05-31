@@ -1,14 +1,10 @@
 // src/features/assessment/assess-clinical/ClinicalC5NFPE.tsx
-// Extracted from ClinicalDomain.tsx — C5 (Nutrition Focused Physical Exam).
+// Phase 5: Reads useClinicalStore directly. No props for domain state.
 
 import React from "react";
 import { ChipGroup } from "../../../shared/ui/ChipGroup";
+import { useClinicalStore } from "../../../stores/useClinicalStore";
 import type { Clinical } from "../../../types";
-
-interface ClinicalC5NFPEProps {
-  clinical: Clinical;
-  handleUpdate: (field: string, val: string | string[]) => void;
-}
 
 const NFPE_OPTIONS = ["Normal", "Mild", "Moderate", "Severe"];
 
@@ -85,7 +81,12 @@ const MICRONUTRIENT_CATEGORIES = [
   },
 ];
 
-export default function ClinicalC5NFPE({ clinical, handleUpdate }: ClinicalC5NFPEProps) {
+export default function ClinicalC5NFPE() {
+  const { clinical, setClinical } = useClinicalStore();
+
+  const handleUpdate = (field: keyof Clinical, val: string | string[]) =>
+    setClinical({ [field]: val } as Partial<Clinical>);
+
   return (
     <div className="fade-in">
       {/* C51: Muscle Mass Wasting */}
@@ -94,7 +95,7 @@ export default function ClinicalC5NFPE({ clinical, handleUpdate }: ClinicalC5NFP
         <div className="grid-2-col">
           {["Temples", "Clavicles", "Shoulders", "Scapula", "Interosseous", "Thighs", "Calves"].map(
             (muscle) => {
-              const key = muscle.toLowerCase();
+              const key = muscle.toLowerCase() as keyof Clinical;
               return (
                 <div className="input-group" key={muscle}>
                   <label>{muscle}</label>
@@ -117,7 +118,7 @@ export default function ClinicalC5NFPE({ clinical, handleUpdate }: ClinicalC5NFP
         <h4 className="mb-1">C52: Subcutaneous Fat Loss</h4>
         <div className="grid-2-col">
           {["Orbital", "Cheek", "TricepsFat", "MidAxillary"].map((fatStr) => {
-            const key = fatStr.charAt(0).toLowerCase() + fatStr.slice(1);
+            const key = (fatStr.charAt(0).toLowerCase() + fatStr.slice(1)) as keyof Clinical;
             return (
               <div className="input-group" key={fatStr}>
                 <label>{fatStr.replace("Fat", "")}</label>
@@ -198,7 +199,7 @@ export default function ClinicalC5NFPE({ clinical, handleUpdate }: ClinicalC5NFP
         <h4 className="mb-1">C55: Micronutrient Signs (Physical Exam)</h4>
         <div className="grid-3-col">
           {MICRONUTRIENT_CATEGORIES.map(({ area, options }) => {
-            const key = area.replace(/^(.)/, (c: string) => c.toLowerCase());
+            const key = area.replace(/^(.)/, (c: string) => c.toLowerCase()) as keyof Clinical;
             return (
               <div className="input-group" key={area}>
                 <label>{area.replace(/([A-Z])/g, " $1").trim()}</label>

@@ -1,22 +1,20 @@
 // src/features/assessment/assess-dietary/DietaryD8Supplements.tsx
-// Extracted from DietaryDomain.tsx — D8 (Supplements & Drug-Nutrient Interactions).
+// Phase 5: Reads useDietaryStore and useClinicalStore directly. No props for domain state.
 
 import React, { useMemo } from "react";
 import { AlertBanner } from "../../../shared/ui/AlertBanner";
 import DrugNutrientInteractionTable from "./DrugNutrientInteractionTable";
+import { useDietaryStore } from "../../../stores/useDietaryStore";
+import { useClinicalStore } from "../../../stores/useClinicalStore";
 import type { Dietary } from "../../../types";
 
-interface DietaryD8SupplementsProps {
-  dietary: Dietary;
-  handleUpdate: (field: string, val: any) => void;
-  clinical: any;
-}
+export default function DietaryD8Supplements() {
+  const { dietary, setDietary } = useDietaryStore();
+  const { clinical } = useClinicalStore();
 
-export default function DietaryD8Supplements({
-  dietary,
-  handleUpdate,
-  clinical,
-}: DietaryD8SupplementsProps) {
+  const handleUpdate = (field: keyof Dietary, val: any) =>
+    setDietary({ [field]: val } as Partial<Dietary>);
+
   const drugs = useMemo(() => {
     try {
       const parsed = JSON.parse(clinical?.medications || "[]");

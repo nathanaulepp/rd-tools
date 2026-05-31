@@ -1,20 +1,20 @@
-import React from 'react';
-import { LAB_CATEGORIES } from '../../../shared/constants/labCategories';
-import { BIOCHEMICAL_CATEGORIES } from '../../../shared/constants/adimeSideBarCategories';
+// src/features/assessment/assess-biochemical/BiochemicalDomain.tsx
+// Phase 5: Reads useLabsStore directly. No props for domain state.
 
-import { DomainHeader } from '../../../shared/ui/DomainHeader';
+import React from "react";
+import { LAB_CATEGORIES } from "../../../shared/constants/labCategories";
+import { BIOCHEMICAL_CATEGORIES } from "../../../shared/constants/adimeSideBarCategories";
+import { DomainHeader } from "../../../shared/ui/DomainHeader";
+import { useLabsStore } from "../../../stores/useLabsStore";
+import { useUIStore } from "../../../stores/useUIStore";
 
-export default function BiochemicalDomain({ labs, setLabs, activeSubDomain }: any) {
-  const updateLab = (field: string, type: 'current' | 'historical', val: string) => {
-    setLabs({
-      ...labs,
-      [field]: { ...labs[field], [type]: val }
-    });
-  };
+export default function BiochemicalDomain() {
+  const { labs, updateLabField } = useLabsStore();
+  const activeSubDomain = useUIStore((s) => s.activeSubDomain);
 
   const renderContent = () => {
     // Extract index from B1, B2, etc.
-    const categoryIndex = parseInt(activeSubDomain?.replace('B', '') || '1') - 1;
+    const categoryIndex = parseInt(activeSubDomain?.replace("B", "") || "1") - 1;
     const category = LAB_CATEGORIES[categoryIndex];
 
     if (!category) return <div>Select a sub-domain from the sidebar.</div>;
@@ -26,24 +26,28 @@ export default function BiochemicalDomain({ labs, setLabs, activeSubDomain }: an
           <table className="lab-table">
             <thead>
               <tr>
-                <th style={{ width: '40%' }}>Test Name</th>
-                <th style={{ width: '30%' }}>Historical Value</th>
-                <th style={{ width: '30%' }}>Current Value</th>
+                <th style={{ width: "40%" }}>Test Name</th>
+                <th style={{ width: "30%" }}>Historical Value</th>
+                <th style={{ width: "30%" }}>Current Value</th>
               </tr>
             </thead>
             <tbody>
-              {category.fields.map(field => {
+              {category.fields.map((field) => {
                 const currentVal = labs[field]?.current || "";
                 const historicalVal = labs[field]?.historical || "";
                 return (
                   <tr key={field}>
-                    <td><strong>{field}</strong></td>
+                    <td>
+                      <strong>{field}</strong>
+                    </td>
                     <td>
                       <input
                         type="text"
                         placeholder="--"
                         value={historicalVal}
-                        onChange={e => updateLab(field, 'historical', e.target.value)}
+                        onChange={(e) =>
+                          updateLabField(field, "historical", e.target.value)
+                        }
                       />
                     </td>
                     <td>
@@ -51,7 +55,9 @@ export default function BiochemicalDomain({ labs, setLabs, activeSubDomain }: an
                         type="text"
                         placeholder="--"
                         value={currentVal}
-                        onChange={e => updateLab(field, 'current', e.target.value)}
+                        onChange={(e) =>
+                          updateLabField(field, "current", e.target.value)
+                        }
                       />
                     </td>
                   </tr>
@@ -66,7 +72,12 @@ export default function BiochemicalDomain({ labs, setLabs, activeSubDomain }: an
 
   return (
     <div className="fade-in">
-      <DomainHeader title={BIOCHEMICAL_CATEGORIES.find(c => c.id === activeSubDomain)?.title || "Biochemical Data"} />
+      <DomainHeader
+        title={
+          BIOCHEMICAL_CATEGORIES.find((c) => c.id === activeSubDomain)?.title ||
+          "Biochemical Data"
+        }
+      />
       {renderContent()}
     </div>
   );

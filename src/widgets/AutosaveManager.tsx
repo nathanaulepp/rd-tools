@@ -94,35 +94,6 @@ export default function AutosaveManager({
     prevDomainRef.current = activeDomain;
   }, [activeDomain, flush]);
 
-  // ── Cross-domain write-back ─────────────────────────────────────────────
-  // Standards domain calls this when it wants to write tempMax / ve / fev1 / tbsa
-  // back into clinical, or lab values back into labs.
-  // We expose this function on the manager ref so CreateNotePage can pass it
-  // as a prop to NutritionStandardsDomain.
-  const handleCrossDomainUpdate = useCallback(
-    ({ domain, key, value }: CrossDomainUpdate) => {
-      if (domain === "clinical") {
-        setClinical({ [key]: value } as Parameters<typeof setClinical>[0]);
-      } else if (domain === "labs") {
-        const current = labsRef.current;
-        setLabs({
-          ...current,
-          [key]: { ...(current[key] ?? { current: "", historical: "" }), current: value },
-        });
-      }
-    },
-    [setClinical, setLabs]
-  );
-
-  // Expose cross-domain handler too
-  useEffect(() => {
-    managerRef.current = {
-      flushDietary: flush,
-    };
-    // Attach separately so flush closure stays stable
-    (managerRef.current as any).handleCrossDomainUpdate = handleCrossDomainUpdate;
-  }, [managerRef, flush, handleCrossDomainUpdate]);
-
   // Invisible — renders nothing
   return null;
 }

@@ -1,19 +1,16 @@
 // src/features/assessment/assess-dietary/DietaryD2Intake.tsx
-// Extracted from DietaryDomain.tsx — D2 (24-Hour Recall & Intake Factors).
+// Phase 5: Reads useDietaryStore directly. No props for domain state.
 
 import React, { useState } from "react";
+import { useDietaryStore } from "../../../stores/useDietaryStore";
 import type { Dietary } from "../../../types";
 
-interface DietaryD2IntakeProps {
-  dietary: Dietary;
-  handleUpdate: (field: string, val: any) => void;
-}
-
-export default function DietaryD2Intake({
-  dietary,
-  handleUpdate,
-}: DietaryD2IntakeProps) {
+export default function DietaryD2Intake() {
+  const { dietary, setDietary } = useDietaryStore();
   const [recallStep, setRecallStep] = useState(0);
+
+  const handleUpdate = (field: keyof Dietary, val: any) =>
+    setDietary({ [field]: val } as Partial<Dietary>);
 
   const recall = dietary?.recall || [];
   const currentMeal = recall[recallStep] || { label: "Meal 1", value: "" };

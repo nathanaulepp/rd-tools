@@ -1,7 +1,10 @@
+// src/features/assessment/assess-dietary/D1NutritionRx.tsx
+// Phase 5: Reads useDietaryStore and useAnthroStore directly. No props for domain state.
+
 import React, { useState } from "react";
 import * as helper from "./helper";
 import * as constant from "./constant";
-import { Dietary, MicroNutrientParams, ENFeed, PNFeed, ENState, PNState } from "../../../shared/types/index";
+import { MicroNutrientParams, ENFeed, PNFeed, ENState, PNState } from "../../../shared/types/index";
 import { Field } from "../../../shared/ui/Field";
 import { NumInput } from "../../../shared/ui/NumInput";
 import { SelectInput as Sel } from "../../../shared/ui/SelectInput";
@@ -9,6 +12,9 @@ import { StatChip as NutrientChip } from "../../../shared/ui/StatChip";
 import { CollapseHeader } from "../../../shared/ui/CollapseHeader";
 import { SectionHeader } from "../../../shared/ui/SectionHeader";
 import { Tooltip } from "../../../shared/ui/Tooltip";
+import { useDietaryStore } from "../../../stores/useDietaryStore";
+import { useAnthroStore } from "../../../stores/useAnthroStore";
+import type { Dietary } from "../../../types";
 
 // ─── GIR Badge ────────────────────────────────────────────────────────────────
 function GIRBadge({ dextGPerDay, wtKg, label = "GIR" }: { dextGPerDay: number; wtKg: number; label?: string }) {
@@ -131,7 +137,7 @@ function MacroSection({
         {onFreq && (
           <Field label="Frequency">
             <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
-              <select value={freq} onChange={e => onFreq(e.target.value)}
+              <select value={freq} onChange={e => onFreq!(e.target.value)}
                 style={{ padding: "5px 4px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.85rem", flex: 1 }}>
                 {constant.LIPID_FREQ_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
@@ -841,7 +847,7 @@ function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg }: PNFeedCardPr
               patientWtKg={patientWtKg}
             />
           ) : (
-            <div style={{ background: "#f8f4ff", border: "1px solid #e9d8fd", borderRadius: "7px", padding: "0.65rem 0.75rem", marginBottom: "0.6rem" }}>
+            <div style={{ background: "#f8f4ff", border: "1px solid #e9d8fd", borderRadius: "7px", padding: "0.85rem 1rem", marginBottom: "0.6rem", color: "#4a5568" }}>
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
                 <NutrientChip label="Est. Calories" value={totalCal  > 0 ? totalCal  : "—"} unit="kcal/day" color="#e67e22" />
                 <NutrientChip label="Est. Protein"  value={totalProt > 0 ? totalProt : "—"} unit="g/day"    color="#8e44ad" />
@@ -954,32 +960,29 @@ const TABS = [
   { id: "D13", label: "D13 – Parenteral", color: "#8e44ad" },
 ];
 
-interface D1NutritionRxProps {
-  dietary?: Dietary;
-  setDietary?: (d: Dietary | ((prev: Dietary) => Dietary)) => void;
-  /** Patient weight kg forwarded from anthro state for GIR calculation */
-  patientWtKg?: number;
-}
+export default function D1NutritionRx() {
+  const { dietary, setDietary } = useDietaryStore();
+  const { anthro } = useAnthroStore();
+  const patientWtKg = helper.num(anthro.weight);
 
-export default function D1NutritionRx({ dietary = {}, setDietary = () => {}, patientWtKg = 0 }: D1NutritionRxProps) {
   const [activeTab, setActiveTab] = useState<string>("D11");
 
   const savedFormulas: string[] = (dietary as any).savedFormulas || [];
 
   const handleAddFormula = (name: string) => {
     if (savedFormulas.includes(name)) return;
-    setDietary((prev: Dietary) => ({ ...prev, savedFormulas: [...((prev as any).savedFormulas || []), name] } as any));
+    setDietary({ savedFormulas: [...((dietary as any).savedFormulas || []), name] } as any);
   };
 
   const handleDeleteFormula = (name: string) => {
-    setDietary((prev: Dietary) => ({ ...prev, savedFormulas: ((prev as any).savedFormulas || []).filter((f: string) => f !== name) } as any));
+    setDietary({ savedFormulas: ((dietary as any).savedFormulas || []).filter((f: string) => f !== name) } as any);
   };
 
   const enState: ENState = (dietary as any).enState || { feeds: [helper.makeENFeed(1)], savedFormulas: [], nextId: 2 };
   const pnState: PNState = (dietary as any).pnState || { bags: [helper.makePNFeed(1)], nextId: 2 };
 
-  const setEnState = (s: ENState) => setDietary((prev: Dietary) => ({ ...prev, enState: s } as any));
-  const setPnState = (s: PNState) => setDietary((prev: Dietary) => ({ ...prev, pnState: s } as any));
+  const setEnState = (s: ENState) => setDietary({ enState: s } as any);
+  const setPnState = (s: PNState) => setDietary({ pnState: s } as any);
 
   return (
     <div className="fade-in">

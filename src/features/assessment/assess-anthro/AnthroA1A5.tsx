@@ -1,12 +1,12 @@
 // src/features/assessment/assess-anthro/AnthroA1A5.tsx
-// Extracted from AnthroDomain.tsx (Phase 3).
-// Phase 4: uses MeasurementInput to eliminate repeated label+input+select boilerplate.
-// Handles: A1-A3 Height/Weight/BMI/UBW, A4 Circumferences, A5 Skinfolds,
-//          Fluid shift / EDW, Amputation toggles.
+// Phase 5: Reads useAnthroStore directly — no anthro/setAnthro props.
+// calculatedMetrics consumed via useCalculatedMetrics() hook internally.
 
 import React, { useMemo } from "react";
 import { formatAge } from "../../../shared/utils/date";
 import { MeasurementInput } from "../../../shared/ui/MeasurementInput";
+import { useAnthroStore } from "../../../stores/useAnthroStore";
+import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 import type { Anthro } from "../../../types";
 
 const AMPUTATION_DATA = [
@@ -19,17 +19,14 @@ const AMPUTATION_DATA = [
   { label: "Entire Leg",       pct: 16.0 },
 ] as const;
 
-interface AnthroA1A5Props {
-  anthro: Anthro;
-  setAnthro: (updates: Partial<Anthro>) => void;
-  calculatedMetrics: any;
-}
+export default function AnthroA1A5() {
+  const { anthro, setAnthro } = useAnthroStore();
+  const calculatedMetrics = useCalculatedMetrics();
 
-export default function AnthroA1A5({ anthro, setAnthro, calculatedMetrics }: AnthroA1A5Props) {
   const handleUpdate = (field: keyof Anthro, val: any) =>
     setAnthro({ [field]: val });
 
-  const adjIbw = calculatedMetrics?.adjIbw;
+  const { adjIbw, bmi, ubwTimeframeDays } = calculatedMetrics;
 
   const wtChangeDetails = useMemo(() => {
     if (!anthro.wt || !anthro.ubw) return null;
@@ -43,12 +40,16 @@ export default function AnthroA1A5({ anthro, setAnthro, calculatedMetrics }: Ant
     const isSevere = isLoss && Math.abs(pct) >= 5.0;
 
     const timeStr =
-      calculatedMetrics?.ubwTimeframeDays != null
-        ? formatAge(calculatedMetrics.ubwTimeframeDays)
-        : null;
+      ubwTimeframeDays != null ? formatAge(ubwTimeframeDays) : null;
 
-    return { pctString: pct.toFixed(1), absPctString: Math.abs(pct).toFixed(1), isLoss, isSevere, timeStr };
-  }, [anthro.wt, anthro.ubw, calculatedMetrics?.ubwTimeframeDays]);
+    return {
+      pctString: pct.toFixed(1),
+      absPctString: Math.abs(pct).toFixed(1),
+      isLoss,
+      isSevere,
+      timeStr,
+    };
+  }, [anthro.wt, anthro.ubw, ubwTimeframeDays]);
 
   const toggleAmputation = (label: string) => {
     const current = anthro.amputations ?? [];
@@ -69,13 +70,12 @@ export default function AnthroA1A5({ anthro, setAnthro, calculatedMetrics }: Ant
           <div style={{ display: "flex", gap: "8px" }}>
             <span
               className={`chip ${
-                calculatedMetrics?.bmi !== "--" &&
-                Number(calculatedMetrics?.bmi) < 18.5
+                bmi !== "--" && Number(bmi) < 18.5
                   ? "active-danger"
                   : "active"
               }`}
             >
-              BMI: {calculatedMetrics?.bmi || "--"}
+              BMI: {bmi}
             </span>
             {wtChangeDetails && (
               <span
@@ -220,10 +220,10 @@ export default function AnthroA1A5({ anthro, setAnthro, calculatedMetrics }: Ant
           </select>
         </h4>
         <div className="grid-4-col">
-          <MeasurementInput label="Waist"        value={anthro.waist} onChange={(v) => handleUpdate("waist", v)} />
+          <MeasurementInput label="Waist"         value={anthro.waist} onChange={(v) => handleUpdate("waist", v)} />
           <MeasurementInput label="Mid-Arm (MAC)" value={anthro.mac}   onChange={(v) => handleUpdate("mac", v)} />
-          <MeasurementInput label="Calf"          value={anthro.calf}  onChange={(v) => handleUpdate("calf", v)} />
-          <MeasurementInput label="Head"          value={anthro.head}  onChange={(v) => handleUpdate("head", v)} />
+          <MeasurementInput label="Calf"           value={anthro.calf}  onChange={(v) => handleUpdate("calf", v)} />
+          <MeasurementInput label="Head"           value={anthro.head}  onChange={(v) => handleUpdate("head", v)} />
         </div>
       </div>
 
