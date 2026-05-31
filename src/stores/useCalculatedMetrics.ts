@@ -7,7 +7,13 @@
 
 import { useAnthroStore } from "./useAnthroStore";
 import { useNoteStore } from "./useNoteStore";
+import { useStandardsStore } from "./useStandardsStore";
 import { calcIBW } from "../features/assessment/assess-standards/nutritionStandards";
+import { 
+  calculatePediatricHealthyEER, 
+  calculatePediatricHealthyProtein, 
+  calculateHollidaySegar 
+} from "../shared/utils/pediatricHealthyMath";
 
 // ─── Amputation lookup table ──────────────────────────────────────────────────
 
@@ -87,6 +93,11 @@ export interface CalculatedMetrics {
   // Handy boolean
   isAdult: boolean; // ageDays >= 6570 (18 years)
   isPediatric: boolean; // ageDays < 6570
+
+  // Healthy Pediatric Targets (DRI/EER)
+  pediatricEER: number | null;
+  pediatricProtein: number | null;
+  pediatricFluid: number | null;
 }
 
 // ─── Hook ─────────────────────────────────────────────────────────────────────
@@ -149,6 +160,37 @@ export function useCalculatedMetrics(): CalculatedMetrics {
   const isAdult = ageDays !== null && ageDays >= 6570; // 18 * 365.25 ≈ 6570
   const isPediatric = !isAdult;
 
+  // ── Healthy Pediatric DRI/EER ─────────────────────────────────────────────
+  const standards = useStandardsStore((s) => s.standards);
+  const condition = standards.condition;
+
+  let pediatricEER: number | null = null;
+  let pediatricProtein: number | null = null;
+  let pediatricFluid: number | null = null;
+
+  if (isPediatric && condition === "healthy" && ageDays !== null) {
+    const pal = parseFloat(standards.extraInputs.pal) || 1.2;
+
+    // Basic weight status check for EER stratification (3-18y)
+    // In a full implementation, this would use growth chart Z-scores.
+    // For now, we use BMI >= 25 as a proxy for overweight if age >= 2, 
+    // or just default to false if younger.
+    const bmiNum = parseFloat(bmi) || 0;
+    const isOverweight = ageDays >= 730 && bmiNum >= 25;
+
+    pediatricEER = calculatePediatricHealthyEER({
+      ageDays,
+      weightKg: wtKg,
+      heightCm: htCm,
+      sex,
+      pal,
+      isOverweight,
+    });
+
+    pediatricProtein = calculatePediatricHealthyProtein(ageDays, wtKg);
+    pediatricFluid = calculateHollidaySegar(wtKg);
+  }
+
   return {
     bmi,
     ibw: ibwKg,
@@ -164,5 +206,8 @@ export function useCalculatedMetrics(): CalculatedMetrics {
     htDisplayUnit,
     isAdult,
     isPediatric,
+    pediatricEER,
+    pediatricProtein,
+    pediatricFluid,
   };
-}
+  }
