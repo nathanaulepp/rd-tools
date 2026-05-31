@@ -1,23 +1,38 @@
 // src/pages/CreateNotePage.tsx
-// Phase 6: Added Diagnosis (Dx), Intervention (I), Monitor/Eval (ME) domains
-// Phase 8: Added onCrossDomainUpdate prop wiring for cross-domain auto-pull write-back
-//          (tempMax/ve → clinical; hgb → labs; tbsa/fev1 → clinical)
+// Phase 2 refactor: All domain state now comes from Zustand stores.
+// No props accepted — this component is a pure store consumer.
 
 import React, { useState, useRef, useCallback, useEffect } from "react";
-import type { Patient, Note } from "../shared/api/db";
-import { autosaveNote, submitNote, deleteNote } from "../shared/api/db";
+import { submitNote, deleteNote } from "../shared/api/db";
 import { useEscapeBackout } from "../shared/utils/ShortcutContext";
 
-import PatientHeader from "../widgets/PatientHeader";
-import AnthroDomain from "../features/assessment/assess-anthro/AnthroDomain";
+// Stores
+import { useNoteStore }         from "../stores/useNoteStore";
+import { useUIStore }           from "../stores/useUIStore";
+import { useAnthroStore }       from "../stores/useAnthroStore";
+import { useLabsStore }         from "../stores/useLabsStore";
+import { useClinicalStore }     from "../stores/useClinicalStore";
+import { useDietaryStore }      from "../stores/useDietaryStore";
+import { useDiagnosisStore }    from "../stores/useDiagnosisStore";
+import { useInterventionStore } from "../stores/useInterventionStore";
+import { useMonitorEvalStore }  from "../stores/useMonitorEvalStore";
+import { useStandardsStore }    from "../stores/useStandardsStore";
+import { useCalculatedMetrics } from "../stores/useCalculatedMetrics";
+
+// Feature components (unchanged — they still receive props for now; Phase 3
+// will migrate them to read stores directly)
+import PatientHeader    from "../widgets/PatientHeader";
+import AnthroDomain     from "../features/assessment/assess-anthro/AnthroDomain";
 import BiochemicalDomain from "../features/assessment/assess-biochemical/BiochemicalDomain";
-import ClinicalDomain from "../features/assessment/assess-clinical/ClinicalDomain";
-import DietaryDomain from "../features/assessment/assess-dietary/DietaryDomain";
-import DiagnosisDomain from "../features/diagnosis/DiagnosisDomain";
+import ClinicalDomain   from "../features/assessment/assess-clinical/ClinicalDomain";
+import DietaryDomain    from "../features/assessment/assess-dietary/DietaryDomain";
+import DiagnosisDomain  from "../features/diagnosis/DiagnosisDomain";
 import { processNoteEtiologies } from "../features/diagnosis/etiologyData";
 import InterventionDomain from "../features/intervention/InterventionDomain";
-import MonitorEvalDomain from "../features/monitor-evalue/MonitorEvalDomain";
-import NutritionStandardsDomain, { CrossDomainUpdate } from "../features/assessment/assess-standards/NutritionStandardsDomain";
+import MonitorEvalDomain  from "../features/monitor-evalue/MonitorEvalDomain";
+import NutritionStandardsDomain, {
+  CrossDomainUpdate,
+} from "../features/assessment/assess-standards/NutritionStandardsDomain";
 
 import {
   DIETARY_CATEGORIES,
@@ -26,39 +41,9 @@ import {
   CLINICAL_CATEGORIES,
 } from "../shared/constants/adimeSideBarCategories";
 
-// ─── Domain type ──────────────────────────────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
+
 type DomainKey = "A" | "B" | "C" | "D" | "S" | "Dx" | "I" | "ME";
-
-interface CreateNotePageProps {
-  patientId: string | null;
-  noteId: string | null;
-  patient: Patient | null;
-  note: Note | null;
-
-  patientData: any;
-  setPatientData: (d: any) => void;
-  anthro: any;
-  setAnthro: (a: any) => void;
-  dexaScans: any[];
-  setDexaScans: (s: any[]) => void;
-  labs: any;
-  setLabs: (l: any) => void;
-  clinical: any;
-  setClinical: (c: any) => void;
-  dietary: any;
-  setDietary: (d: any) => void;
-  diagnosis: any;
-  setDiagnosis: (d: any) => void;
-  intervention: any;
-  setIntervention: (i: any) => void;
-  monitorEval: any;
-  setMonitorEval: (me: any) => void;
-  standards: any;
-  setStandards: (s: any) => void;
-
-  calculatedMetrics: any;
-  handleExitToStart: (skipConfirm?: boolean) => void;
-}
 
 const DOMAIN_LABELS: Record<DomainKey, string> = {
   A:  "Anthropometrics",
@@ -73,7 +58,7 @@ const DOMAIN_LABELS: Record<DomainKey, string> = {
 
 const DIETARY_DEBOUNCE_MS = 1200;
 
-// ─── Exit Modal ───────────────────────────────────────────────────────────────
+// ── Exit Modal ────────────────────────────────────────────────────────────────
 
 interface ExitModalProps {
   onClose: () => void;
@@ -117,7 +102,7 @@ function ExitModal({ onClose, onConfirmExit, onDiscard }: ExitModalProps) {
   );
 }
 
-// ─── Submit Modal ─────────────────────────────────────────────────────────────
+// ── Submit Modal ──────────────────────────────────────────────────────────────
 
 interface SubmitModalProps {
   state: "confirm" | "saving" | "error" | "success";
@@ -153,7 +138,7 @@ function SubmitModal({ state, missingFields, onConfirm, onClose }: SubmitModalPr
           <>
             <h3 style={{ margin: "0 0 0.5rem", color: "#c0392b", fontSize: "1.1rem" }}>🚨 Cannot Submit — Missing Required Fields</h3>
             <ul style={{ margin: "0 0 1.25rem", paddingLeft: "1.25rem", listStyle: "disc", color: "#c0392b", fontSize: "0.88rem", lineHeight: 1.8 }}>
-              {missingFields.map(f => <li key={f}>{f}</li>)}
+              {missingFields.map((f) => <li key={f}>{f}</li>)}
             </ul>
             <p style={{ margin: "0 0 1.25rem", fontSize: "0.78rem", color: "#94a3b8" }}>
               These fields are set in the <strong>Patient Header</strong> or Patient Gate.
@@ -183,122 +168,64 @@ const btnStyles: Record<string, React.CSSProperties> = {
   outline: { background: "transparent", color: "#3498db", border: "1px solid #3498db", padding: "0.55rem 1.25rem", borderRadius: "8px", fontSize: "0.88rem", fontWeight: 700, cursor: "pointer" },
 };
 
-// ─── Main Component ───────────────────────────────────────────────────────────
+// ── Main Component ────────────────────────────────────────────────────────────
 
-export default function CreateNotePage({
-  patientId, noteId, patient, note,
-  patientData, setPatientData,
-  anthro, setAnthro,
-  dexaScans, setDexaScans,
-  labs, setLabs,
-  clinical, setClinical,
-  dietary, setDietary,
-  diagnosis, setDiagnosis,
-  intervention, setIntervention,
-  monitorEval, setMonitorEval,
-  standards, setStandards,
-  calculatedMetrics,
-  handleExitToStart,
-}: CreateNotePageProps) {
+export default function CreateNotePage() {
+  // ── Store reads ─────────────────────────────────────────────────────────────
+  const {
+    noteId,
+    patientId,
+    activePatient: patient,
+    activeNote: note,
+    patientData,
+    setPatientData,
+    noteStatus,
+    markSubmitted,
+    isSaving,
+    saveDomain,
+    saveAllDomains,
+    handleExitToStart,
+  } = useNoteStore();
 
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeDomain, setActiveDomain] = useState<DomainKey>("A");
+  const { showToast, sidebarOpen, setSidebarOpen } = useUIStore();
+
+  const { anthro, setAnthro, dexaScans, setDexaScans } = useAnthroStore();
+  const { labs, setLabs }                               = useLabsStore();
+  const { clinical, setClinical }                       = useClinicalStore();
+  const { dietary, setDietary }                         = useDietaryStore();
+  const { diagnosis, setDiagnosis }                     = useDiagnosisStore();
+  const { intervention, setIntervention }               = useInterventionStore();
+  const { monitorEval, setMonitorEval }                 = useMonitorEvalStore();
+  const { standards, setStandards }                     = useStandardsStore();
+
+  const calculatedMetrics = useCalculatedMetrics();
+
+  // ── Local UI state ──────────────────────────────────────────────────────────
+  const [activeDomain, setActiveDomain]       = useState<DomainKey>("A");
   const [activeSubDomain, setActiveSubDomain] = useState<string>("A1-A5");
-  const [toastMsg, setToastMsg] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
+  const [modalOpen, setModalOpen]             = useState(false);
+  const [exitModalOpen, setExitModalOpen]     = useState(false);
+  const [modalState, setModalState]           = useState<"confirm" | "saving" | "error" | "success">("confirm");
+  const [missingFields, setMissingFields]     = useState<string[]>([]);
 
-  const [modalOpen, setModalOpen] = useState(false);
-  const [exitModalOpen, setExitModalOpen] = useState(false);
-  const [modalState, setModalState] = useState<"confirm" | "saving" | "error" | "success">("confirm");
-  const [missingFields, setMissingFields] = useState<string[]>([]);
-  const [noteStatus, setNoteStatus] = useState<"draft" | "submitted">(
-    (note?.status as "draft" | "submitted") ?? "draft"
-  );
+  const isSubmitted = noteStatus === "submitted";
 
-  const handleExitRequest = () => {
-    if (noteStatus === "submitted") {
-      handleExitToStart(true);
-    } else {
-      setExitModalOpen(true);
-    }
-  };
+  // ── Escape shortcut ─────────────────────────────────────────────────────────
+  const handleExitRequest = useCallback(() => {
+    if (isSubmitted) { handleExitToStart(true); return; }
+    setExitModalOpen(true);
+  }, [isSubmitted, handleExitToStart]);
 
   useEscapeBackout(handleExitRequest);
 
-  // Refs for stale-closure-safe saves
-  const anthroRef       = useRef(anthro);
-  const dexaRef         = useRef(dexaScans);
-  const labsRef         = useRef(labs);
-  const clinicalRef     = useRef(clinical);
-  const dietaryRef      = useRef(dietary);
-  const diagnosisRef    = useRef(diagnosis);
-  const interventionRef = useRef(intervention);
-  const monitorEvalRef  = useRef(monitorEval);
-  const standardsRef    = useRef(standards);
+  // ── Refs for stale-closure-safe saves ───────────────────────────────────────
+  // We keep refs so the debounced dietary save always reads the latest value.
+  const dietaryRef   = useRef(dietary);
+  const diagnosisRef = useRef(diagnosis);
+  dietaryRef.current   = dietary;
+  diagnosisRef.current = diagnosis;
 
-  anthroRef.current       = anthro;
-  dexaRef.current         = dexaScans;
-  labsRef.current         = labs;
-  clinicalRef.current     = clinical;
-  dietaryRef.current      = dietary;
-  diagnosisRef.current    = diagnosis;
-  interventionRef.current = intervention;
-  monitorEvalRef.current  = monitorEval;
-  standardsRef.current    = standards;
-
-  const DOMAIN_SAVE_MAP = [
-    { domain: "A",  noteKey: "anthro",           ref: anthroRef },
-    { domain: "A",  noteKey: "dexa_scans",        ref: dexaRef   },
-    { domain: "B",  noteKey: "labs",              ref: labsRef   },
-    { domain: "C",  noteKey: "clinical",          ref: clinicalRef },
-    { domain: "D",  noteKey: "dietary",           ref: dietaryRef  },
-    { domain: "S",  noteKey: "standards",         ref: standardsRef },
-    { domain: "Dx", noteKey: "diagnosis",         ref: diagnosisRef },
-    { domain: "I",  noteKey: "intervention",      ref: interventionRef },
-    { domain: "ME", noteKey: "monitor_evaluate",  ref: monitorEvalRef },
-  ] as const;
-
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(""), 3000);
-  };
-
-  const saveDomain = useCallback(async (domain: DomainKey): Promise<boolean> => {
-    if (!noteId) return true;
-    setIsSaving(true);
-    try {
-      const targets = DOMAIN_SAVE_MAP.filter(d => d.domain === domain);
-      for (const target of targets) {
-        await autosaveNote(noteId, target.noteKey as any, target.ref.current);
-      }
-      return true;
-    } catch (e) {
-      console.error(`Autosave failed for domain ${domain}:`, e);
-      showToast("⚠ Save failed — check connection");
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [noteId]);
-
-  const saveAllDomains = useCallback(async (): Promise<boolean> => {
-    if (!noteId) return true;
-    setIsSaving(true);
-    try {
-      for (const target of DOMAIN_SAVE_MAP) {
-        await autosaveNote(noteId, target.noteKey as any, target.ref.current);
-      }
-      return true;
-    } catch (e) {
-      console.error("Full save failed:", e);
-      showToast("⚠ Save failed — check connection");
-      return false;
-    } finally {
-      setIsSaving(false);
-    }
-  }, [noteId]);
-
-  // ── Debounced dietary autosave ────────────────────────────────────────────
+  // ── Debounced dietary autosave ──────────────────────────────────────────────
   const dietaryDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -307,7 +234,7 @@ export default function CreateNotePage({
 
     dietaryDebounceRef.current = setTimeout(async () => {
       try {
-        await autosaveNote(noteId, "dietary", dietaryRef.current);
+        await saveDomain("dietary", dietaryRef.current);
       } catch (e) {
         console.error("Debounced dietary autosave failed:", e);
         if (activeDomain === "D") showToast("⚠ Dietary save failed — check connection");
@@ -320,23 +247,87 @@ export default function CreateNotePage({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dietary, noteId]);
 
-  // ── Phase 8: Cross-domain update handler ─────────────────────────────────
-  // Called by NutritionStandardsDomain when a user edits an auto-pulled field,
-  // writing the value back to clinical or labs state.
-  const handleCrossDomainUpdate = useCallback(({ domain, key, value }: CrossDomainUpdate) => {
-    if (domain === "clinical") {
-      setClinical((prev: any) => ({ ...prev, [key]: value }));
-    } else if (domain === "labs") {
-      // Labs are keyed like { "Hgb": { current: "...", historical: "..." } }
-      setLabs((prev: any) => ({
-        ...prev,
-        [key]: { ...(prev[key] || { current: "", historical: "" }), current: value },
-      }));
-    }
-  }, [setClinical, setLabs]);
+  // ── Cross-domain update (Standards → clinical/labs) ─────────────────────────
+  const handleCrossDomainUpdate = useCallback(
+    ({ domain, key, value }: CrossDomainUpdate) => {
+      if (domain === "clinical") {
+        setClinical({ [key]: value } as Parameters<typeof setClinical>[0]);
+      } else if (domain === "labs") {
+        setLabs({
+          ...labs,
+          [key]: { ...(labs[key] ?? { current: "", historical: "" }), current: value },
+        });
+      }
+    },
+    [setClinical, setLabs, labs]
+  );
 
+  // ── Domain save helper ──────────────────────────────────────────────────────
+  const saveDomainByKey = useCallback(
+    async (domain: DomainKey): Promise<boolean> => {
+      const keyMap: Partial<Record<DomainKey, Parameters<typeof saveDomain>[0][]>> = {
+        A:  ["anthro", "dexa_scans"],
+        B:  ["labs"],
+        C:  ["clinical"],
+        D:  ["dietary"],
+        S:  ["standards"],
+        Dx: ["diagnosis"],
+        I:  ["intervention"],
+        ME: ["monitor_evaluate"],
+      };
+
+      const keys = keyMap[domain] ?? [];
+      for (const key of keys) {
+        const ok = await saveDomain(key, undefined); // store getter used inside saveDomain
+        if (!ok) return false;
+      }
+      return true;
+    },
+    [saveDomain]
+  );
+
+  // ── Domain switching ────────────────────────────────────────────────────────
+  const handleDomainSwitch = useCallback(
+    async (nextDomain: DomainKey) => {
+      if (nextDomain === activeDomain) return;
+      if (activeDomain === "Dx") processNoteEtiologies(diagnosisRef.current);
+
+      // Flush dietary debounce on domain switch
+      if (activeDomain === "D" && dietaryDebounceRef.current) {
+        clearTimeout(dietaryDebounceRef.current);
+        dietaryDebounceRef.current = null;
+      }
+
+      const ok = await saveAllDomains();
+      if (ok) showToast(`${DOMAIN_LABELS[activeDomain]} saved ✓`);
+
+      setActiveDomain(nextDomain);
+
+      // Reset sub-domain to first item
+      if      (nextDomain === "A")  setActiveSubDomain("A1-A5");
+      else if (nextDomain === "B")  setActiveSubDomain("B1");
+      else if (nextDomain === "C")  setActiveSubDomain("C1");
+      else if (nextDomain === "D")  setActiveSubDomain("D1");
+      else                          setActiveSubDomain("");
+
+      if (window.innerWidth <= 768) setSidebarOpen(false);
+    },
+    [activeDomain, saveAllDomains, showToast, setSidebarOpen]
+  );
+
+  const handleSubDomainSwitch = useCallback(
+    async (nextSub: string) => {
+      if (nextSub === activeSubDomain) return;
+      const ok = await saveAllDomains();
+      if (ok) showToast(`${DOMAIN_LABELS[activeDomain]} saved ✓`);
+      setActiveSubDomain(nextSub);
+    },
+    [activeSubDomain, activeDomain, saveAllDomains, showToast]
+  );
+
+  // ── Submit ──────────────────────────────────────────────────────────────────
   const handleSubmitClick = () => {
-    if (noteStatus === "submitted") return;
+    if (isSubmitted) return;
     setModalState("confirm");
     setMissingFields([]);
     setModalOpen(true);
@@ -360,10 +351,10 @@ export default function CreateNotePage({
         setMissingFields(result.missingFields);
         setModalState("error");
       } else {
-        setNoteStatus("submitted");
+        markSubmitted();
         setModalState("success");
       }
-    } catch (e) {
+    } catch {
       setMissingFields(["An unexpected error occurred. Please try again."]);
       setModalState("error");
     }
@@ -374,31 +365,7 @@ export default function CreateNotePage({
     else setModalOpen(false);
   };
 
-  const handleDomainSwitch = async (nextDomain: DomainKey) => {
-    if (nextDomain === activeDomain) return;
-    if (activeDomain === "Dx") processNoteEtiologies(diagnosisRef.current);
-    if (activeDomain === "D" && dietaryDebounceRef.current) {
-      clearTimeout(dietaryDebounceRef.current);
-      dietaryDebounceRef.current = null;
-    }
-    const ok = await saveDomain(activeDomain);
-    if (ok) showToast(`${DOMAIN_LABELS[activeDomain]} saved ✓`);
-    setActiveDomain(nextDomain);
-    if (nextDomain === "A") setActiveSubDomain("A1-A5");
-    else if (nextDomain === "B") setActiveSubDomain("B1");
-    else if (nextDomain === "C") setActiveSubDomain("C1");
-    else if (nextDomain === "D") setActiveSubDomain("D1");
-    else setActiveSubDomain("");
-    if (window.innerWidth <= 768) setSidebarOpen(false);
-  };
-
-  const handleSubDomainSwitch = async (nextSub: string) => {
-    if (nextSub === activeSubDomain) return;
-    const ok = await saveDomain(activeDomain);
-    if (ok) showToast(`${DOMAIN_LABELS[activeDomain]} saved ✓`);
-    setActiveSubDomain(nextSub);
-  };
-
+  // ── Exit handlers ───────────────────────────────────────────────────────────
   const handleConfirmExit = async () => {
     setExitModalOpen(false);
     if (dietaryDebounceRef.current) {
@@ -421,7 +388,14 @@ export default function CreateNotePage({
     }
   };
 
-  const isSubmitted = noteStatus === "submitted";
+  // ── Sidebar categories (filter pediatric A6-A7 for adults) ─────────────────
+  const assessmentCategories = ASSESSMENT_CATEGORIES.filter((cat) => {
+    if (cat.id === "A6-A7") {
+      const isAdult = (calculatedMetrics.ageDays ?? 0) >= 7305;
+      return !isAdult;
+    }
+    return true;
+  });
 
   const singleDomains: { key: DomainKey; label: string }[] = [
     { key: "Dx", label: "Dx. Nutrition Diagnosis" },
@@ -429,9 +403,10 @@ export default function CreateNotePage({
     { key: "ME", label: "ME. Monitor & Evaluate" },
   ];
 
+  // ── Render ──────────────────────────────────────────────────────────────────
   return (
     <div className="app-layout">
-      {/* ── SIDEBAR ── */}
+      {/* ── SIDEBAR ──────────────────────────────────────────────────────────── */}
       <nav className={`sidebar ${sidebarOpen ? "open" : ""}`}>
         <div className="sidebar-header">
           RD Workstation
@@ -441,34 +416,29 @@ export default function CreateNotePage({
         <div style={{ margin: "0.5rem 0.75rem 0.25rem", fontSize: "0.62rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>
           Assessment
         </div>
+
         <div className="nav-section">
+          {/* A */}
           <div className={`nav-item ${activeDomain === "A" ? "active" : ""}`} onClick={() => handleDomainSwitch("A")}>
             A. Anthropometrics
           </div>
           {activeDomain === "A" && (
             <div className="sub-nav">
-              {ASSESSMENT_CATEGORIES
-                .filter(cat => {
-                  if (cat.id === "A6-A7") {
-                    const isAdult = (calculatedMetrics?.ageDays ?? 0) >= 7305;
-                    return !isAdult;
-                  }
-                  return true;
-                })
-                .map(cat => (
-                  <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => handleSubDomainSwitch(cat.id)}>
-                    {cat.title}
-                  </div>
-                ))}
+              {assessmentCategories.map((cat) => (
+                <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => handleSubDomainSwitch(cat.id)}>
+                  {cat.title}
+                </div>
+              ))}
             </div>
           )}
 
+          {/* B */}
           <div className={`nav-item ${activeDomain === "B" ? "active" : ""}`} onClick={() => handleDomainSwitch("B")}>
             B. Biochemical Data
           </div>
           {activeDomain === "B" && (
             <div className="sub-nav">
-              {BIOCHEMICAL_CATEGORIES.map(cat => (
+              {BIOCHEMICAL_CATEGORIES.map((cat) => (
                 <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => handleSubDomainSwitch(cat.id)}>
                   {cat.title}
                 </div>
@@ -476,12 +446,13 @@ export default function CreateNotePage({
             </div>
           )}
 
+          {/* C */}
           <div className={`nav-item ${activeDomain === "C" ? "active" : ""}`} onClick={() => handleDomainSwitch("C")}>
             C. Clinical &amp; NFPE
           </div>
           {activeDomain === "C" && (
             <div className="sub-nav">
-              {CLINICAL_CATEGORIES.map(cat => (
+              {CLINICAL_CATEGORIES.map((cat) => (
                 <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => handleSubDomainSwitch(cat.id)}>
                   {cat.title}
                 </div>
@@ -489,12 +460,13 @@ export default function CreateNotePage({
             </div>
           )}
 
+          {/* D */}
           <div className={`nav-item ${activeDomain === "D" ? "active" : ""}`} onClick={() => handleDomainSwitch("D")}>
             D. Dietary Data
           </div>
           {activeDomain === "D" && (
             <div className="sub-nav">
-              {DIETARY_CATEGORIES.map(cat => (
+              {DIETARY_CATEGORIES.map((cat) => (
                 <div key={cat.id} className={`sub-nav-item ${activeSubDomain === cat.id ? "active" : ""}`} onClick={() => handleSubDomainSwitch(cat.id)}>
                   {cat.title}
                 </div>
@@ -502,6 +474,7 @@ export default function CreateNotePage({
             </div>
           )}
 
+          {/* S */}
           <div className={`nav-item ${activeDomain === "S" ? "active" : ""}`} onClick={() => handleDomainSwitch("S")}>
             Comparative Standards
           </div>
@@ -509,12 +482,9 @@ export default function CreateNotePage({
           <div style={{ margin: "0.5rem 0.75rem 0.25rem", fontSize: "0.62rem", fontWeight: 800, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.08em" }}>
             Diagnosis &amp; Planning
           </div>
+
           {singleDomains.map(({ key, label }) => (
-            <div
-              key={key}
-              className={`nav-item ${activeDomain === key ? "active" : ""}`}
-              onClick={() => handleDomainSwitch(key)}
-            >
+            <div key={key} className={`nav-item ${activeDomain === key ? "active" : ""}`} onClick={() => handleDomainSwitch(key)}>
               {label}
             </div>
           ))}
@@ -539,6 +509,7 @@ export default function CreateNotePage({
         </div>
       </nav>
 
+      {/* ── MAIN WORKSPACE ───────────────────────────────────────────────────── */}
       <main className="main-workspace">
         <header className="top-nav">
           <button className="hamburger-btn" onClick={() => setSidebarOpen(true)}>☰</button>
@@ -564,7 +535,16 @@ export default function CreateNotePage({
 
         <div className="content-area">
           {activeDomain === "A" && (
-            <AnthroDomain anthro={anthro} setAnthro={setAnthro} dexaScans={dexaScans} setDexaScans={setDexaScans} calculatedMetrics={calculatedMetrics} patientData={patientData} dietary={dietary} activeSubDomain={activeSubDomain} />
+            <AnthroDomain
+              anthro={anthro}
+              setAnthro={setAnthro}
+              dexaScans={dexaScans}
+              setDexaScans={setDexaScans}
+              calculatedMetrics={calculatedMetrics}
+              patientData={patientData}
+              dietary={dietary}
+              activeSubDomain={activeSubDomain}
+            />
           )}
           {activeDomain === "B" && (
             <BiochemicalDomain labs={labs} setLabs={setLabs} activeSubDomain={activeSubDomain} />
@@ -606,15 +586,40 @@ export default function CreateNotePage({
           )}
         </div>
 
-        <div className={`toast ${toastMsg ? "show" : ""}`}>{toastMsg}</div>
+        {/* Global toast — rendered by useUIStore */}
+        <GlobalToast />
       </main>
 
       {modalOpen && (
-        <SubmitModal state={modalState} missingFields={missingFields} onConfirm={handleConfirmSubmit} onClose={handleModalClose} />
+        <SubmitModal
+          state={modalState}
+          missingFields={missingFields}
+          onConfirm={handleConfirmSubmit}
+          onClose={handleModalClose}
+        />
       )}
       {exitModalOpen && (
-        <ExitModal onClose={() => setExitModalOpen(false)} onConfirmExit={handleConfirmExit} onDiscard={handleConfirmDiscard} />
+        <ExitModal
+          onClose={() => setExitModalOpen(false)}
+          onConfirmExit={handleConfirmExit}
+          onDiscard={handleConfirmDiscard}
+        />
       )}
+    </div>
+  );
+}
+
+// ── GlobalToast ───────────────────────────────────────────────────────────────
+// Renders the most recent toast from useUIStore.
+// A single instance of this can live anywhere in the tree; here it's scoped
+// to CreateNotePage so it appears in the same position as before.
+function GlobalToast() {
+  const toasts = useUIStore((s) => s.toasts);
+  const latest = toasts[toasts.length - 1];
+
+  return (
+    <div className={`toast ${latest ? "show" : ""}`}>
+      {latest?.message ?? ""}
     </div>
   );
 }
