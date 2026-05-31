@@ -11,11 +11,13 @@ import {
   CONDITION_EXTRA_INPUTS,
   IC_ACTIVITY_FACTORS,
   MSJ_ACTIVITY_FACTORS,
+} from "./nutritionStandards";
+import type {
   EvalStatus,
   EvalResult,
   NutritionEvaluation,
   ConditionKey,
-} from "./nutritionStandards";
+} from "../../../types/standards";
 import { PalSlider } from "./PalSlider";
 
 import { useStandardsStore } from "../../../stores/useStandardsStore";
@@ -37,37 +39,6 @@ function toKg(val: number, unit: string): number {
 function toCm(val: number, unit: string): number {
   if (unit === "in") return val * 2.54;
   return val;
-}
-
-// ─── Cross-domain update descriptor ──────────────────────────────────────────
-
-export interface CrossDomainUpdate {
-  domain: "clinical" | "labs";
-  key: string;
-  value: string;
-}
-
-// ─── Status Badge ─────────────────────────────────────────────────────────────
-
-const STATUS_THEME: Record<EvalStatus, { color: string; bg: string; label: string }> = {
-  LOW:  { color: "#2563eb", bg: "#dbeafe", label: "Low" },
-  WNL:  { color: "#16a34a", bg: "#dcfce7", label: "WNL" },
-  HIGH: { color: "#dc2626", bg: "#fee2e2", label: "High" },
-  "N/A": { color: "#64748b", bg: "#f1f5f9", label: "—" },
-};
-
-function CompactStatus({ status }: { status: EvalStatus }) {
-  const t = STATUS_THEME[status];
-  return (
-    <span style={{
-      background: t.bg, color: t.color,
-      borderRadius: "4px", padding: "2px 8px",
-      fontSize: "0.68rem", fontWeight: 700, textTransform: "uppercase" as const,
-      letterSpacing: "0.04em", whiteSpace: "nowrap" as const,
-    }}>
-      {t.label}
-    </span>
-  );
 }
 
 // ─── Grouped Bar Chart with Whiskers ──────────────────────────────────────────
@@ -121,8 +92,7 @@ function NutrientBarChart({ results, icUsedForKcal, eeSource }: NutrientBarChart
   const xScale = (val: number, maxVal: number) =>
     Math.min((val / maxVal) * BAR_AREA, BAR_AREA);
 
-  // Determine label for energy source
-  const energySourceLabel = eeSource === "IC" ? "IC" : eeSource || "MSJ×AF";
+  const energySourceLabel = eeSource || "MSJ×AF";
 
   return (
     <div>
@@ -151,7 +121,7 @@ function NutrientBarChart({ results, icUsedForKcal, eeSource }: NutrientBarChart
         viewBox={`0 0 ${CHART_W} ${totalH}`}
         style={{ overflow: "visible" }}
         role="img"
-        aria-label={`Grouped bar chart comparing target nutrition ranges to current intake`}
+        aria-label="Grouped bar chart comparing target nutrition ranges to current intake"
       >
         {rows.map((row) => {
           const { result, lo, hi, mid, maxVal, yStart } = row;
@@ -176,7 +146,7 @@ function NutrientBarChart({ results, icUsedForKcal, eeSource }: NutrientBarChart
               {ticks.map((t, i) => (
                 <line key={i} x1={t.x} y1={yStart - 4} x2={t.x} y2={yTarget + BAR_HEIGHT + 2} stroke="#e2e8f0" strokeWidth="0.5" />
               ))}
-              
+
               {/* CURRENT BAR (TOP) */}
               <rect x={LEFT_LABEL} y={yCurrent} width={xCurrent} height={BAR_HEIGHT} fill={statusTheme.bar} rx="2" />
               <text x={LEFT_LABEL + xCurrent + 6} y={yCurrent + BAR_HEIGHT / 2} dominantBaseline="middle" fontSize="11" fill={statusTheme.bar} fontWeight="700">{Math.round(result.current)}</text>
@@ -197,7 +167,7 @@ function NutrientBarChart({ results, icUsedForKcal, eeSource }: NutrientBarChart
               <line x1={LEFT_LABEL + xHi} y1={yTarget + BAR_HEIGHT / 2 - WHISKER_CAP / 2} x2={LEFT_LABEL + xHi} y2={yTarget + BAR_HEIGHT / 2 + WHISKER_CAP / 2} stroke="#000000" strokeWidth="2.5" />
               <text x={LEFT_LABEL + xHi + 6} y={yTarget + BAR_HEIGHT / 2} dominantBaseline="middle" fontSize="10" fill="#64748b" fontWeight="500">{result.target}</text>
               <text x={LEFT_LABEL + 4} y={yTarget + BAR_HEIGHT / 2} dominantBaseline="middle" fontSize="9" fill="white" fontWeight="700">TARGET</text>
-              
+
               <line x1={LEFT_LABEL - 85} y1={yTarget + BAR_HEIGHT + GROUP_GAP / 2} x2={CHART_W - 2} y2={yTarget + BAR_HEIGHT + GROUP_GAP / 2} stroke="#f1f5f9" strokeWidth="1" />
             </g>
           );
@@ -278,8 +248,29 @@ const refPanelStyle: React.CSSProperties = { position: "absolute", bottom: "100%
 const refHeaderStyle: React.CSSProperties = { margin: "0 0 8px", fontSize: "0.68rem", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.05em" };
 const refRowStyle: React.CSSProperties = { display: "flex", justifyContent: "space-between", fontSize: "0.75rem", padding: "4px 0", borderBottom: "1px solid #f1f5f9" };
 
+// ─── PSU Info Banner ──────────────────────────────────────────────────────────
+
+function PSUBanner({ eeSource }: { eeSource: string }) {
+  if (eeSource === "PSU 2003b") {
+    return (
+      <div style={{ background: "#ede9fe", border: "1px solid #ddd6fe", borderRadius: "8px", padding: "0.65rem 1rem", marginBottom: "1rem", fontSize: "0.75rem", color: "#4c1d95", lineHeight: 1.5 }}>
+        <strong>Penn State 2003b:</strong> MSJ REE × 0.96 + T<sub>max</sub>(°C) × 167 + V<sub>E</sub> × 31 − 6212.
+        Indicated for mechanically ventilated adults with BMI &lt; 30 (or obese &lt; 60 y).
+      </div>
+    );
+  }
+  if (eeSource === "PSU 2010") {
+    return (
+      <div style={{ background: "#fdf4ff", border: "1px solid #e9d5ff", borderRadius: "8px", padding: "0.65rem 1rem", marginBottom: "1rem", fontSize: "0.75rem", color: "#6b21a8", lineHeight: 1.5 }}>
+        <strong>Penn State 2010:</strong> MSJ REE × 0.71 + V<sub>E</sub> × 64 + T<sub>max</sub>(°C) × 85 − 3085.
+        Indicated for mechanically ventilated <strong>obese adults (BMI ≥ 30) aged ≥ 60 years</strong>.
+      </div>
+    );
+  }
+  return null;
+}
+
 // ─── Extra-input renderer ──────────────────────────────────────────────────────
-// Handles number, checkbox, and auto-pull inputs with two-way write-back
 
 interface ExtraInputRendererProps {
   condition: ConditionKey | "";
@@ -302,7 +293,6 @@ function ExtraInputRenderer({
   const handleChange = (key: string, value: string, autoPullFrom?: string) => {
     setExtraInputs({ ...extraInputs, [key]: value });
 
-    // Two-way write-back: if this field has an autoPullFrom, also update the source domain
     if (autoPullFrom) {
       const [domain, fieldKey] = autoPullFrom.split(".");
       if (domain === "clinical") {
@@ -316,7 +306,6 @@ function ExtraInputRenderer({
     }
   };
 
-  // Determine "auto-pulled" display value for a field
   const getAutoPulledValue = (autoPullFrom?: string): string => {
     if (!autoPullFrom) return "";
     const [domain, fieldKey] = autoPullFrom.split(".");
@@ -328,14 +317,12 @@ function ExtraInputRenderer({
   return (
     <>
       {fields.map(f => {
-        // Special case: PSU 2003b fields only show if mech vent is checked
+        // PSU fields only show when mech vent is checked
         if (condition === "critical_illness" && (f.key === "tempMax" || f.key === "ve")) {
-          const isVented = extraInputs.isMechVent === "true";
-          if (!isVented) return null;
+          if (extraInputs.isMechVent !== "true") return null;
         }
 
         const autoPulledRaw = getAutoPulledValue(f.autoPullFrom);
-        // Prefer explicit user override, then auto-pull, then empty
         const currentVal = extraInputs[f.key] ?? autoPulledRaw;
 
         if (f.type === "checkbox") {
@@ -401,7 +388,7 @@ export default function NutritionStandardsDomain() {
 
   const wtKg = useMemo(() => toKg(parseFloat(anthro.wt) || 0, anthro.wtUnit || "kg"), [anthro.wt, anthro.wtUnit]);
   const htCm = useMemo(() => toCm(parseFloat(anthro.ht) || 0, anthro.htUnit || "cm"), [anthro.ht, anthro.htUnit]);
-  const sexRaw: "M" | "F" | "" = patientData?.sex || "";
+  const sexRaw = (patientData?.sex || "") as "M" | "F" | "";
   const sex: "M" | "F" = sexRaw === "F" ? "F" : "M";
   const ageYears = useMemo(() => Math.floor((calculatedMetrics?.ageDays ?? 0) / 365.25), [calculatedMetrics?.ageDays]);
   const bmi = useMemo(() => parseFloat(calculatedMetrics?.bmi) || 0, [calculatedMetrics?.bmi]);
@@ -417,12 +404,10 @@ export default function NutritionStandardsDomain() {
 
   const [evaluation, setEvaluation] = useState<NutritionEvaluation | null>(null);
 
-  // ── Sync to parent ──
   const syncToParent = useCallback(() => {
     setStandards({ condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs });
   }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs, setStandards]);
 
-  // ── Auto-populate from dietary on first load ──
   useEffect(() => {
     if (!currentKcal && dietary?.oralCalories) {
       setCurrentKcal(String(Math.round(parseFloat(dietary.oralCalories) || 0) || ""));
@@ -432,7 +417,6 @@ export default function NutritionStandardsDomain() {
     }
   }, [dietary]);
 
-  // ── Auto-pull cross-domain values INTO extraInputs on first load ──
   useEffect(() => {
     if (!condition) return;
     const fields = CONDITION_EXTRA_INPUTS[condition as ConditionKey] || [];
@@ -457,19 +441,12 @@ export default function NutritionStandardsDomain() {
     if (changed) setExtraInputs(updates);
   }, [condition, clinical, labs]);
 
-  // ── Auto-link BMI & Age to sub-types ──
   useEffect(() => {
     if (!bmi || bmi <= 0) return;
 
     if (condition === "critical_illness") {
       const bmiGroup = bmi < 30 ? "bmi_lt30" : bmi <= 50 ? "bmi_30_50" : "bmi_gt50";
       if (variant !== bmiGroup) setVariant(bmiGroup);
-    } else if (condition === "pregnancy") {
-      const isT23 = !variant || variant.startsWith("t2") || variant.startsWith("t3");
-      if (isT23) {
-        const bmiGroup = bmi < 18.5 ? "t2_t3_uw" : bmi < 25 ? "t2_t3_nw" : bmi < 30 ? "t2_t3_ow" : "t2_t3_ob";
-        if (variant !== bmiGroup) setVariant(bmiGroup);
-      }
     } else if (condition === "masld_mash") {
       if (!variant || variant.startsWith("bmi_")) {
         const bmiGroup = bmi < 30 ? "bmi_lt30" : bmi <= 40 ? "bmi_30_40" : "bmi_gt40";
@@ -487,7 +464,6 @@ export default function NutritionStandardsDomain() {
     }
   }, [condition, bmi, variant, ageYears]);
 
-  // ── Effective weight ──
   const { effectiveWeight, weightBasis, nfpeWarning } = useMemo(() => {
     if (anthro.isFluidShift && anthro.edw) {
       const edwKg = toKg(parseFloat(anthro.edw) || 0, anthro.edwUnit || "kg");
@@ -502,7 +478,7 @@ export default function NutritionStandardsDomain() {
     else if (clinical.ascites === "Severe") reduction += 0.15;
     if (clinical.pedalEdema === "Yes") reduction += 0.05;
     const calculatedWeight = wtKg * (1 - reduction);
-    const isCirrhosis = condition === "cirrhosis_updated";
+    const isCirrhosis = condition === "cirrhosis";
     const missingNfpe = isCirrhosis && !clinical.ascites && !clinical.pedalEdema;
     return {
       effectiveWeight: calculatedWeight,
@@ -511,7 +487,6 @@ export default function NutritionStandardsDomain() {
     };
   }, [anthro.isFluidShift, anthro.edw, anthro.edwUnit, wtKg, condition, clinical]);
 
-  // ── Missing anthro check ──
   const missingAnthro = useMemo(() => {
     const fields = [];
     if (!sexRaw) fields.push("Sex");
@@ -523,7 +498,6 @@ export default function NutritionStandardsDomain() {
 
   const isReady = missingAnthro.length === 0 && !!condition;
 
-  // ── Run evaluation ──
   const runEvaluation = useCallback(() => {
     if (!isReady) return;
     const result = evaluateNutritionRx({
@@ -555,7 +529,7 @@ export default function NutritionStandardsDomain() {
   }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs, wtKg, htCm, effectiveWeight, isReady, runEvaluation, syncToParent]);
 
   const variants = condition ? (CONDITION_VARIANTS[condition] || []) : [];
-  
+
   const filteredVariants = useMemo(() => {
     return variants.filter(v => {
       if (v.sex && sex && v.sex !== sex) return false;
@@ -566,7 +540,9 @@ export default function NutritionStandardsDomain() {
   }, [variants, sex, ageYears]);
 
   const icUsedForKcal = !!icKcal && parseFloat(icKcal) > 0;
-  const isPSU = evaluation?.eeSource === "PSU 2003b";
+
+  // PSU detection: true for either 2003b or 2010
+  const isPSU = evaluation?.eeSource === "PSU 2003b" || evaluation?.eeSource === "PSU 2010";
 
   const isConditionVisible = (key: ConditionKey) => {
     if (key === "pregnancy" || key === "breastfeeding") {
@@ -643,7 +619,7 @@ export default function NutritionStandardsDomain() {
                   <label style={{ ...tinyLabelStyle, color: "#92400e", marginBottom: 0 }}>Clinical Activity Factor (CAF)</label>
                   <span style={{ fontSize: "0.85rem", fontWeight: 800, color: "#b45309" }}>×{activeCafVal.toFixed(2)}</span>
                 </div>
-                
+
                 <input
                   type="range"
                   min="1.0"
@@ -653,7 +629,7 @@ export default function NutritionStandardsDomain() {
                   onChange={e => setIcCaf(e.target.value)}
                   style={{ width: "100%", accentColor: "#f59e0b", cursor: "pointer" }}
                 />
-                
+
                 <div style={{ fontSize: "0.62rem", color: "#b45309", marginTop: "4px", fontWeight: 600, textAlign: "center", fontStyle: "italic" }}>
                   {cafLabel}
                 </div>
@@ -671,7 +647,6 @@ export default function NutritionStandardsDomain() {
             <div className="input-group">
               <select value={condition} onChange={e => { setCondition(e.target.value as ConditionKey); setVariant(""); }} style={selectStyle}>
                 <option value="">Select Condition...</option>
-                {/* Group by category for usability */}
                 <optgroup label="Acute / Critical Care">
                   {(["critical_illness", "aki", "acute_pancreatitis", "burns", "trauma", "stroke"] as ConditionKey[]).filter(isConditionVisible).map(k => (
                     <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
@@ -719,7 +694,6 @@ export default function NutritionStandardsDomain() {
               </div>
             )}
 
-            {/* Render extra inputs via new renderer */}
             {condition && condition !== "healthy" && condition !== "heart_failure" && (
               <ExtraInputRenderer
                 condition={condition}
@@ -755,10 +729,16 @@ export default function NutritionStandardsDomain() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
                 <div style={{ fontSize: "0.8rem", fontWeight: 700, color: "#1e293b" }}>Evaluation Results</div>
                 <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                  {/* PSU 2003b badge */}
+                  {/* PSU equation badge */}
                   {isPSU && (
-                    <span style={{ fontSize: "0.65rem", fontWeight: 800, background: "#ede9fe", color: "#6d28d9", border: "1px solid #ddd6fe", borderRadius: "6px", padding: "2px 8px" }}>
-                      PSU 2003b
+                    <span style={{
+                      fontSize: "0.65rem", fontWeight: 800,
+                      background: evaluation.eeSource === "PSU 2010" ? "#fdf4ff" : "#ede9fe",
+                      color: evaluation.eeSource === "PSU 2010" ? "#6b21a8" : "#6d28d9",
+                      border: `1px solid ${evaluation.eeSource === "PSU 2010" ? "#e9d5ff" : "#ddd6fe"}`,
+                      borderRadius: "6px", padding: "2px 8px",
+                    }}>
+                      {evaluation.eeSource}
                     </span>
                   )}
                   <div style={{ fontSize: "0.65rem", color: "#94a3b8" }}>
@@ -776,13 +756,8 @@ export default function NutritionStandardsDomain() {
                 </div>
               )}
 
-              {/* PSU 2003b info banner */}
-              {isPSU && (
-                <div style={{ background: "#ede9fe", border: "1px solid #ddd6fe", borderRadius: "8px", padding: "0.65rem 1rem", marginBottom: "1rem", fontSize: "0.75rem", color: "#4c1d95", lineHeight: 1.5 }}>
-                  <strong>Penn State 2003b:</strong> MSJ REE × 0.96 + T<sub>max</sub>(°C) × 167 + V<sub>E</sub> × 31 − 6212.
-                  Used when mechanically ventilated with both T<sub>max</sub> and V<sub>E</sub> entered.
-                </div>
-              )}
+              {/* PSU equation info banner — handles both 2003b and 2010 */}
+              {isPSU && <PSUBanner eeSource={evaluation.eeSource} />}
 
               <NutrientBarChart
                 results={evaluation.results}
@@ -821,7 +796,7 @@ export default function NutritionStandardsDomain() {
   );
 }
 
-// ─── Sub-styles ──────────────────────────────────────────────────────────────
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function QuickStat({ label, value }: { label: string; value: string }) {
   return (

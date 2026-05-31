@@ -1,13 +1,6 @@
 // src/types/standards.ts
 //
 // All types related to the Comparative Standards (S) domain.
-// Covers both the persisted UI state (Standards interface) and the
-// evaluation engine's input/output contracts.
-//
-// ConditionKey and evaluation types were previously co-located with the
-// evaluateNutritionRx engine in the feature folder. They live here so that
-// any domain — stores, utils, UI — can import types without touching
-// business logic.
 
 import type { EvalStatus } from "../shared/utils/clinicalMath";
 export type { EvalStatus };
@@ -20,7 +13,7 @@ export type ConditionKey =
   | "breastfeeding"
   | "burns"
   | "oncology"
-  | "cancer"           // legacy alias — resolves to oncology logic in engine
+  | "cancer"
   | "ckd_3_5"
   | "ckd_5d"
   | "kidney_transplant"
@@ -45,12 +38,11 @@ export type ConditionKey =
 
 // ─── Evaluation Engine — Input Contracts ─────────────────────────────────────
 
-/** Patient biometrics passed into the evaluation engine. */
 export interface PatientInputs {
   wtKg: number;
   htCm: number;
   ageYears: number;
-  ageDays?: number;      // Required for pediatric branching
+  ageDays?: number;
   sex: "M" | "F";
   bmi: number;
   weightLabel?: string;
@@ -58,14 +50,12 @@ export interface PatientInputs {
   icCaf?: number;
 }
 
-/** Current nutrition prescription being evaluated. */
 export interface CurrentRx {
   kcalPerDay: number;
   proteinGPerDay: number;
   fluidMlPerDay?: number;
 }
 
-/** Full options object passed to evaluateNutritionRx. */
 export interface EvalOptions {
   condition: ConditionKey;
   variant?: string;
@@ -76,7 +66,6 @@ export interface EvalOptions {
 
 // ─── Evaluation Engine — Output Contracts ─────────────────────────────────────
 
-/** A single nutrient comparison row in the evaluation output. */
 export interface EvalResult {
   label: string;
   target: string;
@@ -86,7 +75,6 @@ export interface EvalResult {
   note?: string;
 }
 
-/** Energy source label for the evaluation output header. */
 export type EESource =
   | "IC"
   | "MSJ×AF"
@@ -94,18 +82,18 @@ export type EESource =
   | "PSU 2003b"
   | "PSU 2010"
   | "Schofield×AF"
-  | "Schofield WH×SF"   // Pediatric disease path
-  | "DRI/EER"           // Pediatric healthy path
+  | "Schofield WH×SF"
+  | "DRI/EER"
   | "CF Formula"
   | "Curreri"
   | "Milner"
+  | "Toronto"
   | "Galveston"
-  | "Galveston Infant"  // <1y burns — previously missing
+  | "Galveston Infant"
   | "SCD REE"
   | "BEE×AF"
   | "HSCT";
 
-/** Full output of a single evaluateNutritionRx call. */
 export interface NutritionEvaluation {
   ibwKg: number;
   reeKcal: number;
@@ -122,10 +110,6 @@ export interface NutritionEvaluation {
 
 // ─── Persisted UI State ───────────────────────────────────────────────────────
 
-/**
- * The subset of standards state that gets persisted to the note DB.
- * This is what useStandardsStore saves and loads.
- */
 export interface Standards {
   condition: ConditionKey | "";
   variant: string;
