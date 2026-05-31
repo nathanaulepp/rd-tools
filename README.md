@@ -53,11 +53,14 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [x] **add** automate comparison to current nutrition rx: (kcal, pro, fluid --> low|WNL|high?)
 - [x] **add** Improve user flow of UI
 - [x] **add** Automate linking patient BMI to comparative standards' clinical context options
+- [x] **add** more conditions to consider (now 26)
+- [ ] **add** bronchopulmonary dysplasia for pediatrics under 5
 
 ### Diagnosis
 - [x] **add** PES statement builder
 - [x] **add** allow for creation of new etiology blocks through saved ADIMEs
 - [x] **add** Automated malnutrition chart
+- [ ] **add** automated pediatric malnutrition chart
 - [x] **add** Build skeleton for contextual suggestions for signs & symptoms (s/s) --> use assessment data
 - [x] *patch* PES s/s contextual suggestions missing chip selection and dropdowns
 - [ ] **add** Differentials to guide continued/ordered assessment

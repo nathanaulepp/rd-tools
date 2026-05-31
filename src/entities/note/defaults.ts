@@ -1,10 +1,23 @@
 // src/entities/note/defaults.ts
-// Phase 6: Added defaultDiagnosis, defaultIntervention, defaultMonitorEval
-// Phase 8: Added tempMax, ve, fev1, tbsa to defaultClinical
+// Typed default values for every domain.
+// All defaults now satisfy the strict interfaces in src/types/.
+// Phase 8: Added tempMax, ve, fev1, tbsa to defaultClinical.
 
 import { getLocalIsoDate } from "../../shared/utils/date";
+import type {
+  PatientData,
+  Anthro,
+  DexaScan,
+  Labs,
+  Clinical,
+  Dietary,
+  Diagnosis,
+  Intervention,
+  MonitorEval,
+  Standards,
+} from "../../types";
 
-export const defaultPatientData = {
+export const defaultPatientData: PatientData = {
   lastName: "",
   firstName: "",
   dob: "",
@@ -15,7 +28,7 @@ export const defaultPatientData = {
   languages: "",
 };
 
-export const defaultAnthro = {
+export const defaultAnthro: Anthro = {
   ht: "",
   htUnit: "cm",
   wt: "",
@@ -25,7 +38,7 @@ export const defaultAnthro = {
   isFluidShift: false,
   edw: "",
   edwUnit: "kg",
-  amputations: [] as string[],
+  amputations: [],
   waist: "",
   mac: "",
   calf: "",
@@ -47,11 +60,12 @@ export const defaultAnthro = {
   past_headDate: "",
 };
 
-export const defaultDexaScans = [] as any[];
+export const defaultDexaScans: DexaScan[] = [];
 
-export const defaultLabs = {} as Record<string, { current: string; historical: string }>;
+export const defaultLabs: Labs = {};
 
-export const defaultClinical = {
+export const defaultClinical: Clinical = {
+  // C1
   chiefComplaint: "",
   medHx: "",
   familyHx: "",
@@ -59,6 +73,24 @@ export const defaultClinical = {
   allergiesIntolerances: "",
   medicalDevices: "",
   medications: "",
+
+  // C2
+  temp: "",
+  hr: "",
+  spo2: "",
+  bp: "",
+  rr: "",
+  screenings: "",
+
+  // C4
+  giDistress: "",
+  chewing: "",
+  oralHygiene: "",
+  swallowing: "",
+  fev1: "",
+  tbsa: "",
+
+  // C5 — Muscle wasting
   temples: "",
   clavicles: "",
   shoulders: "",
@@ -66,64 +98,64 @@ export const defaultClinical = {
   interosseous: "",
   thighs: "",
   calves: "",
+
+  // C5 — Fat
   orbital: "",
   cheek: "",
   tricepsFat: "",
   midAxillary: "",
-  hair: [] as string[],
-  eyes: [] as string[],
-  mouthLips: [] as string[],
-  tongue: [] as string[],
-  teethGums: [] as string[],
-  headNeck: [] as string[],
-  nails: [] as string[],
-  skin: [] as string[],
+
+  // C5 — Micronutrient signs
+  hair: [],
+  eyes: [],
+  mouthLips: [],
+  tongue: [],
+  teethGums: [],
+  headNeck: [],
+  nails: [],
+  skin: [],
+
+  // C5 — Fluid
   pittingEdema: "",
   pedalEdema: "",
   ascites: "",
   edemaDescription: "",
-  temp: "",
-  hr: "",
-  spo2: "",
-  bp: "",
-  rr: "",
-  screenings: "",
+
+  // C5 — Functional
   gripStrength: "",
-  giDistress: "",
-  chewing: "",
-  oralHygiene: "",
-  swallowing: "",
+
+  // C6 — Imaging
   imaging_smi: "",
   imaging_muscleArea: "",
   imaging_muscleAttenuation: "",
   imaging_imat: "",
   imaging_vat: "",
   imaging_notes: "",
+
+  // Cross-domain (written by Standards domain)
+  tempMax: "",
+  ve: "",
+
+  // General
   clinicalNotes: "",
-  // Phase 8: Cross-domain inputs for nutrition standards equations
-  tempMax: "",        // Max temp past 24h (°F) — used in PSU 2003b
-  ve: "",             // Minute ventilation (L/min) — used in PSU 2003b
-  fev1: "",           // FEV₁ % predicted — used in CF equation
-  tbsa: "",           // Total body surface area burned (%) — used in Curreri formula
 };
 
-export const defaultDietary = {
+export const defaultDietary: Dietary = {
   recall: [{ label: "Meal 1", value: "" }],
   macroAdequacy: "",
   mealPatterns: "",
   currentDiets: "",
   fluidIntake: "",
   eatingEnv: "",
-  culturalReligious: "",
-  socialDynamics: "",
+  eeiPercent: "",
+  eeiTimeframe: "",
   dietOrder: "",
   oralCalories: "",
   oralProtein: "",
   oralWater: "",
-  eeiPercent: "",
-  eeiTimeframe: "",
-  herbalCAM: "",
-  supplements: "",
+  physicalLevel: "",
+  adls: "",
+  feedingTasks: "",
   understanding: "",
   readiness: "5",
   psychTies: "",
@@ -133,54 +165,48 @@ export const defaultDietary = {
   foodSecurity: "",
   foodSupplies: "",
   transport: "",
-  physicalLevel: "",
-  adls: "",
-  feedingTasks: "",
+  culturalReligious: "",
+  socialDynamics: "",
+  herbalCAM: "",
+  supplements: "",
   perception: "",
   qolGoals: "",
 };
 
-// ─── Phase 6: New ADIME domain defaults ──────────────────────────────────────
-
-export const defaultDiagnosis = {
+export const defaultDiagnosis: Diagnosis = {
   problem: "",
   etiology: "",
   signsSymptoms: "",
-  additionalDiagnoses: [] as Array<{
-    id: number;
-    problem: string;
-    etiology: string;
-    signsSymptoms: string;
-  }>,
+  additionalDiagnoses: [],
   nutritionDxNarrative: "",
   priorityRanking: "",
 };
 
-export const defaultIntervention = {
+export const defaultIntervention: Intervention = {
+  goalStatement: "",
+  goalTimeframe: "",
+  goalMeasurable: "",
   nd_mealsSnacks: "",
   nd_supplementalFeeding: "",
   nd_feedingAssistance: "",
   nd_feedingEnvironment: "",
   nd_nutritionRelatedMedMgmt: "",
   ed_purpose: "",
-  ed_content: [] as string[],
+  ed_content: [],
   ed_application: "",
   ed_other: "",
   c_theory: "",
-  c_strategy: [] as string[],
+  c_strategy: [],
   c_other: "",
   cc_teamMembers: "",
   cc_referrals: "",
   cc_dischargeRecommendations: "",
   cc_followUpPlan: "",
-  goalStatement: "",
-  goalTimeframe: "",
-  goalMeasurable: "",
   interventionNotes: "",
 };
 
-export const defaultMonitorEval = {
-  monitoredIndicators: [] as string[],
+export const defaultMonitorEval: MonitorEval = {
+  monitoredIndicators: [],
   monitorFrequency: "",
   monitoredBy: "",
   criteria_anthropo: "",
@@ -188,7 +214,7 @@ export const defaultMonitorEval = {
   criteria_dietary: "",
   criteria_clinical: "",
   criteria_functional: "",
-  outcome_progress: "" as "" | "improved" | "no-change" | "worsened" | "met" | "not-met",
+  outcome_progress: "",
   outcome_narrative: "",
   outcome_nextSteps: "",
   dischargeRecs: "",
@@ -196,13 +222,13 @@ export const defaultMonitorEval = {
   meNotes: "",
 };
 
-export const defaultStandards = {
-  condition: "" as any,
+export const defaultStandards: Standards = {
+  condition: "",
   variant: "",
   currentKcal: "",
   currentProtein: "",
   currentFluid: "",
   icKcal: "",
   icCaf: "1.0",
-  extraInputs: {} as Record<string, string>,
+  extraInputs: {},
 };
