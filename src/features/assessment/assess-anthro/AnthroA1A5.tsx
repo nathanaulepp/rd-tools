@@ -1,10 +1,12 @@
 // src/features/assessment/assess-anthro/AnthroA1A5.tsx
 // Extracted from AnthroDomain.tsx (Phase 3).
+// Phase 4: uses MeasurementInput to eliminate repeated label+input+select boilerplate.
 // Handles: A1-A3 Height/Weight/BMI/UBW, A4 Circumferences, A5 Skinfolds,
 //          Fluid shift / EDW, Amputation toggles.
 
 import React, { useMemo } from "react";
 import { formatAge } from "../../../shared/utils/date";
+import { MeasurementInput } from "../../../shared/ui/MeasurementInput";
 import type { Anthro } from "../../../types";
 
 const AMPUTATION_DATA = [
@@ -29,7 +31,6 @@ export default function AnthroA1A5({ anthro, setAnthro, calculatedMetrics }: Ant
 
   const adjIbw = calculatedMetrics?.adjIbw;
 
-  // Dynamic weight change percentage
   const wtChangeDetails = useMemo(() => {
     if (!anthro.wt || !anthro.ubw) return null;
     const current = Number(anthro.wt);
@@ -46,13 +47,7 @@ export default function AnthroA1A5({ anthro, setAnthro, calculatedMetrics }: Ant
         ? formatAge(calculatedMetrics.ubwTimeframeDays)
         : null;
 
-    return {
-      pctString:    pct.toFixed(1),
-      absPctString: Math.abs(pct).toFixed(1),
-      isLoss,
-      isSevere,
-      timeStr,
-    };
+    return { pctString: pct.toFixed(1), absPctString: Math.abs(pct).toFixed(1), isLoss, isSevere, timeStr };
   }, [anthro.wt, anthro.ubw, calculatedMetrics?.ubwTimeframeDays]);
 
   const toggleAmputation = (label: string) => {
@@ -100,54 +95,29 @@ export default function AnthroA1A5({ anthro, setAnthro, calculatedMetrics }: Ant
         </h4>
 
         <div className="grid-4-col">
-          <div className="input-group">
-            <label>Height/Length</label>
-            <div style={{ display: "flex", gap: "4px" }}>
-              <input
-                type="number"
-                value={anthro.ht}
-                onChange={(e) => handleUpdate("ht", e.target.value)}
-              />
-              <select
-                value={anthro.htUnit}
-                onChange={(e) => handleUpdate("htUnit", e.target.value)}
-                style={{ width: "80px" }}
-              >
-                <option value="cm">cm</option>
-                <option value="in">in</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="input-group">
-            <label>Weight</label>
-            <div className="input-group-row">
-              <input
-                type="number"
-                value={anthro.wt}
-                onChange={(e) => handleUpdate("wt", e.target.value)}
-              />
-              <select
-                style={{ width: "70px" }}
-                value={anthro.wtUnit}
-                onChange={(e) => handleUpdate("wtUnit", e.target.value)}
-              >
-                <option>kg</option>
-                <option>lbs</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="input-group">
-            <label>UBW</label>
-            <input
-              type="number"
-              placeholder="Adult Patients Only"
-              value={anthro.ubw}
-              onChange={(e) => handleUpdate("ubw", e.target.value)}
-            />
-          </div>
-
+          <MeasurementInput
+            label="Height/Length"
+            value={anthro.ht}
+            onChange={(v) => handleUpdate("ht", v)}
+            unit={anthro.htUnit}
+            onUnitChange={(u) => handleUpdate("htUnit", u)}
+            unitOptions={["cm", "in"]}
+            unitWidth="80px"
+          />
+          <MeasurementInput
+            label="Weight"
+            value={anthro.wt}
+            onChange={(v) => handleUpdate("wt", v)}
+            unit={anthro.wtUnit}
+            onUnitChange={(u) => handleUpdate("wtUnit", u)}
+            unitOptions={["kg", "lbs"]}
+          />
+          <MeasurementInput
+            label="UBW"
+            value={anthro.ubw}
+            onChange={(v) => handleUpdate("ubw", v)}
+            placeholder="Adult Patients Only"
+          />
           <div className="input-group">
             <label>UBW Date (for timeframe)</label>
             <input
@@ -184,34 +154,15 @@ export default function AnthroA1A5({ anthro, setAnthro, calculatedMetrics }: Ant
                   className="fade-in"
                   style={{ background: "#f8fafc", padding: "12px", borderRadius: "8px", border: "1px solid #e2e8f0" }}
                 >
-                  <label
-                    style={{
-                      fontSize: "0.75rem",
-                      fontWeight: 800,
-                      color: "#64748b",
-                      textTransform: "uppercase",
-                      marginBottom: "4px",
-                      display: "block",
-                    }}
-                  >
-                    Estimated Dry Weight (EDW) / Target Weight
-                  </label>
-                  <div className="input-group-row">
-                    <input
-                      type="number"
-                      value={anthro.edw}
-                      onChange={(e) => handleUpdate("edw", e.target.value)}
-                      placeholder="Target weight"
-                    />
-                    <select
-                      style={{ width: "70px" }}
-                      value={anthro.edwUnit}
-                      onChange={(e) => handleUpdate("edwUnit", e.target.value)}
-                    >
-                      <option>kg</option>
-                      <option>lbs</option>
-                    </select>
-                  </div>
+                  <MeasurementInput
+                    label="Estimated Dry Weight (EDW) / Target Weight"
+                    value={anthro.edw}
+                    onChange={(v) => handleUpdate("edw", v)}
+                    placeholder="Target weight"
+                    unit={anthro.edwUnit}
+                    onUnitChange={(u) => handleUpdate("edwUnit", u)}
+                    unitOptions={["kg", "lbs"]}
+                  />
                   <p style={{ fontSize: "0.65rem", color: "#64748b", marginTop: "4px" }}>
                     Overrides "Current Weight" for nutrition calculations (kcal/kg).
                   </p>
@@ -223,12 +174,8 @@ export default function AnthroA1A5({ anthro, setAnthro, calculatedMetrics }: Ant
             <div style={{ flex: 2, minWidth: "400px" }}>
               <label
                 style={{
-                  fontSize: "0.75rem",
-                  fontWeight: 800,
-                  color: "#64748b",
-                  textTransform: "uppercase",
-                  marginBottom: "8px",
-                  display: "block",
+                  fontSize: "0.75rem", fontWeight: 800, color: "#64748b",
+                  textTransform: "uppercase", marginBottom: "8px", display: "block",
                 }}
               >
                 Amputation / Body Segment Loss
@@ -240,11 +187,8 @@ export default function AnthroA1A5({ anthro, setAnthro, calculatedMetrics }: Ant
                     onClick={() => toggleAmputation(amp.label)}
                     className={`chip ${anthro.amputations?.includes(amp.label) ? "active" : ""}`}
                     style={{
-                      cursor: "pointer",
-                      border: "1px solid #e2e8f0",
-                      background: anthro.amputations?.includes(amp.label)
-                        ? "var(--primary)"
-                        : "white",
+                      cursor: "pointer", border: "1px solid #e2e8f0",
+                      background: anthro.amputations?.includes(amp.label) ? "var(--primary)" : "white",
                     }}
                   >
                     {amp.label} ({amp.pct}%)
@@ -276,22 +220,10 @@ export default function AnthroA1A5({ anthro, setAnthro, calculatedMetrics }: Ant
           </select>
         </h4>
         <div className="grid-4-col">
-          <div className="input-group">
-            <label>Waist</label>
-            <input type="text" value={anthro.waist} onChange={(e) => handleUpdate("waist", e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label>Mid-Arm (MAC)</label>
-            <input type="text" value={anthro.mac} onChange={(e) => handleUpdate("mac", e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label>Calf</label>
-            <input type="text" value={anthro.calf} onChange={(e) => handleUpdate("calf", e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label>Head</label>
-            <input type="text" value={anthro.head} onChange={(e) => handleUpdate("head", e.target.value)} />
-          </div>
+          <MeasurementInput label="Waist"        value={anthro.waist} onChange={(v) => handleUpdate("waist", v)} />
+          <MeasurementInput label="Mid-Arm (MAC)" value={anthro.mac}   onChange={(v) => handleUpdate("mac", v)} />
+          <MeasurementInput label="Calf"          value={anthro.calf}  onChange={(v) => handleUpdate("calf", v)} />
+          <MeasurementInput label="Head"          value={anthro.head}  onChange={(v) => handleUpdate("head", v)} />
         </div>
       </div>
 
@@ -309,22 +241,10 @@ export default function AnthroA1A5({ anthro, setAnthro, calculatedMetrics }: Ant
           </select>
         </h4>
         <div className="grid-4-col">
-          <div className="input-group">
-            <label>Triceps</label>
-            <input type="text" value={anthro.triceps} onChange={(e) => handleUpdate("triceps", e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label>Subscapular</label>
-            <input type="text" value={anthro.subscapular} onChange={(e) => handleUpdate("subscapular", e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label>Suprailiac</label>
-            <input type="text" value={anthro.suprailiac} onChange={(e) => handleUpdate("suprailiac", e.target.value)} />
-          </div>
-          <div className="input-group">
-            <label>Thigh</label>
-            <input type="text" value={anthro.thigh} onChange={(e) => handleUpdate("thigh", e.target.value)} />
-          </div>
+          <MeasurementInput label="Triceps"      value={anthro.triceps}     onChange={(v) => handleUpdate("triceps", v)} />
+          <MeasurementInput label="Subscapular"  value={anthro.subscapular} onChange={(v) => handleUpdate("subscapular", v)} />
+          <MeasurementInput label="Suprailiac"   value={anthro.suprailiac}  onChange={(v) => handleUpdate("suprailiac", v)} />
+          <MeasurementInput label="Thigh"        value={anthro.thigh}       onChange={(v) => handleUpdate("thigh", v)} />
         </div>
       </div>
     </>
