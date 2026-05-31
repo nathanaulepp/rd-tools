@@ -97,6 +97,8 @@ export interface CalculatedMetrics {
   // Healthy Pediatric Targets (DRI/EER)
   pediatricEER: number | null;
   pediatricProtein: number | null;
+  pediatricProteinMin?: number | null;
+  pediatricProteinMax?: number | null;
   pediatricFluid: number | null;
 }
 
@@ -207,6 +209,10 @@ export function useCalculatedMetrics(): CalculatedMetrics {
     isAdult,
     isPediatric,
     pediatricEER,
+    pediatricProtein,
+    pediatricFluid,
+  };
+  }pediatricEER,
     pediatricProtein,
     pediatricFluid,
   };

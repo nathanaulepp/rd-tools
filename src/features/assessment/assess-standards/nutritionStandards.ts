@@ -344,6 +344,9 @@ export const CONDITION_EXTRA_INPUTS: Partial<Record<ConditionKey, {
     { key: "tbsaPct", label: "TBSA Burned (%)", type: "number", autoPullFrom: "clinical.tbsa" },
     { key: "pbd", label: "Post-Burn Day (PBD)", type: "number", hint: "Required for Milner" },
   ],
+  trauma: [
+    { key: "exudateVolumeL", label: "Exudate Volume (L)", type: "number", hint: "Required for open abdomen adjustment" },
+  ],
   sickle_cell: [
     { key: "hgb", label: "Hemoglobin (g/dL)", type: "number", autoPullFrom: "labs.Hgb" },
   ],
@@ -1019,4 +1022,5 @@ export const MSJ_ACTIVITY_FACTORS: { label: string; af: number; description: str
   { label: "Moderately active", af: 1.55, description: "Moderate exercise 3–5 days/week" },
   { label: "Very active", af: 1.725, description: "Hard exercise 6–7 days/week" },
   { label: "Extra active", af: 1.9, description: "Very hard exercise / physical job" },
+];" },
 ];
