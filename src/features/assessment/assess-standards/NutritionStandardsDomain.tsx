@@ -545,12 +545,15 @@ export default function NutritionStandardsDomain() {
   const isPSU = evaluation?.eeSource === "PSU 2003b" || evaluation?.eeSource === "PSU 2010";
 
   const isConditionVisible = (key: ConditionKey) => {
-    if (key === "pregnancy" || key === "breastfeeding") {
-      if (sex === "M") return false;
-      if (ageYears > 0 && ageYears < 12) return false;
-    }
-    return true;
-  };
+  if (key === "pregnancy" || key === "breastfeeding") {
+    if (sex === "M") return false;
+    if (ageYears > 0 && ageYears < 12) return false;
+  }
+  if (key === "bpd") {
+    if (ageYears >= 18) return false;
+  }
+  return true;
+};
 
   const activeCafVal = parseFloat(icCaf) || 1.0;
   const cafLabel = useMemo(() => {

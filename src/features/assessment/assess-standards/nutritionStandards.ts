@@ -246,6 +246,11 @@ export const CONDITION_VARIANTS: Partial<Record<ConditionKey, { key: string; lab
     { key: "severely_stressed", label: "Severely Stressed / HCT first month" },
     { key: "high_protein", label: "High Protein Needs (wasting/enteropathy)" },
   ],
+  short_bowel: [
+    { key: "adult_standard", label: "Adult — Standard / Intestinal Failure" },
+    { key: "peds_pn_dependent", label: "Pediatric — PN-Dependent" },
+    { key: "peds_enteral_autonomous", label: "Pediatric — Enteral Autonomous / Transitioning" },
+  ],
   ckd_3_5: [
     { key: "vlcd", label: "VLCD + Keto Analogs" },
     { key: "lcd", label: "Low-Protein Diet" },
@@ -356,6 +361,11 @@ export const CONDITION_EXTRA_INPUTS: Partial<Record<ConditionKey, {
   ],
   oncology: [
     { key: "isUndernourished", label: "Undernourished / Catch-up Growth Needed", type: "checkbox" },
+  ],
+  short_bowel: [
+    { key: "hasPreservedColon", label: "Preserved Colon (increases water absorption)", type: "checkbox" },
+    { key: "remainingBowelShort", label: "Remaining Bowel < 40 cm or Excessive Output", type: "checkbox" },
+    { key: "growthSuboptimal", label: "Suboptimal Growth Trajectory", type: "checkbox" },
   ],
   diabetes: [
     { key: "pal", label: "Physical Activity Level (PAL)", type: "number", hint: "1.2 = sedentary, 1.5 = lightly active" },
@@ -1133,19 +1143,125 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     // ── SHORT BOWEL SYNDROME ──────────────────────────────────────────────────
     case "short_bowel": {
       if (isPeds) {
-        flags.push("⚠ FOLLOW-UP REQUIRED: Pediatric SBS energy targets (preterm: 90–120 kcal/kg; term infants: 75–85 kcal/kg) and ostomy/stool output-scaled fluid require additional input fields not yet implemented.");
-        flags.push("Consult pediatric gastroenterology. IC strongly recommended.");
+        // ── Pediatric SBS Path ──
+        // Source: Kay et al. (2021). Pediatric SBS: Nutritional Care.
+        // Nutrition Issues in Gastroenterology, Series No. 206. UVA Health.
+        const isPNDependent = variant === "peds_pn_dependent";
+        const isEnteralAutonomous = variant === "peds_enteral_autonomous";
+        const hasPreservedColon = extraInputs.hasPreservedColon === "true" || extraInputs.hasPreservedColon === 1;
+        const remainingBowelShort = extraInputs.remainingBowelShort === "true" || extraInputs.remainingBowelShort === 1;
+        const growthSuboptimal = extraInputs.growthSuboptimal === "true" || extraInputs.growthSuboptimal === 1;
+        const ageGroup = ageDays <= 182.625 ? "infant_0_6mo"
+                       : ageDays <= 365.25  ? "infant_6_12mo"
+                       : ageYears < 12      ? "child"
+                       :                      "adolescent";
+
+        eeSource = "Schofield WH×SF";
+
+        if (isPNDependent) {
+          // PN-dependent: conservative targets — gut not yet compensating
+          switch (ageGroup) {
+            case "infant_0_6mo":  kcalLow = wtKg * 85;  kcalHigh = wtKg * 105; break;
+            case "infant_6_12mo": kcalLow = wtKg * 80;  kcalHigh = wtKg * 100; break;
+            case "child":         kcalLow = wtKg * 50;  kcalHigh = wtKg * 90;  break;
+            case "adolescent":    kcalLow = wtKg * 30;  kcalHigh = wtKg * 50;  break;
+          }
+          eeKcal = (kcalLow + kcalHigh) / 2;
+          flags.push("PN-dependent SBS: conservative energy targets — gut not yet compensating. Advance enteral feeds gradually.");
+          flags.push("⚠ Maximize parenteral sodium provision to match high GI losses.");
+          flags.push("Monitor trace elements (zinc, selenium, copper) weekly — GI losses deplete them rapidly.");
+
+          // Protein
+          if (ageGroup === "infant_0_6mo" || ageGroup === "infant_6_12mo") {
+            protLow = wtKg * 3.5; protHigh = wtKg * 4.0;
+          } else {
+            protLow = wtKg * 2.0; protHigh = wtKg * 3.0;
+          }
+
+          // Fluid
+          let fluidBase = 120;
+          if (hasPreservedColon) fluidBase -= 20;
+          if (remainingBowelShort) fluidBase += 30;
+          const fluidMl = Math.min(Math.max(fluidBase, 110), 200) * wtKg;
+          fluidLow = fluidMl; fluidHigh = fluidMl;
+          fluidNote = `~${Math.round(fluidBase)} mL/kg/day (PN route). Adjusted for anatomy and output. Target urine output ≥1–2 mL/kg/hr.`;
+
+        } else if (isEnteralAutonomous) {
+          // Enteral autonomous: elevated to overcome mucosal malabsorption
+          switch (ageGroup) {
+            case "infant_0_6mo":
+              kcalLow = wtKg * 200; kcalHigh = wtKg * 250;
+              flags.push("Enteral SBS infant: up to 200–250 kcal/kg/day to overcome malabsorption. Monitor growth weekly.");
+              break;
+            case "infant_6_12mo":
+              kcalLow = wtKg * 100; kcalHigh = wtKg * 150;
+              flags.push("Scale energy upward from this baseline based on growth response.");
+              break;
+            case "child":
+              kcalLow = wtKg * 80; kcalHigh = wtKg * 130;
+              flags.push("Scale energy upward from this baseline based on growth response.");
+              break;
+            case "adolescent":
+              // REE × 2+ for adolescent enteral autonomous
+              const schofieldAdol = calculateSchofieldWH({ ageDays, weightKg: wtKg, heightCm: htCm, sex });
+              kcalLow = schofieldAdol * 1.8; kcalHigh = schofieldAdol * 2.2;
+              flags.push(`Adolescent enteral SBS: Schofield REE (${Math.round(schofieldAdol)} kcal) × 1.8–2.2 to overcome malabsorption.`);
+              break;
+          }
+          eeKcal = (kcalLow + kcalHigh) / 2;
+          flags.push("⚠ Enteral autonomy achieved: ensure aggressive enteral sodium supplementation (4–6 mEq/kg/day).");
+          flags.push("Advance enteral feeds slowly — bowel adaptation continues for 1–3 years post-resection.");
+
+          // Protein — elevated for all ages enteral autonomous
+          if (ageGroup === "infant_0_6mo" || ageGroup === "infant_6_12mo") {
+            protLow = wtKg * 3.0; protHigh = wtKg * 3.5;
+          } else {
+            protLow = wtKg * 2.0; protHigh = wtKg * 3.0;
+          }
+
+          // Fluid
+          let fluidBaseE = 150;
+          if (hasPreservedColon) fluidBaseE -= 20;
+          if (remainingBowelShort) fluidBaseE += 30;
+          const fluidMlE = Math.min(Math.max(fluidBaseE, 110), 200) * wtKg;
+          fluidLow = fluidMlE; fluidHigh = fluidMlE;
+          fluidNote = `~${Math.round(fluidBaseE)} mL/kg/day (enteral route). High losses require aggressive replacement.`;
+
+        } else {
+          // No variant selected — prompt user
+          flags.push("Select a pediatric SBS sub-type (PN-Dependent or Enteral Autonomous) for individualized targets.");
+          kcalLow = wtKg * 80; kcalHigh = wtKg * 130;
+          eeKcal = (kcalLow + kcalHigh) / 2;
+          protLow = wtKg * 2.0; protHigh = wtKg * 3.0;
+          fluidNote = "Titrate to output losses. Target urine output ≥1 mL/kg/hr.";
+        }
+
+        if (growthSuboptimal) {
+          kcalLow *= 1.10; kcalHigh *= 1.10; eeKcal *= 1.10;
+          flags.push("Growth suboptimal: energy targets increased 10%. Reassess weekly.");
+        }
+
+        flags.push("IC strongly recommended for SBS — energy needs are highly variable and change with adaptation phase.");
+        flags.push("Source: Kay et al. (2021). Pediatric SBS: Nutritional Care. Nutrition Issues in Gastroenterology, Series No. 206.");
+
+      } else {
+        // ── Adult SBS Path (unchanged) ──
+        afUsed = 1.3; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
+        const eerBase = eeKcal;
+        kcalLow = eerBase * 1.2; kcalHigh = eerBase * 1.5;
+        const midKcal = (kcalLow + kcalHigh) / 2;
+        const protFromEnergy = (midKcal * 0.20) / 4;
+        protLow = Math.max(protFromEnergy, wtKg * 1.5);
+        protHigh = Math.max(protFromEnergy * 1.1, wtKg * 2.0);
+        fluidNote = "Titrate to ostomy/stool loss; goal urine output >1200 mL/day.";
+        flags.push("SBS: 20% of total energy from high biological value protein.");
+        flags.push("Compensate for ~50% malabsorption with at least +20% energy buffer.");
+
+        // Apply adult variant label if selected
+        if (variant === "adult_standard") {
+          flags.push("Adult SBS: individualize sodium and fluid replacement to measured ostomy/stool output.");
+        }
       }
-      afUsed = 1.3; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
-      const eerBase = eeKcal;
-      kcalLow = eerBase * 1.2; kcalHigh = eerBase * 1.5;
-      const midKcal = (kcalLow + kcalHigh) / 2;
-      const protFromEnergy = (midKcal * 0.20) / 4;
-      protLow = Math.max(protFromEnergy, wtKg * 1.5);
-      protHigh = Math.max(protFromEnergy * 1.1, wtKg * 2.0);
-      fluidNote = "Titrate to ostomy/stool loss; goal urine output >1200 mL/day.";
-      flags.push("SBS: 20% of total energy from high biological value protein.");
-      flags.push("Compensate for ~50% malabsorption with at least +20% energy buffer.");
       break;
     }
 
