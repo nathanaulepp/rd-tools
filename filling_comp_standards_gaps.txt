@@ -20,7 +20,7 @@ REFACTORING ITEM 3: Adult Trauma Sub-types
 - Target File: src/features/assessment/assess-standards/nutritionStandardsAdult.ts
 - Urgency: HIGH
 - Current Broken State: The open_abdomen variant and exudateVolumeL input are registered in the UI config but completely ignored inside the adult switch block.
-- Expected Behavioral Fix: Mirror the pediatric logic: extract exudateVolumeL and apply surgical protein/energy step-ups to adult trauma calculations.
+- Expected Behavioral Fix: extract exudateVolumeL and apply surgical protein/energy linear calculation (protein: 29 x L; kcal: 29*4 x L) to adult trauma calculations. In fact, also do this for pediatrics. Push a flag citing this source: Hourigan, L. A., Hourigan, L., Linfoot, J. A., Linfoot, J., Chung, K. K., Chung, K., Dubick, M. A., Dubick, M., Rivera, R. L., Rivera, R., Jones, J. A., Salinas, R. D., Salinas, R., Mann, E. A., Wade, C. E., Wade, C., Wolf, S. E., Baskin, T. W., & Baskin, T. (2010). Loss of protein, immunoglobulins, and electrolytes in exudates from negative pressure wound therapy. Nutrition in clinical practice : official publication of the American Society for Parenteral and Enteral Nutrition, 25(5), 510–516. https://doi-org/10.1177/0884533610379852
 
 ======================================================================
 REFACTORING ITEM 4: Adult Short Bowel Syndrome
@@ -28,18 +28,10 @@ REFACTORING ITEM 4: Adult Short Bowel Syndrome
 - Target File: src/features/assessment/assess-standards/nutritionStandardsAdult.ts
 - Urgency: MEDIUM
 - Current Broken State: Checking hasPreservedColon or remainingBowelShort logs textual clinical guidance flags but leaves fluid limits entirely null.
-- Expected Behavioral Fix: Implement numeric fluid calculation adjustments matching anatomical status (e.g., volume deductions for preserved colon, additions for high output).
+- Expected Behavioral Fix: Remove estimations and push flags explaining that it needs manual review because of complexity.
 
 ======================================================================
-REFACTORING ITEM 5: Acute Pancreatitis Scaling (Adult & Pediatric)
-======================================================================
-- Target Files: src/features/assessment/assess-standards/nutritionStandardsAdult.ts & src/shared/utils/pediatricDiseaseMath.ts
-- Urgency: MEDIUM
-- Current Broken State: Selecting the severe_critical variant scales up protein targets but freezes the energy engine at a standard ree * 1.1–1.2 across all severities.
-- Expected Behavioral Fix: Decouple the multipliers: maintain mild presentations lower, and scale up the energy ceiling factors for severe, necrotizing, or critical ICU cases.
-
-======================================================================
-REFACTORING ITEM 6: Pressure Injury Staging
+REFACTORING ITEM 5: Pressure Injury Staging
 ======================================================================
 - Target File: src/features/assessment/assess-standards/nutritionStandardsAdult.ts
 - Urgency: MEDIUM
@@ -47,7 +39,7 @@ REFACTORING ITEM 6: Pressure Injury Staging
 - Expected Behavioral Fix: Scale energy calculations upward appropriately to match the metabolic demands of advanced cavitated wounds (Stage 3 & 4).
 
 ======================================================================
-REFACTORING ITEM 7: Decompensated Cirrhosis
+REFACTORING ITEM 6: Decompensated Cirrhosis
 ======================================================================
 - Target File: src/features/assessment/assess-standards/nutritionStandardsAdult.ts
 - Urgency: MEDIUM
@@ -55,7 +47,7 @@ REFACTORING ITEM 7: Decompensated Cirrhosis
 - Expected Behavioral Fix: Incorporate adaptive multipliers/equations to account for acute hypermetabolic shifts during decompensated liver failure.
 
 ======================================================================
-REFACTORING ITEM 8: Null Fluid Targets (Heart Failure, Sickle Cell, MASLD, Pediatric Oncology)
+REFACTORING ITEM 7: Null Fluid Targets (Heart Failure, Sickle Cell, MASLD, Pediatric Oncology)
 ======================================================================
 - Target Files: src/features/assessment/assess-standards/nutritionStandardsAdult.ts & src/features/assessment/assess-standards/nutritionStandardsPeds.ts
 - Urgency: LOW
@@ -63,7 +55,7 @@ REFACTORING ITEM 8: Null Fluid Targets (Heart Failure, Sickle Cell, MASLD, Pedia
 - Expected Behavioral Fix: Replace fallback null returns with hard numeric targets (e.g., ceiling metrics for fluid restrictions or absolute floors for hyper-hydration) so the chart renders properly.
 
 ======================================================================
-REFACTORING ITEM 9: Unutilized Adult Renal Inputs
+REFACTORING ITEM 8: Unutilized Adult Renal Inputs
 ======================================================================
 - Target File: src/features/assessment/assess-standards/nutritionStandardsAdult.ts
 - Urgency: LOW
