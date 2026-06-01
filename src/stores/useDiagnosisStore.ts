@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type { Diagnosis } from "../types";
 import { defaultDiagnosis } from "../entities/note/defaults";
 import { registerDomainReset, registerDomainGetter } from "./useNoteStore";
+import { tryParse } from "./storeUtils";
 
 interface DiagnosisState {
   diagnosis: Diagnosis;
@@ -30,11 +31,3 @@ registerDomainReset("diagnosis", (raw) => {
 });
 
 registerDomainGetter("diagnosis", () => useDiagnosisStore.getState().diagnosis);
-
-function tryParse<T>(raw: string, fallback: T): T {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}

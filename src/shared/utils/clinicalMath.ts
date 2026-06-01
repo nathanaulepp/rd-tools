@@ -265,3 +265,57 @@ export function fmtRange(low: number, high: number, unit: string): string {
   if (Math.abs(low - high) < 0.5) return `${Math.round(low)} ${unit}`;
   return `${Math.round(low)}–${Math.round(high)} ${unit}`;
 }
+
+// ─── Harris-Benedict BMR ──────────────────────────────────────────────────────
+
+/**
+ * Harris-Benedict BMR.
+ * Used in burns (Toronto equation) as the HBE baseline.
+ *
+ * Male:   88.362 + 13.397W + 4.799H - 5.677A
+ * Female: 447.593 + 9.247W + 3.098H - 4.330A
+ */
+export function calcHarrisBenedict(
+  wtKg: number,
+  htCm: number,
+  ageYears: number,
+  sex: "M" | "F"
+): number {
+  if (sex === "M") return 88.362 + 13.397 * wtKg + 4.799 * htCm - 5.677 * ageYears;
+  return 447.593 + 9.247 * wtKg + 3.098 * htCm - 4.330 * ageYears;
+}
+
+// ─── Toronto Burns Equation ───────────────────────────────────────────────────
+
+/**
+ * Toronto burns equation.
+ * Used for adult burns (preferred over Milner for preventing overfeeding).
+ *
+ * TEE = -4343 + 10.5×TBSA + 0.23×caloricIntake + 0.84×HBE + 114×coreTempC - 4.5×PBD
+ */
+export function calcToronto(
+  tbsaPct: number,
+  caloricIntakeKcal: number,
+  hbeKcal: number,
+  coreTempC: number,
+  pbd: number
+): number {
+  return (
+    -4343 +
+    10.5 * tbsaPct +
+    0.23 * caloricIntakeKcal +
+    0.84 * hbeKcal +
+    114 * coreTempC -
+    4.5 * pbd
+  );
+}
+
+// ─── Pediatric age gate ───────────────────────────────────────────────────────
+
+/**
+ * Returns true when ageYears is in the pediatric range (0 < age < 18).
+ * Used by the nutrition engine to route to the correct sub-engine.
+ */
+export function isPedsAge(ageYears: number): boolean {
+  return ageYears > 0 && ageYears < 18;
+}

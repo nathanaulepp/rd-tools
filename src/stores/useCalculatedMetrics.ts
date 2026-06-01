@@ -8,11 +8,10 @@
 import { useAnthroStore } from "./useAnthroStore";
 import { useNoteStore } from "./useNoteStore";
 import { useStandardsStore } from "./useStandardsStore";
-import { calcIBW, calcBSA } from "../shared/utils/nutrition-engine/nutritionStandards";
+import { calcIBW, calcBSA, calcMSJ, calcHolidaySegar } from "../shared/utils/nutrition-engine/nutritionStandards";
 import { 
   calculatePediatricHealthyEER, 
-  calculatePediatricHealthyProtein, 
-  calculateHollidaySegar 
+  calculatePediatricHealthyProtein 
 } from "../shared/utils/pediatricHealthyMath";
 import { classifyPediatricWeightStatus } from "../shared/utils/pediatricWeightStatus";
 import {
@@ -22,10 +21,6 @@ import {
   calculatePediatricAKIEnergy,
   calculatePediatricInsensibleLoss
 } from "../shared/utils/pediatricDiseaseMath";
-import {
-  calculateAdultAKIEnergy,
-  calculateAdultFluidWithFever
-} from "../shared/utils/adultDiseaseMath";
 
 // ─── Amputation lookup table ──────────────────────────────────────────────────
 
@@ -221,7 +216,7 @@ export function useCalculatedMetrics(): CalculatedMetrics {
       pediatricProtein = calculatePediatricHealthyProtein(ageDays, wtKg);
       pediatricProteinMin = pediatricProtein;
       pediatricProteinMax = pediatricProtein;
-      pediatricFluid = calculateHollidaySegar(wtKg);
+      pediatricFluid = calcHolidaySegar(wtKg);
     } else if (condition) {
       // ── Unhealthy/Disease Pediatric Path ────────────────────────────────────
 
@@ -237,7 +232,7 @@ export function useCalculatedMetrics(): CalculatedMetrics {
       } else if (condition === "diabetes") {
         // Diabetes redirects to healthy EER baseline
         pediatricEER = calculateSchofieldWH({ ageDays, weightKg: wtKg, heightCm: htCm, sex }) * 1.3;
-        pediatricFluid = calculateHollidaySegar(wtKg);
+        pediatricFluid = calcHolidaySegar(wtKg);
       } else {
         // 1. Energy (Schofield WH Baseline)
         const bmr = calculateSchofieldWH({ ageDays, weightKg: wtKg, heightCm: htCm, sex });
@@ -245,7 +240,7 @@ export function useCalculatedMetrics(): CalculatedMetrics {
         pediatricEER = bmr * stressFactor;
 
         // 3. Fluid (Holliday-Segar Baseline)
-        pediatricFluid = calculateHollidaySegar(wtKg);
+        pediatricFluid = calcHolidaySegar(wtKg);
       }
 
       // 2. Protein (Surgical Overrides & ASPEN Critical Care)
@@ -264,18 +259,18 @@ export function useCalculatedMetrics(): CalculatedMetrics {
     // ── Adult Disease Path ────────────────────────────────────────────────────
     
     if (condition === "aki") {
-      // Adult AKI Energy: Conservative MSJ (1.0 - 1.1) or 20-25 kcal/kg
-      const energy = calculateAdultAKIEnergy({ 
-        wtKg, htCm, ageYears: ageDays ? ageDays/365.25 : 40, sex 
-      });
-      adultEERMin = energy.min;
-      adultEERMax = energy.max;
+      const ageYears = ageDays ? ageDays / 365.25 : 40;
+      const msj = calcMSJ(wtKg, htCm, ageYears, sex);
+      adultEERMin = Math.min(msj * 1.0, wtKg * 20);
+      adultEERMax = Math.max(msj * 1.1, wtKg * 25);
 
-      // Adult AKI Fluid: Measured Output + 500 mL (with Fever override)
       const output = parseFloat(standards.extraInputs.urineOutputMlDay) || 0;
       const tmaxF = parseFloat(standards.extraInputs.tempMax) || 98.6;
       const tmaxC = (tmaxF - 32) * (5 / 9);
-      adultFluid = calculateAdultFluidWithFever({ measuredOutputMl: output, tmaxC });
+      const baseInsensible = 500;
+      adultFluid =
+        output +
+        (tmaxC <= 37 ? baseInsensible : baseInsensible * (1 + (tmaxC - 37) * 0.1));
     }
   }
 

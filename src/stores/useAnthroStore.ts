@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type { Anthro, DexaScan } from "../types";
 import { defaultAnthro, defaultDexaScans } from "../entities/note/defaults";
 import { registerDomainReset, registerDomainGetter } from "./useNoteStore";
+import { tryParse } from "./storeUtils";
 
 interface AnthroState {
   anthro: Anthro;
@@ -43,11 +44,3 @@ registerDomainReset("dexa_scans", (raw) => {
 
 registerDomainGetter("anthro", () => useAnthroStore.getState().anthro);
 registerDomainGetter("dexa_scans", () => useAnthroStore.getState().dexaScans);
-
-function tryParse<T>(raw: string, fallback: T): T {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}

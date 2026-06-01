@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type { Labs } from "../types";
 import { defaultLabs } from "../entities/note/defaults";
 import { registerDomainReset, registerDomainGetter } from "./useNoteStore";
+import { tryParse } from "./storeUtils";
 
 interface LabsState {
   labs: Labs;
@@ -35,11 +36,3 @@ registerDomainReset("labs", (raw) => {
 });
 
 registerDomainGetter("labs", () => useLabsStore.getState().labs);
-
-function tryParse<T>(raw: string, fallback: T): T {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}

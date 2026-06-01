@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type { MonitorEval } from "../types";
 import { defaultMonitorEval } from "../entities/note/defaults";
 import { registerDomainReset, registerDomainGetter } from "./useNoteStore";
+import { tryParse } from "./storeUtils";
 
 interface MonitorEvalState {
   monitorEval: MonitorEval;
@@ -32,11 +33,3 @@ registerDomainReset("monitor_evaluate", (raw) => {
 });
 
 registerDomainGetter("monitor_evaluate", () => useMonitorEvalStore.getState().monitorEval);
-
-function tryParse<T>(raw: string, fallback: T): T {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}

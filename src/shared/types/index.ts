@@ -8,14 +8,6 @@ export interface PatientHeaderProps {
   clinical: any;
 }
 
-export interface Dietary {
-  dietOrder?: string;
-  oralCalories?: string | number;
-  oralProtein?: string | number;
-  oralWater?: string | number;
-  [key: string]: any;
-}
-
 export interface MicroNutrientParams {
   amount?: string | number;
   unit?: string;

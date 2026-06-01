@@ -8,8 +8,6 @@
  * No imports from feature folders.
  */
 
-import { calcHolidaySegar } from "./clinicalMath";
-
 // ─── PA Coefficient Mapping ───────────────────────────────────────────────────
 
 /**
@@ -128,4 +126,3 @@ export function calculatePediatricHealthyProtein(
  * Re-exported from clinicalMath.ts — canonical implementation lives there.
  * Kept here for backwards compatibility with existing imports.
  */
-export { calcHolidaySegar as calculateHollidaySegar };

@@ -5,11 +5,15 @@
 // Do NOT import this file from UI components — always go through the barrel (nutritionStandards.ts).
 
 import type { EvalOptions } from "../../../types/standards";
-import type { SharedEvalContext, ConditionResult } from "./nutritionStandardsTypes";
+import type { SharedEvalContext, ConditionResult } from "../../../types/nutritionEngine";
 import {
   calcBSA,
   calcHolidaySegar,
 } from "./nutritionStandardsMath";
+import {
+  calculatePediatricHealthyEER,
+  calculatePediatricHealthyProtein,
+} from "../pediatricHealthyMath";
 import {
   calculateSchofieldWH,
   calculatePediatricAKIEnergy,
@@ -70,11 +74,30 @@ export function evaluatePedsCondition(
 
     // ── HEALTHY ──────────────────────────────────────────────────────────────
     case "healthy": {
-      // Pediatric healthy EER is calculated via the DRI/EER pipeline (Pipeline A).
-      // This branch just surfaces a redirect flag — actual numbers come from
-      // calculatePediatricHealthyEER in useCalculatedMetrics.
-      flags.push("ℹ Pediatric healthy targets calculated via DRI/EER Pipeline. Review Anthropometric section for age-specific EER.");
-      kcalLow = 0; kcalHigh = 0; protLow = 0; protHigh = 0;
+      const pal = Number(extraInputs.pal) || 1.4;
+      eeKcal = calculatePediatricHealthyEER({
+        ageDays,
+        weightKg: wtKg,
+        heightCm: htCm,
+        sex,
+        pal,
+        isOverweight: false,
+      });
+      eeSource = "DRI/EER";
+      kcalLow = eeKcal * 0.925;
+      kcalHigh = eeKcal * 1.075;
+
+      const protRda = calculatePediatricHealthyProtein(ageDays, wtKg);
+      protLow = protRda;
+      protHigh = protRda;
+
+      const holidayFluid = calcHolidaySegar(wtKg);
+      fluidLow = holidayFluid;
+      fluidHigh = holidayFluid;
+      fluidNote = `Holliday-Segar: ${Math.round(holidayFluid)} mL/day.`;
+
+      flags.push("ℹ Pediatric healthy EER calculated via DRI/EER equations (Institute of Medicine). PAL applied from slider.");
+      flags.push("For overweight/obese pediatric patients, select the PAL appropriate to actual activity level — the overweight DRI equations are applied automatically.");
       break;
     }
 

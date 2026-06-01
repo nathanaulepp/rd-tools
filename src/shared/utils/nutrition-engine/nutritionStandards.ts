@@ -13,7 +13,7 @@ import type {
   EvaluationSnapshot,
 } from "../../../types/standards";
 
-import type { ConditionResult, SharedEvalContext } from "./nutritionStandardsTypes";
+import type { ConditionResult, SharedEvalContext } from "../../../types/nutritionEngine";
 import { evaluateAdultCondition } from "./nutritionStandardsAdult";
 import { evaluatePedsCondition }  from "./nutritionStandardsPeds";
 import {

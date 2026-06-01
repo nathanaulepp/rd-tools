@@ -24,4 +24,4 @@ export type { Dietary, RecallMeal } from "./dietary";
 export type { Diagnosis, PESStatement } from "./diagnosis";
 export type { Intervention } from "./intervention";
 export type { MonitorEval, OutcomeProgress } from "./monitorEval";
-export type { Standards } from "./standards";
+export type { Standards, EvaluationSnapshot } from "./standards";

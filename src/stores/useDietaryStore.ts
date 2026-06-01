@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type { Dietary } from "../types";
 import { defaultDietary } from "../entities/note/defaults";
 import { registerDomainReset, registerDomainGetter } from "./useNoteStore";
+import { tryParse } from "./storeUtils";
 
 interface DietaryState {
   dietary: Dietary;
@@ -30,11 +31,3 @@ registerDomainReset("dietary", (raw) => {
 });
 
 registerDomainGetter("dietary", () => useDietaryStore.getState().dietary);
-
-function tryParse<T>(raw: string, fallback: T): T {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}

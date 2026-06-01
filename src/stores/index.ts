@@ -21,3 +21,4 @@ export { useInterventionStore } from "./useInterventionStore";
 export { useMonitorEvalStore } from "./useMonitorEvalStore";
 export { useStandardsStore } from "./useStandardsStore";
 export { useCalculatedMetrics } from "./useCalculatedMetrics";
+export { tryParse } from "./storeUtils";

@@ -5,7 +5,7 @@
 // Do NOT import this file from UI components — always go through the barrel (nutritionStandards.ts).
 
 import type { EvalOptions } from "../../../types/standards";
-import type { SharedEvalContext, ConditionResult } from "./nutritionStandardsTypes";
+import type { SharedEvalContext, ConditionResult } from "../../../types/nutritionEngine";
 import {
   calcIBW,
   calcMSJ,
@@ -21,15 +21,38 @@ import {
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
-function evalStatus(current: number, low: number, high: number): "LOW" | "WNL" | "HIGH" | "N/A" {
-  if (current < low) return "LOW";
-  if (current > high) return "HIGH";
-  return "WNL";
+// ─── AKI helpers (inlined from adultDiseaseMath.ts) ──────────────────────────
+
+function calculateAdultAKIEnergy(opts: {
+  wtKg: number;
+  htCm: number;
+  ageYears: number;
+  sex: "M" | "F";
+  isHypermetabolic?: boolean;
+  isOnCRRT?: boolean;
+}): { min: number; max: number } {
+  const { wtKg, htCm, ageYears, sex, isHypermetabolic, isOnCRRT } = opts;
+  const msj = calcMSJ(wtKg, htCm, ageYears, sex);
+  if (isHypermetabolic || isOnCRRT) {
+    return { min: msj * 1.2, max: msj * 1.3 };
+  }
+  return {
+    min: Math.min(msj * 1.0, wtKg * 20),
+    max: Math.max(msj * 1.1, wtKg * 25),
+  };
 }
 
-function fmtRange(low: number, high: number, unit: string): string {
-  if (Math.abs(low - high) < 0.5) return `${Math.round(low)} ${unit}`;
-  return `${Math.round(low)}–${Math.round(high)} ${unit}`;
+function calculateAdultFluidWithFever(opts: {
+  measuredOutputMl: number;
+  tmaxC: number;
+}): number {
+  const { measuredOutputMl, tmaxC } = opts;
+  const baselineInsensible = 500;
+  const insensible =
+    tmaxC <= 37
+      ? baselineInsensible
+      : baselineInsensible * (1 + (tmaxC - 37) * 0.1);
+  return measuredOutputMl + insensible;
 }
 
 // ─── Adult Evaluation Engine ──────────────────────────────────────────────────

@@ -13,6 +13,7 @@ import { create } from "zustand";
 import type { Standards, EvaluationSnapshot } from "../types";
 import { defaultStandards } from "../entities/note/defaults";
 import { registerDomainReset, registerDomainGetter } from "./useNoteStore";
+import { tryParse } from "./storeUtils";
 
 interface StandardsState {
   standards: Standards;
@@ -44,11 +45,3 @@ registerDomainReset("standards", (raw) => {
 });
 
 registerDomainGetter("standards", () => useStandardsStore.getState().standards);
-
-function tryParse<T>(raw: string, fallback: T): T {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}

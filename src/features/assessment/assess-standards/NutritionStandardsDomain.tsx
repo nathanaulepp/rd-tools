@@ -11,8 +11,8 @@ import {
   CONDITION_EXTRA_INPUTS,
   IC_ACTIVITY_FACTORS,
   MSJ_ACTIVITY_FACTORS,
-} from "./nutritionStandards";
-import type { EvaluateResult } from "./nutritionStandards";
+} from "../../../shared/utils/nutrition-engine/nutritionStandards";
+import type { EvaluateResult } from "../../../shared/utils/nutrition-engine/nutritionStandards";
 import type {
   EvalStatus,
   EvalResult,

@@ -4,6 +4,7 @@ import { create } from "zustand";
 import type { Intervention } from "../types";
 import { defaultIntervention } from "../entities/note/defaults";
 import { registerDomainReset, registerDomainGetter } from "./useNoteStore";
+import { tryParse } from "./storeUtils";
 
 interface InterventionState {
   intervention: Intervention;
@@ -32,11 +33,3 @@ registerDomainReset("intervention", (raw) => {
 });
 
 registerDomainGetter("intervention", () => useInterventionStore.getState().intervention);
-
-function tryParse<T>(raw: string, fallback: T): T {
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return fallback;
-  }
-}
