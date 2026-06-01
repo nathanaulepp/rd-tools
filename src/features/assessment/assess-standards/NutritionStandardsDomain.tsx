@@ -756,30 +756,32 @@ export default function NutritionStandardsDomain() {
           </div>
 
           <div className="card" style={{ padding: "1rem" }}>
-            <label style={subHeaderStyle}>2. Current Prescription</label>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+              <label style={{ ...subHeaderStyle, marginBottom: 0 }}>2. Current Diet Rx</label>
+            </div>
             <div className="grid-2-col" style={{ gap: "10px" }}>
               <div className="input-group" style={{ margin: 0 }}>
                 <label style={tinyLabelStyle}>Energy (kcal)</label>
-                <input type="number" value={currentKcal} onChange={e => setCurrentKcal(e.target.value)} style={inputStyle} placeholder="1800" />
+                <input type="number" value={currentKcal} readOnly style={readOnlyInputStyle} placeholder="—" />
               </div>
               <div className="input-group" style={{ margin: 0 }}>
                 <label style={tinyLabelStyle}>Protein (g)</label>
-                <input type="number" value={currentProtein} onChange={e => setCurrentProtein(e.target.value)} style={inputStyle} placeholder="75" />
+                <input type="number" value={currentProtein} readOnly style={readOnlyInputStyle} placeholder="—" />
               </div>
             </div>
             <div className="grid-2-col" style={{ gap: "10px", marginTop: "10px" }}>
               <div className="input-group" style={{ margin: 0 }}>
                 <label style={tinyLabelStyle}>Fat (g)</label>
-                <input type="number" value={currentFat} onChange={e => setCurrentFat(e.target.value)} style={inputStyle} placeholder="Optional" />
+                <input type="number" value={currentFat} readOnly style={readOnlyInputStyle} placeholder="—" />
               </div>
               <div className="input-group" style={{ margin: 0 }}>
                 <label style={tinyLabelStyle}>CHO (g)</label>
-                <input type="number" value={currentCho} onChange={e => setCurrentCho(e.target.value)} style={inputStyle} placeholder="Optional" />
+                <input type="number" value={currentCho} readOnly style={readOnlyInputStyle} placeholder="—" />
               </div>
             </div>
             <div className="input-group" style={{ marginTop: "10px" }}>
               <label style={tinyLabelStyle}>Fluid (mL/day)</label>
-              <input type="number" value={currentFluid} onChange={e => setCurrentFluid(e.target.value)} style={inputStyle} placeholder="Optional" />
+              <input type="number" value={currentFluid} readOnly style={readOnlyInputStyle} placeholder="—" />
             </div>
           </div>
         </div>
@@ -873,3 +875,4 @@ const subHeaderStyle: React.CSSProperties = { display: "block", fontSize: "0.72r
 const tinyLabelStyle: React.CSSProperties = { fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", marginBottom: "4px", display: "block" };
 const selectStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box", background: "#fff", color: "#1e293b" };
 const inputStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box" };
+const readOnlyInputStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box", background: "#f8fafc", color: "#64748b", cursor: "default" };
