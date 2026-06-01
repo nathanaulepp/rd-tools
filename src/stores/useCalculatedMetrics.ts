@@ -229,10 +229,6 @@ export function useCalculatedMetrics(): CalculatedMetrics {
         const insensible = calculatePediatricInsensibleLoss(bsa);
         const output = parseFloat(standards.extraInputs.urineOutputMlDay) || 0;
         pediatricFluid = output + insensible;
-      } else if (condition === "diabetes") {
-        // Diabetes redirects to healthy EER baseline
-        pediatricEER = calculateSchofieldWH({ ageDays, weightKg: wtKg, heightCm: htCm, sex }) * 1.3;
-        pediatricFluid = calcHolidaySegar(wtKg);
       } else {
         // 1. Energy (Schofield WH Baseline)
         const bmr = calculateSchofieldWH({ ageDays, weightKg: wtKg, heightCm: htCm, sex });

@@ -276,14 +276,20 @@ function PSUBanner({ eeSource }: { eeSource: string }) {
 
 interface ExtraInputRendererProps {
   condition: ConditionKey | "";
+  variant: string;
   extraInputs: Record<string, string>;
   setExtraInputs: (ei: Record<string, string>) => void;
+  ageYears: number;
+  sex: "M" | "F";
 }
 
 function ExtraInputRenderer({
   condition,
+  variant,
   extraInputs,
   setExtraInputs,
+  ageYears,
+  sex,
 }: ExtraInputRendererProps) {
   const { clinical, setClinical } = useClinicalStore();
   const { labs, setLabs } = useLabsStore();
@@ -319,6 +325,12 @@ function ExtraInputRenderer({
   return (
     <>
       {fields.map(f => {
+        // Metadata-driven visibility checks
+        if (f.minAge !== undefined && ageYears < f.minAge) return null;
+        if (f.maxAge !== undefined && ageYears > f.maxAge) return null;
+        if (f.sex && f.sex !== sex) return null;
+        if (f.onlyForVariants && !f.onlyForVariants.includes(variant)) return null;
+
         // PSU fields only show when mech vent is checked
         if (condition === "critical_illness" && (f.key === "tempMax" || f.key === "ve")) {
           if (extraInputs.isMechVent !== "true") return null;
@@ -463,6 +475,11 @@ export default function NutritionStandardsDomain() {
       else if (ageYears <= 16) v = "child_16";
       else if (ageYears < 18) v = "older_adol";
       if (variant !== v && variant !== "post_engraft") setVariant(v);
+    } else if (condition === "short_bowel") {
+      const isAdultVariant = variant === "adult_standard";
+      const isPedsVariant  = variant === "peds_pn_dependent" || variant === "peds_enteral_autonomous";
+      if (ageYears >= 18 && isPedsVariant) setVariant("adult_standard");
+      if (ageYears < 18 && isAdultVariant) setVariant("");
     }
   }, [condition, bmi, variant, ageYears]);
 
@@ -672,7 +689,7 @@ export default function NutritionStandardsDomain() {
                   ))}
                 </optgroup>
                 <optgroup label="Chronic Disease">
-                  {(["copd", "heart_failure", "ckd_3_5", "ckd_5d", "kidney_transplant", "cirrhosis", "liver_transplant", "masld_mash", "cystic_fibrosis", "sickle_cell", "diabetes"] as ConditionKey[]).filter(isConditionVisible).map(k => (
+                  {(["copd", "heart_failure", "ckd_3_5", "ckd_5d", "kidney_transplant", "cirrhosis", "liver_transplant", "masld_mash", "cystic_fibrosis", "sickle_cell"] as ConditionKey[]).filter(isConditionVisible).map(k => (
                     <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
                   ))}
                 </optgroup>
@@ -716,8 +733,11 @@ export default function NutritionStandardsDomain() {
             {condition && condition !== "healthy" && condition !== "heart_failure" && (
               <ExtraInputRenderer
                 condition={condition}
+                variant={variant}
                 extraInputs={extraInputs}
                 setExtraInputs={setExtraInputs}
+                ageYears={ageYears}
+                sex={sex}
               />
             )}
           </div>

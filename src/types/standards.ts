@@ -40,7 +40,6 @@ export type ConditionKey =
   | "obesity_stable"
   | "severe_malnutrition"
   | "sickle_cell"
-  | "diabetes"
   | "hsct"
   | "bpd";
 

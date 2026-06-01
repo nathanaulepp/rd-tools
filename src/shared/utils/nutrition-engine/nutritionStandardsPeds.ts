@@ -337,14 +337,13 @@ export function evaluatePedsCondition(
         kcalLow = eeKcal * 0.95;
         kcalHigh = eeKcal * 1.05;
         flags.push(`ℹ Schofield WH BMR without injury factor: ${Math.round(pedsBMR)} kcal/day (IC unavailable fallback — prevents overfeeding in acute metabolic phase).`);
-        flags.push("⚠ Permissive underfeeding (11–25 kcal/kg) halts linear growth and causes long-term cognitive/metabolic deficits in children. IC is strongly preferred.");
+        flags.push("⚠ Permissive underfeeding (12–25 kcal/kg) halts linear growth and causes long-term cognitive/metabolic deficits in children. IC is strongly preferred.");
       }
       const protRange = calculatePediatricDiseaseProtein({ ageDays, weightKg: wtKg, condition: "critical_illness", variant: variant || "", extraInputs });
       protLow = protRange.min; protHigh = protRange.max;
       const holidayFluid = calcHolidaySegar(wtKg);
       fluidLow = holidayFluid * 0.9; fluidHigh = holidayFluid * 1.1;
       fluidNote = `Holliday-Segar: ~${Math.round(holidayFluid)} mL/day. Titrate to resuscitation goals.`;
-      flags.push("Penn State 2003b is an adult equation — not validated for pediatric patients.");
       break;
     }
 
@@ -575,7 +574,7 @@ export function evaluatePedsCondition(
 
     // ── OBESITY STABLE ────────────────────────────────────────────────────────
     case "obesity_stable": {
-      flags.push("ℹ Pediatric obesity energy targets are calculated via the DRI/EER Overweight equations in Pipeline A. Select 'Healthy / Preventive' to access age-specific overweight EER calculations.");
+      flags.push("ℹ Pediatric obesity energy targets are automatically calculated via the DRI/EER Overweight equations in 'Healthy / Preventive' ");
       flags.push("Gradual, growth-preserving weight management: target weight stabilization, not active loss, during linear growth phases.");
       kcalLow = 0; kcalHigh = 0; protLow = 0; protHigh = 0;
       break;
@@ -601,21 +600,6 @@ export function evaluatePedsCondition(
       protLow = protRange.min; protHigh = protRange.max;
       flags.push(`ℹ Pediatric SCD REE: Hemoglobin-adjusted sex-specific equation (Hgb: ${hgb} g/dL) × AF ${pal}.`);
       flags.push("Adult MSJ with activity factors is architecturally invalid for pediatric SCD — sex-specific hemoglobin-adjusted REE used.");
-      break;
-    }
-
-    // ── DIABETES MELLITUS ─────────────────────────────────────────────────────
-    case "diabetes": {
-      flags.push("ℹ Pediatric Diabetes: baseline energy set to age-specific EER. Review 'Healthy' domain for overweight EER calculations if needed.");
-      eeKcal = calculateSchofieldWH(schofieldOpts);
-      eeSource = "Schofield WH×SF";
-      kcalLow = eeKcal * 0.95; kcalHigh = eeKcal * 1.05;
-      const healthyProt = getPediatricSDI(ageDays, wtKg);
-      protLow = healthyProt; protHigh = healthyProt * 1.2;
-      const holidayFluid = calcHolidaySegar(wtKg);
-      fluidLow = holidayFluid; fluidHigh = holidayFluid;
-      fluidNote = "Holliday-Segar; adjust for glycosuria if present.";
-      flags.push("Restructure macronutrients to favor high-fiber, low-glycemic-index carbohydrates to improve insulin sensitivity.");
       break;
     }
 
@@ -647,7 +631,6 @@ export function evaluatePedsCondition(
       protHigh = wtKg * 4.5;
       fluidLow = wtKg * 130;
       fluidHigh = wtKg * 150;
-      fluidNote = `Restrict to 130–150 mL/kg/day (${Math.round(wtKg * 130)}–${Math.round(wtKg * 150)} mL). Use calorically dense formula (≥1 kcal/mL) to meet energy targets within fluid limit.`;
       flags.push("ℹ BPD targets: 120–150 kcal/kg and 3.5–4.5 g/kg/day protein. Both titrate DOWN as respiratory status stabilises and growth velocity normalises.");
       flags.push("⚠ Fluid restriction (130–150 mL/kg/day) requires calorically dense enteral formula (≥1 kcal/mL, consider 1.5–2 kcal/mL) to close the energy gap.");
       flags.push("ℹ Monitor growth velocity weekly. If weight gain <15–20 g/day in VLBW infants, reassess energy density before increasing volume.");

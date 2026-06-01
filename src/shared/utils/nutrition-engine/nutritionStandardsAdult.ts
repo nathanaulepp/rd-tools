@@ -237,9 +237,9 @@ export function evaluateAdultCondition(
     case "ckd_3_5": {
       afUsed = 1.2; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
       kcalLow = wtKg * 25; kcalHigh = wtKg * 35;
-      if (variant === "vlcd") {
+      if (variant === "vlpd") {
         protLow = wtKg * 0.28; protHigh = wtKg * 0.43;
-        flags.push("VLCD + keto-analog supplementation: 0.28–0.43 g/kg/day protein.");
+        flags.push("VLPD + keto-analog supplementation: 0.28–0.43 g/kg/day protein.");
       } else if (variant === "lcd_dm") {
         protLow = wtKg * 0.60; protHigh = wtKg * 0.80;
         flags.push("Low-protein diet + diabetes: 0.60–0.80 g/kg/day.");
@@ -611,16 +611,6 @@ export function evaluateAdultCondition(
       protLow = wtKg * 1.0; protHigh = wtKg * 1.3;
       fluidNote = "High fluid intake recommended to prevent vaso-occlusive crisis.";
       flags.push("Maintain high baseline fluid intake to prevent sickling events.");
-      break;
-    }
-
-    // ── DIABETES MELLITUS ────────────────────────────────────────────────────
-    case "diabetes": {
-      afUsed = 1.2; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
-      kcalLow = wtKg * 20; kcalHigh = wtKg * 25;
-      protLow = wtKg * 0.8; protHigh = wtKg * 1.0;
-      fluidNote = "DRI (~30 mL/kg)";
-      flags.push("Carbohydrate quality over quantity: favor high-fiber, low-GI sources.");
       break;
     }
 

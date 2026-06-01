@@ -242,7 +242,6 @@ export const CONDITION_LABELS: Record<ConditionKey, string> = {
   obesity_stable: "Obesity / Metabolic Syndrome (Stable)",
   severe_malnutrition: "Severe Malnutrition / Refeeding Risk",
   sickle_cell: "Sickle Cell Disease",
-  diabetes: "Diabetes Mellitus",
   hsct: "Hematopoietic Stem Cell Transplant (HSCT)",
   bpd: "Bronchopulmonary Dysplasia (BPD)",
 };
@@ -282,12 +281,12 @@ export const CONDITION_VARIANTS: Partial<Record<ConditionKey, { key: string; lab
     { key: "high_protein",      label: "High Protein Needs (wasting/enteropathy)" },
   ],
   short_bowel: [
-    { key: "adult_standard",          label: "Adult — Standard / Intestinal Failure" },
-    { key: "peds_pn_dependent",       label: "Pediatric — PN-Dependent" },
-    { key: "peds_enteral_autonomous", label: "Pediatric — Enteral Autonomous / Transitioning" },
+  { key: "adult_standard",          label: "Adult — Standard / Intestinal Failure",          minAge: 18 },
+  { key: "peds_pn_dependent",       label: "Pediatric — PN-Dependent",                       maxAge: 17.9 },
+  { key: "peds_enteral_autonomous", label: "Pediatric — Enteral Autonomous / Transitioning", maxAge: 17.9 },
   ],
   ckd_3_5: [
-    { key: "vlcd",   label: "VLCD + Keto Analogs" },
+    { key: "vlpd",   label: "VLPD + Keto Analogs" },
     { key: "lcd",    label: "Low-Protein Diet" },
     { key: "lcd_dm", label: "Low-Protein + Diabetes" },
   ],
@@ -359,11 +358,15 @@ export const CONDITION_EXTRA_INPUTS: Partial<Record<ConditionKey, {
   options?: string[];
   hint?: string;
   autoPullFrom?: string;
+  minAge?: number;
+  maxAge?: number;
+  sex?: "M" | "F";
+  onlyForVariants?: string[];
 }[]>> = {
   critical_illness: [
-    { key: "isMechVent", label: "Mechanically Ventilated", type: "checkbox" },
-    { key: "tempMax",    label: "Max Temp past 24h (°F)",      type: "number", hint: "Required for PSU 2003b / PSU 2010", autoPullFrom: "clinical.tempMax" },
-    { key: "ve",         label: "Minute Ventilation Ve (L/min)", type: "number", hint: "Required for PSU 2003b / PSU 2010", autoPullFrom: "clinical.ve" },
+    { key: "isMechVent", label: "Mechanically Ventilated", type: "checkbox", minAge: 18 },
+    { key: "tempMax",    label: "Max Temp past 24h (°F)",      type: "number", hint: "Required for PSU 2003b / PSU 2010", autoPullFrom: "clinical.tempMax", minAge: 18 },
+    { key: "ve",         label: "Minute Ventilation Ve (L/min)", type: "number", hint: "Required for PSU 2003b / PSU 2010", autoPullFrom: "clinical.ve", minAge: 18 },
   ],
   cystic_fibrosis: [
     { key: "fev1Pct",               label: "FEV₁ % Predicted",                  type: "number", autoPullFrom: "clinical.fev1" },
@@ -372,9 +375,9 @@ export const CONDITION_EXTRA_INPUTS: Partial<Record<ConditionKey, {
   ],
   burns: [
     { key: "tbsaPct",       label: "TBSA Burned (%)",                   type: "number", autoPullFrom: "clinical.tbsa" },
-    { key: "pbd",           label: "Post-Burn Day (PBD)",               type: "number", hint: "Required for Milner and Toronto" },
-    { key: "caloricIntake", label: "Current Caloric Intake (kcal/day)", type: "number", hint: "Required for Toronto equation" },
-    { key: "coreTemp",      label: "Core Temperature (°C)",             type: "number", hint: "Required for Toronto equation" },
+    { key: "pbd",           label: "Post-Burn Day (PBD)",               type: "number", hint: "Required for Milner and Toronto", minAge: 18 },
+    { key: "caloricIntake", label: "Current Caloric Intake (kcal/day)", type: "number", hint: "Required for Toronto equation", minAge: 18, onlyForVariants: ["adult_toronto"] },
+    { key: "coreTemp",      label: "Core Temperature (°C)",             type: "number", hint: "Required for Toronto equation", minAge: 18, onlyForVariants: ["adult_toronto"] },
   ],
   trauma: [
     { key: "exudateVolumeL", label: "Exudate Volume (L)", type: "number", hint: "Required for open abdomen adjustment" },
@@ -400,10 +403,7 @@ export const CONDITION_EXTRA_INPUTS: Partial<Record<ConditionKey, {
   short_bowel: [
     { key: "hasPreservedColon",    label: "Preserved Colon (increases water absorption)",    type: "checkbox" },
     { key: "remainingBowelShort",  label: "Remaining Bowel < 40 cm or Excessive Output",     type: "checkbox" },
-    { key: "growthSuboptimal",     label: "Suboptimal Growth Trajectory",                    type: "checkbox" },
-  ],
-  diabetes: [
-    { key: "pal", label: "Physical Activity Level (PAL)", type: "number", hint: "1.2 = sedentary, 1.5 = lightly active" },
+    { key: "growthSuboptimal",     label: "Suboptimal Growth Trajectory",                    type: "checkbox", maxAge: 17.9 },
   ],
 };
 
@@ -560,3 +560,24 @@ export const MSJ_ACTIVITY_FACTORS: { label: string; af: number; description: str
   { label: "Very active",       af: 1.725, description: "Hard exercise 6–7 days/week" },
   { label: "Extra active",      af: 1.9,   description: "Very hard exercise / physical job" },
 ];
+
+// ─── Development Validation ──────────────────────────────────────────────────
+
+if (import.meta.env.DEV) {
+  for (const [condKey, fields] of Object.entries(CONDITION_EXTRA_INPUTS)) {
+    const validVariantKeys = new Set(
+      (CONDITION_VARIANTS[condKey as ConditionKey] ?? []).map(v => v.key)
+    );
+    for (const field of fields ?? []) {
+      for (const v of field.onlyForVariants ?? []) {
+        if (!validVariantKeys.has(v)) {
+          console.warn(
+            `CONDITION_EXTRA_INPUTS["${condKey}"].${field.key}: ` +
+            `onlyForVariants contains unknown variant key "${v}"`
+          );
+        }
+      }
+    }
+  }
+}
+
