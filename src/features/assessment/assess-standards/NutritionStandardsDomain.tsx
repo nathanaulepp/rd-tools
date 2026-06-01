@@ -28,6 +28,7 @@ import { useDietaryStore } from "../../../stores/useDietaryStore";
 import { useClinicalStore } from "../../../stores/useClinicalStore";
 import { useLabsStore } from "../../../stores/useLabsStore";
 import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
+import { classifyPediatricWeightStatus } from "../../../shared/utils/pediatricWeightStatus";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -501,6 +502,18 @@ export default function NutritionStandardsDomain() {
 
   const runEvaluation = useCallback(() => {
     if (!isReady) return;
+
+    // Phase 5 fix: inject overweight status for pediatric healthy path
+    const weightStatus = classifyPediatricWeightStatus({
+      ageDays: calculatedMetrics.ageDays ?? 0,
+      bmi,
+      sex,
+    });
+    const enrichedExtraInputs = {
+      ...extraInputs,
+      isOverweight: weightStatus.useOverweightEER ? "true" : "false",
+    };
+
     const { evaluation, snapshot } = evaluateNutritionRx({
       condition: condition as ConditionKey,
       variant: variant || undefined,
@@ -519,11 +532,11 @@ export default function NutritionStandardsDomain() {
         proteinGPerDay: parseFloat(currentProtein) || 0,
         fluidMlPerDay: currentFluid ? parseFloat(currentFluid) : undefined,
       },
-      extraInputs: Object.fromEntries(Object.entries(extraInputs).map(([k, v]) => [k, parseFloat(v) || v])),
+      extraInputs: Object.fromEntries(Object.entries(enrichedExtraInputs).map(([k, v]) => [k, parseFloat(v) || v])),
     });
     setEvaluation(evaluation);
     setSnapshot(snapshot);   // writes into standards.snapshot → autosaved with the note
-  }, [isReady, condition, variant, effectiveWeight, htCm, ageYears, sex, bmi, weightBasis, icKcal, icCaf, currentKcal, currentProtein, currentFluid, extraInputs]);
+  }, [isReady, condition, variant, effectiveWeight, htCm, ageYears, sex, bmi, weightBasis, icKcal, icCaf, currentKcal, currentProtein, currentFluid, extraInputs, calculatedMetrics.ageDays, setSnapshot]);
 // Note: add `setSnapshot` to the useCallback dependency array.
 
   useEffect(() => {

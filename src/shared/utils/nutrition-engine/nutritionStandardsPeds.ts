@@ -75,13 +75,14 @@ export function evaluatePedsCondition(
     // ── HEALTHY ──────────────────────────────────────────────────────────────
     case "healthy": {
       const pal = Number(extraInputs.pal) || 1.4;
+      const isOverweight = extraInputs.isOverweight === "true" || extraInputs.isOverweight === 1;
       eeKcal = calculatePediatricHealthyEER({
         ageDays,
         weightKg: wtKg,
         heightCm: htCm,
         sex,
         pal,
-        isOverweight: false,
+        isOverweight,
       });
       eeSource = "DRI/EER";
       kcalLow = eeKcal * 0.925;
