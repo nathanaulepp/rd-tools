@@ -171,6 +171,10 @@ export const defaultDietary: Dietary = {
   supplements: "",
   perception: "",
   qolGoals: "",
+  totalKcal: "",
+  totalProtein: "",
+  totalFat: "",
+  totalCho: "",
 };
 
 export const defaultDiagnosis: Diagnosis = {
@@ -227,6 +231,8 @@ export const defaultStandards: Standards = {
   variant: "",
   currentKcal: "",
   currentProtein: "",
+  currentFat: "",
+  currentCarbs: "",
   currentFluid: "",
   icKcal: "",
   icCaf: "1.0",

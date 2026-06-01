@@ -240,15 +240,34 @@ export function calculatePediatricCFEnergy(opts: {
   dc: number;
   isPancreaticSufficient: boolean;
   cfa: number;
-}): { min: number; max: number } {
+  intakeKcal?: number;
+  intakeFatG?: number;
+}): { min: number; max: number; flags?: string[] } {
   const bmr = calculatePediatricCFBMR(opts.weightKg, opts.heightCm, opts.ageDays, opts.sex);
-  const eer = bmr * (opts.ac + opts.dc);
+  const tee = bmr * (opts.ac + opts.dc);
+  const flags: string[] = [];
 
   if (opts.isPancreaticSufficient) {
-    return { min: eer * 0.95, max: eer * 1.05 };
+    return { min: tee * 0.95, max: tee * 1.05 };
   }
-  const cfaCorrected = eer * (0.93 / opts.cfa);
-  return { min: cfaCorrected * 0.95, max: cfaCorrected * 1.1 };
+
+  // Weighted absorption model
+  const intakeKcal = opts.intakeKcal || tee;
+  const intakeFatG = opts.intakeFatG || (intakeKcal * 0.35 / 9);
+  const fatKcal = intakeFatG * 9;
+  const fatFraction = Math.min(1, fatKcal / Math.max(1, intakeKcal));
+  const nonFatFraction = 1 - fatFraction;
+  const efficiency = (nonFatFraction * 1.0) + (fatFraction * opts.cfa);
+
+  const corrected = tee / efficiency;
+  
+  flags.push(`Weighted absorption: ${Math.round(fatFraction * 100)}% fat (${Math.round(intakeFatG)}g) @ ${Math.round(opts.cfa * 100)}% CFA = ${Math.round(efficiency * 100)}% efficiency.`);
+
+  return { 
+    min: corrected * 0.95, 
+    max: corrected * 1.1,
+    flags 
+  };
 }
 
 /**

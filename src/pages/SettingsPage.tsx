@@ -87,7 +87,7 @@ const MASTER_DOMAINS = [
     id: "dietary",
     title: "D. Dietary Data",
     fields: [
-      { key: "dietOrder", label: "Rx Diet Order" },
+      { key: "dietOrderCurrent", label: "Current Rx Diet Order" },
       { key: "oralCalories", label: "Oral Calories" },
       { key: "oralProtein", label: "Oral Protein" },
       { key: "oralWater", label: "Oral Water" },

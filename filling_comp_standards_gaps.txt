@@ -1,0 +1,71 @@
+======================================================================
+REFACTORING ITEM 1: Pediatric Fluid Calculations (Cirrhosis, Liver Transplant, Wounds)
+======================================================================
+- Target Files: src/stores/useCalculatedMetrics.ts & src/features/assessment/assess-standards/nutritionStandardsPeds.ts
+- Urgency: CRITICAL
+- Current Broken State: Evaluates pediatric fluid targets using adult weight constants (wtKg * 30 to wtKg * 35), creating severe volume deficits on small frames.
+- Expected Behavioral Fix: Strip weight-based constants from pediatric disease paths; force routing to calcHolidaySegar(wtKg) to establish baseline volumes.
+
+======================================================================
+REFACTORING ITEM 2: Adult AKI Energy Targets
+======================================================================
+- Target File: src/features/assessment/assess-standards/nutritionStandardsAdult.ts
+- Urgency: HIGH
+- Current Broken State: calculateAdultAKIEnergy() is defined as a helper but omitted within the case "aki" execution path, freezing needs at a static wtKg * 20–30.
+- Expected Behavioral Fix: Wire calculateAdultAKIEnergy() directly into the case "aki" path so toggling dialysis or crrt dynamically alters energy math.
+
+======================================================================
+REFACTORING ITEM 3: Adult Trauma Sub-types
+======================================================================
+- Target File: src/features/assessment/assess-standards/nutritionStandardsAdult.ts
+- Urgency: HIGH
+- Current Broken State: The open_abdomen variant and exudateVolumeL input are registered in the UI config but completely ignored inside the adult switch block.
+- Expected Behavioral Fix: Mirror the pediatric logic: extract exudateVolumeL and apply surgical protein/energy step-ups to adult trauma calculations.
+
+======================================================================
+REFACTORING ITEM 4: Adult Short Bowel Syndrome
+======================================================================
+- Target File: src/features/assessment/assess-standards/nutritionStandardsAdult.ts
+- Urgency: MEDIUM
+- Current Broken State: Checking hasPreservedColon or remainingBowelShort logs textual clinical guidance flags but leaves fluid limits entirely null.
+- Expected Behavioral Fix: Implement numeric fluid calculation adjustments matching anatomical status (e.g., volume deductions for preserved colon, additions for high output).
+
+======================================================================
+REFACTORING ITEM 5: Acute Pancreatitis Scaling (Adult & Pediatric)
+======================================================================
+- Target Files: src/features/assessment/assess-standards/nutritionStandardsAdult.ts & src/shared/utils/pediatricDiseaseMath.ts
+- Urgency: MEDIUM
+- Current Broken State: Selecting the severe_critical variant scales up protein targets but freezes the energy engine at a standard ree * 1.1–1.2 across all severities.
+- Expected Behavioral Fix: Decouple the multipliers: maintain mild presentations lower, and scale up the energy ceiling factors for severe, necrotizing, or critical ICU cases.
+
+======================================================================
+REFACTORING ITEM 6: Pressure Injury Staging
+======================================================================
+- Target File: src/features/assessment/assess-standards/nutritionStandardsAdult.ts
+- Urgency: MEDIUM
+- Current Broken State: Upgrading from Stage 1–2 to stage_3_4 triggers an elevated protein calculation boundary but leaves energy locked at the base ree * 1.2–1.3 range.
+- Expected Behavioral Fix: Scale energy calculations upward appropriately to match the metabolic demands of advanced cavitated wounds (Stage 3 & 4).
+
+======================================================================
+REFACTORING ITEM 7: Decompensated Cirrhosis
+======================================================================
+- Target File: src/features/assessment/assess-standards/nutritionStandardsAdult.ts
+- Urgency: MEDIUM
+- Current Broken State: Selecting the critical/decompensated variant dynamically raises protein goals to fight sarcopenia but leaves energy/fluid locked to standard baseline formulas.
+- Expected Behavioral Fix: Incorporate adaptive multipliers/equations to account for acute hypermetabolic shifts during decompensated liver failure.
+
+======================================================================
+REFACTORING ITEM 8: Null Fluid Targets (Heart Failure, Sickle Cell, MASLD, Pediatric Oncology)
+======================================================================
+- Target Files: src/features/assessment/assess-standards/nutritionStandardsAdult.ts & src/features/assessment/assess-standards/nutritionStandardsPeds.ts
+- Urgency: LOW
+- Current Broken State: Engines pass null values for fluidLow and fluidHigh, which blinds the NutrientBarChart component from rendering target brackets or intake graphics.
+- Expected Behavioral Fix: Replace fallback null returns with hard numeric targets (e.g., ceiling metrics for fluid restrictions or absolute floors for hyper-hydration) so the chart renders properly.
+
+======================================================================
+REFACTORING ITEM 9: Unutilized Adult Renal Inputs
+======================================================================
+- Target File: src/features/assessment/assess-standards/nutritionStandardsAdult.ts
+- Urgency: LOW
+- Current Broken State: Adult AKI and CKD 5D collect parameters like urineOutputMlDay and tempMax from the UI but bypass them during calculation evaluations.
+- Expected Behavioral Fix: Invoke local math helper scripts (like calcAdultInsensibleLoss` and its fever modifiers) to process these values into exact fluid targets.

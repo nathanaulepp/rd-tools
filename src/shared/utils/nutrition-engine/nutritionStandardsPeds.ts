@@ -527,7 +527,9 @@ export function evaluatePedsCondition(
         ac: palForCF,
         dc: fev1 >= 80 ? 0 : fev1 >= 40 ? 0.2 : 0.4,
         isPancreaticSufficient: isPancSuf,
-        cfa
+        cfa,
+        intakeKcal: currentRx.kcalPerDay,
+        intakeFatG: currentRx.fatGPerDay,
       });
       eeKcal = (pRange.min + pRange.max) / 2;
       eeSource = "CF Formula";
@@ -535,6 +537,7 @@ export function evaluatePedsCondition(
       kcalHigh = pRange.max;
       protLow = wtKg * 0.8 * 1.2; protHigh = wtKg * 0.8 * 2.0;
       fluidNote = "DRI";
+      if (pRange.flags) flags.push(...pRange.flags);
       flags.push(`ℹ Pediatric CF Formula: PAL ${palForCF} + DC ${fev1 >= 80 ? 0 : fev1 >= 40 ? 0.2 : 0.4} with Schofield WH ${ageYears < 3 ? "0–3y" : ageYears < 10 ? "3–10y" : "10–18y"} bracket.`);
       flags.push("CF systems frequently truncate age at 10 — correct pediatric brackets used.");
       break;

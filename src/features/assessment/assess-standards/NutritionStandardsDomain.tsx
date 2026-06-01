@@ -411,6 +411,8 @@ export default function NutritionStandardsDomain() {
   const [variant, setVariant] = useState(standards.variant || "");
   const [currentKcal, setCurrentKcal] = useState(standards.currentKcal || "");
   const [currentProtein, setCurrentProtein] = useState(standards.currentProtein || "");
+  const [currentFat, setCurrentFat] = useState(standards.currentFat || "");
+  const [currentCho, setCurrentCho] = useState(standards.currentCho || "");
   const [currentFluid, setCurrentFluid] = useState(standards.currentFluid || "");
   const [icKcal, setIcKcal] = useState(standards.icKcal || "");
   const [icCaf, setIcCaf] = useState(standards.icCaf || "1.0");
@@ -419,15 +421,24 @@ export default function NutritionStandardsDomain() {
   const [evaluation, setEvaluation] = useState<NutritionEvaluation | null>(null);
 
   const syncToParent = useCallback(() => {
-    setStandards({ condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs });
-  }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs, setStandards]);
+    setStandards({ condition, variant, currentKcal, currentProtein, currentFat, currentCho, currentFluid, icKcal, icCaf, extraInputs });
+  }, [condition, variant, currentKcal, currentProtein, currentFat, currentCho, currentFluid, icKcal, icCaf, extraInputs, setStandards]);
 
   useEffect(() => {
-    if (!currentKcal && dietary?.oralCalories) {
-      setCurrentKcal(String(Math.round(parseFloat(dietary.oralCalories) || 0) || ""));
+    // Prioritize global 'Total' fields from Dietary store, fallback to Oral Rx
+    if (!currentKcal) {
+      const kcal = dietary?.totalKcal || dietary?.oralCalories;
+      if (kcal) setCurrentKcal(String(Math.round(parseFloat(kcal) || 0) || ""));
     }
-    if (!currentProtein && dietary?.oralProtein) {
-      setCurrentProtein(String(parseFloat(dietary.oralProtein) || ""));
+    if (!currentProtein) {
+      const prot = dietary?.totalProtein || dietary?.oralProtein;
+      if (prot) setCurrentProtein(String(parseFloat(prot) || ""));
+    }
+    if (!currentFat && dietary?.totalFat) {
+      setCurrentFat(String(parseFloat(dietary.totalFat) || ""));
+    }
+    if (!currentCho && dietary?.totalCho) {
+      setCurrentCho(String(parseFloat(dietary.totalCho) || ""));
     }
   }, [dietary]);
 
@@ -547,13 +558,15 @@ export default function NutritionStandardsDomain() {
       currentRx: {
         kcalPerDay: parseFloat(currentKcal) || 0,
         proteinGPerDay: parseFloat(currentProtein) || 0,
+        fatGPerDay: parseFloat(currentFat) || 0,
+        choGPerDay: parseFloat(currentCho) || 0,
         fluidMlPerDay: currentFluid ? parseFloat(currentFluid) : undefined,
       },
       extraInputs: Object.fromEntries(Object.entries(enrichedExtraInputs).map(([k, v]) => [k, parseFloat(v) || v])),
     });
     setEvaluation(evaluation);
     setSnapshot(snapshot);   // writes into standards.snapshot → autosaved with the note
-  }, [isReady, condition, variant, effectiveWeight, htCm, ageYears, sex, bmi, weightBasis, icKcal, icCaf, currentKcal, currentProtein, currentFluid, extraInputs, calculatedMetrics.ageDays, setSnapshot]);
+  }, [isReady, condition, variant, effectiveWeight, htCm, ageYears, sex, bmi, weightBasis, icKcal, icCaf, currentKcal, currentProtein, currentFat, currentCho, currentFluid, extraInputs, calculatedMetrics.ageDays, setSnapshot]);
 // Note: add `setSnapshot` to the useCallback dependency array.
 
   useEffect(() => {
@@ -752,6 +765,16 @@ export default function NutritionStandardsDomain() {
               <div className="input-group" style={{ margin: 0 }}>
                 <label style={tinyLabelStyle}>Protein (g)</label>
                 <input type="number" value={currentProtein} onChange={e => setCurrentProtein(e.target.value)} style={inputStyle} placeholder="75" />
+              </div>
+            </div>
+            <div className="grid-2-col" style={{ gap: "10px", marginTop: "10px" }}>
+              <div className="input-group" style={{ margin: 0 }}>
+                <label style={tinyLabelStyle}>Fat (g)</label>
+                <input type="number" value={currentFat} onChange={e => setCurrentFat(e.target.value)} style={inputStyle} placeholder="Optional" />
+              </div>
+              <div className="input-group" style={{ margin: 0 }}>
+                <label style={tinyLabelStyle}>CHO (g)</label>
+                <input type="number" value={currentCho} onChange={e => setCurrentCho(e.target.value)} style={inputStyle} placeholder="Optional" />
               </div>
             </div>
             <div className="input-group" style={{ marginTop: "10px" }}>

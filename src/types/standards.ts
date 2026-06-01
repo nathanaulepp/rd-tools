@@ -119,6 +119,8 @@ export interface PatientInputs {
 export interface CurrentRx {
   kcalPerDay: number;
   proteinGPerDay: number;
+  fatGPerDay?: number;
+  choGPerDay?: number;
   fluidMlPerDay?: number;
 }
 
@@ -222,6 +224,8 @@ export interface Standards {
   variant: string;
   currentKcal: string;
   currentProtein: string;
+  currentFat: string;
+  currentCho: string;
   currentFluid: string;
   icKcal: string;
   icCaf: string;

@@ -386,7 +386,7 @@ function D11Oral({ dietary, setDietary }: D11OralProps) {
         <SectionHeader title="D11: Oral Diet & Intake" color="#3498db" />
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.75rem" }}>
           <div className="input-group">
-            <label>Rx Diet Order</label>
+            <label>Current Rx Diet Order</label>
             <textarea value={dietary.dietOrder || ""} onChange={e => handleUpdate("dietOrder", e.target.value)}
               placeholder="e.g. Standard Diet, Regular" style={{ background: "#edf2f7", minHeight: "45px" }} />
           </div>
@@ -1008,6 +1008,27 @@ export default function D1NutritionRx() {
       </div>
       <div style={{ display: activeTab === "D13" ? "block" : "none" }}>
         <D13Parenteral state={pnState} setState={setPnState} patientWtKg={patientWtKg} />
+      </div>
+
+      <div className="card" style={{ marginTop: "1.5rem", borderTop: "2px solid #3498db" }}>
+        <SectionHeader title="D14: Total Daily Intake (Global)" color="#2c3e50" />
+        <p style={{ fontSize: "0.8rem", color: "#718096", marginBottom: "1rem" }}>
+          Final verified intakes used for calculations. (Optional)
+        </p>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem" }}>
+          <Field label="Total Calories (kcal/d)">
+            <NumInput value={dietary.totalKcal || ""} onChange={v => setDietary({ totalKcal: v })} placeholder="Total kcal" />
+          </Field>
+          <Field label="Total Protein (g/d)">
+            <NumInput value={dietary.totalProtein || ""} onChange={v => setDietary({ totalProtein: v })} placeholder="Total g" />
+          </Field>
+          <Field label="Total Fat (g/d)">
+            <NumInput value={dietary.totalFat || ""} onChange={v => setDietary({ totalFat: v })} placeholder="Total g" />
+          </Field>
+          <Field label="Total CHO (g/d)">
+            <NumInput value={dietary.totalCho || ""} onChange={v => setDietary({ totalCho: v })} placeholder="Total g" />
+          </Field>
+        </div>
       </div>
     </div>
   );

@@ -132,9 +132,10 @@ export function evaluateAdultCondition(
     case "acute_pancreatitis": {
       eeSource = "MSJ×AF";
       if (variant === "severe_critical") {
-        afUsed = 1.2; eeKcal = ree * afUsed;
-        kcalLow = ree * 1.2; kcalHigh = ree * 1.2;
+        afUsed = 1.35; eeKcal = ree * afUsed;
+        kcalLow = ree * 1.2; kcalHigh = ree * 1.5;
         protLow = wtKg * 1.5; protHigh = wtKg * 2.0;
+        flags.push("Severe/critical pancreatitis: MSJ × 1.2–1.5 stress factor.");
       } else {
         afUsed = 1.15; eeKcal = ree * afUsed;
         kcalLow = ree * 1.1; kcalHigh = ree * 1.2;
@@ -528,17 +529,28 @@ export function evaluateAdultCondition(
       const msjAdjHigh = ree * dfHigh;
       const teeLow = msjAdjLow * palForCF;
       const teeHigh = msjAdjHigh * palForCF;
+      const teeAvg = (teeLow + teeHigh) / 2;
 
-      if (isPancSufCF) {
-        eeKcal = (teeLow + teeHigh) / 2;
-        kcalLow = teeLow;
-        kcalHigh = teeHigh;
-      } else {
-        eeKcal = ((teeLow + teeHigh) / 2) / cfaCF;
-        kcalLow = teeLow / cfaCF;
-        kcalHigh = teeHigh / cfaCF;
-        flags.push(`Malabsorption correction: TEE(${Math.round((teeLow + teeHigh) / 2)}) ÷ CFA(${cfaCF}) = ${Math.round(eeKcal)} kcal/day.`);
+      let efficiency = 1.0;
+      if (!isPancSufCF) {
+        // Weighted absorption model: CFA only applies to fat calories.
+        // Pull from global intake store (passed via currentRx).
+        const intakeKcal = currentRx.kcalPerDay || teeAvg; 
+        const intakeFatG = currentRx.fatGPerDay || (intakeKcal * 0.35 / 9); // Fallback to 35% fat
+        const fatKcal = intakeFatG * 9;
+        const fatFraction = Math.min(1, fatKcal / Math.max(1, intakeKcal));
+        const nonFatFraction = 1 - fatFraction;
+        
+        // non-fat absorption is assumed 1.0 (100%)
+        efficiency = (nonFatFraction * 1.0) + (fatFraction * cfaCF);
+        
+        flags.push(`Weighted absorption: ${Math.round(fatFraction * 100)}% fat (${Math.round(intakeFatG)}g) @ ${Math.round(cfaCF * 100)}% CFA + ${Math.round(nonFatFraction * 100)}% non-fat @ 100% = ${Math.round(efficiency * 100)}% efficiency.`);
       }
+
+      eeKcal = teeAvg / efficiency;
+      kcalLow = teeLow / efficiency;
+      kcalHigh = teeHigh / efficiency;
+
       eeSource = "CF Formula";
       flags.push(`Adult CF: MSJ(${Math.round(ree)}) × DF(${dfLow}–${dfHigh}) × PAL(${palForCF}) = TEE ${Math.round(teeLow)}–${Math.round(teeHigh)} kcal/day.`);
       flags.push(`FEV₁ ${fev1CF}% → Disease Factor ${dfLow}–${dfHigh}. ${fev1CF < 40 ? "Severe airflow obstruction: significant hypermetabolism." : fev1CF < 80 ? "Moderate obstruction: increased energy demands." : "Mild/normal lung function."}`);

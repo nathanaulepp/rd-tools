@@ -58,4 +58,10 @@ export interface Dietary {
   enState?: unknown;
   pnState?: unknown;
   savedFormulas?: string[];
+
+  // Total Intakes (calculated sums)
+  totalKcal: string;
+  totalProtein: string;
+  totalFat: string;
+  totalCho: string;
 }
