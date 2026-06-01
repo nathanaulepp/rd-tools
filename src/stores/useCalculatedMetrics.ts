@@ -8,16 +8,13 @@
 import { useAnthroStore } from "./useAnthroStore";
 import { useNoteStore } from "./useNoteStore";
 import { useStandardsStore } from "./useStandardsStore";
-import { calcIBW, calcBSA } from "../features/assessment/assess-standards/nutritionStandards";
+import { calcIBW, calcBSA } from "../shared/utils/nutrition-engine/nutritionStandards";
 import { 
   calculatePediatricHealthyEER, 
   calculatePediatricHealthyProtein, 
   calculateHollidaySegar 
 } from "../shared/utils/pediatricHealthyMath";
 import { classifyPediatricWeightStatus } from "../shared/utils/pediatricWeightStatus";
-import cdcBmiageRaw from "../shared/assets/datafiles_cleaned_csv/24_240_months/bmiagerev.csv?raw";
-import whoBfaBoysRaw from "../shared/assets/datafiles_cleaned_csv/0_730_days/bmi_for_age-boys-zscore-expanded-tables.csv?raw";
-import whoBfaGirlsRaw from "../shared/assets/datafiles_cleaned_csv/0_730_days/bmi_for_age-girls-zscore-expanded-tables.csv?raw";
 import {
   calculateSchofieldWH,
   getPediatricStressFactor,
