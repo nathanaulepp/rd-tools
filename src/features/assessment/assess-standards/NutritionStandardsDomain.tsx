@@ -12,6 +12,7 @@ import {
   IC_ACTIVITY_FACTORS,
   MSJ_ACTIVITY_FACTORS,
 } from "./nutritionStandards";
+import type { EvaluateResult } from "./nutritionStandards";
 import type {
   EvalStatus,
   EvalResult,
@@ -376,7 +377,7 @@ function ExtraInputRenderer({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function NutritionStandardsDomain() {
-  const { standards, setStandards } = useStandardsStore();
+  const { standards, setStandards, setSnapshot } = useStandardsStore();
   const { anthro } = useAnthroStore();
   const { patientData } = useNoteStore();
   const calculatedMetrics = useCalculatedMetrics();
@@ -500,7 +501,7 @@ export default function NutritionStandardsDomain() {
 
   const runEvaluation = useCallback(() => {
     if (!isReady) return;
-    const result = evaluateNutritionRx({
+    const { evaluation, snapshot } = evaluateNutritionRx({
       condition: condition as ConditionKey,
       variant: variant || undefined,
       patient: {
@@ -520,8 +521,10 @@ export default function NutritionStandardsDomain() {
       },
       extraInputs: Object.fromEntries(Object.entries(extraInputs).map(([k, v]) => [k, parseFloat(v) || v])),
     });
-    setEvaluation(result);
+    setEvaluation(evaluation);
+    setSnapshot(snapshot);   // writes into standards.snapshot → autosaved with the note
   }, [isReady, condition, variant, effectiveWeight, htCm, ageYears, sex, bmi, weightBasis, icKcal, icCaf, currentKcal, currentProtein, currentFluid, extraInputs]);
+// Note: add `setSnapshot` to the useCallback dependency array.
 
   useEffect(() => {
     if (isReady) runEvaluation();

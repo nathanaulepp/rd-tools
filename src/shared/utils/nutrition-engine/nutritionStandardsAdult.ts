@@ -17,7 +17,7 @@ import {
   calcToronto,
   calcCFBMR,
   calcHolidaySegar,
-} from "./nutritionStandards";
+} from "./nutritionStandardsMath";
 
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 

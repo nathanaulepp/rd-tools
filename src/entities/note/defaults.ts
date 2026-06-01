@@ -231,4 +231,5 @@ export const defaultStandards: Standards = {
   icKcal: "",
   icCaf: "1.0",
   extraInputs: {},
+  snapshot: null,
 };

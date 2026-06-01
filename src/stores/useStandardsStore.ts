@@ -1,7 +1,16 @@
 // src/stores/useStandardsStore.ts
+//
+// Milestone 1 additions:
+//   - Standards interface now contains a `snapshot` field (EvaluationSnapshot | null).
+//   - setSnapshot() is exposed so NutritionStandardsDomain can write the
+//     computed EvaluationSnapshot without touching the UI parameters.
+//     The existing autosave pipeline (saveDomain("standards", ...)) picks it
+//     up automatically because the snapshot lives inside the same JSON blob.
+//   - defaultStandards initialises snapshot to null; it is populated on the
+//     first evaluation run and persisted via the standard saveDomain cycle.
 
 import { create } from "zustand";
-import type { Standards } from "../types";
+import type { Standards, EvaluationSnapshot } from "../types";
 import { defaultStandards } from "../entities/note/defaults";
 import { registerDomainReset, registerDomainGetter } from "./useNoteStore";
 
@@ -12,6 +21,8 @@ interface StandardsState {
     field: K,
     value: Standards[K]
   ) => void;
+  /** Write the evaluation snapshot into the standards blob without touching UI params. */
+  setSnapshot: (snapshot: EvaluationSnapshot) => void;
 }
 
 export const useStandardsStore = create<StandardsState>((set) => ({
@@ -22,6 +33,9 @@ export const useStandardsStore = create<StandardsState>((set) => ({
 
   updateStandardsField: (field, value) =>
     set((state) => ({ standards: { ...state.standards, [field]: value } })),
+
+  setSnapshot: (snapshot) =>
+    set((state) => ({ standards: { ...state.standards, snapshot } })),
 }));
 
 registerDomainReset("standards", (raw) => {

@@ -9,7 +9,7 @@ import type { SharedEvalContext, ConditionResult } from "./nutritionStandardsTyp
 import {
   calcBSA,
   calcHolidaySegar,
-} from "./nutritionStandards";
+} from "./nutritionStandardsMath";
 import {
   calculateSchofieldWH,
   calculatePediatricAKIEnergy,
@@ -34,7 +34,7 @@ import {
   calculateAdolescentSchofieldBMR,
   getPediatricSDI,
   calculatePediatricDiseaseProtein,
-} from "../../../shared/utils/pediatricDiseaseMath";
+} from "../pediatricDiseaseMath";
 
 // ─── Pediatric Evaluation Engine ──────────────────────────────────────────────
 

@@ -1,173 +1,217 @@
-// src/features/assessment/assess-standards/nutritionStandards.ts
+// src/shared/utils/nutrition-engine/nutritionStandards.ts
 //
 // PUBLIC API BARREL for the Comparative Standards domain.
-//
-// Exports:
-//   - All pure math helpers (calcIBW, calcMSJ, calcPSU2003b, etc.)
-//   - Condition registry data (CONDITION_LABELS, CONDITION_VARIANTS, etc.)
-//   - evaluateNutritionRx() — the single entry point for the UI
-//
-// The giant switch that used to live here has been split into:
-//   - nutritionStandardsAdult.ts  → evaluateAdultCondition()
-//   - nutritionStandardsPeds.ts   → evaluatePedsCondition()
-//
-// UI components (NutritionStandardsDomain.tsx) import ONLY from this file.
+
 
 import type {
   EvalStatus,
-  PatientInputs,
-  CurrentRx,
   EvalResult,
   NutritionEvaluation,
   ConditionKey,
   EvalOptions,
+  RuntimeContext,
+  EvaluationSnapshot,
 } from "../../../types/standards";
 
-import type { SharedEvalContext, ConditionResult } from "./nutritionStandardsTypes";
-import { evaluateAdultCondition }  from "./nutritionStandardsAdult";
-import { evaluatePedsCondition }   from "./nutritionStandardsPeds";
+import type { ConditionResult, SharedEvalContext } from "./nutritionStandardsTypes";
+import { evaluateAdultCondition } from "./nutritionStandardsAdult";
+import { evaluatePedsCondition }  from "./nutritionStandardsPeds";
+import {
+  calcIBW,
+  calcBSA,
+  calcFleischBMR,
+  calcHarrisBenedict,
+  calcMSJ,
+  calcPSU2003b,
+  calcPSU2010,
+  calcToronto,
+  calcSchofieldBMR,
+  calcCFBMR,
+  calcSCDREEPeds,
+  calcHolidaySegar,
+  evalStatus,
+  fmtRange,
+  isPedsAge,
+} from "./nutritionStandardsMath";
 
-// ─── IBW (Hamwi) ──────────────────────────────────────────────────────────────
+// Re-export math helpers for backward compatibility with other files (e.g. useCalculatedMetrics)
+export {
+  calcIBW,
+  calcBSA,
+  calcFleischBMR,
+  calcHarrisBenedict,
+  calcMSJ,
+  calcPSU2003b,
+  calcPSU2010,
+  calcToronto,
+  calcSchofieldBMR,
+  calcCFBMR,
+  calcSCDREEPeds,
+  calcHolidaySegar,
+};
 
-export function calcIBW(htCm: number, sex: "M" | "F"): number {
-  const htIn = htCm / 2.54;
-  const inchesOver5Ft = Math.max(0, htIn - 60);
-  const base = sex === "M" ? 48.1 : 45.4;
-  const perInch = sex === "M" ? 2.72 : 2.27;
-  return Math.round((base + perInch * inchesOver5Ft) * 10) / 10;
-}
+// ─── buildRuntimeContext ──────────────────────────────────────────────────────
+//
+// Constructs the normalized, dollar-prefixed RuntimeContext from raw inputs.
+// This is the single place where all patient variables are computed and named.
+//
+// Rules:
+//   - Always produces both SI and imperial variants so equations never branch
+//     on unit selection.
+//   - Pre-computes both MSJ and Schofield REE baselines; the sub-engines pick
+//     whichever is appropriate for age.
+//   - Merges dollar-prefixed extra inputs at the end so condition-specific
+//     values (e.g. $tbsaPct, $fev1Pct) are accessible under the same
+//     naming convention as core variables.
 
-// ─── BSA (Mosteller) ──────────────────────────────────────────────────────────
+export function buildRuntimeContext(opts: EvalOptions, sex: "M" | "F"): RuntimeContext {
+  const { patient, extraInputs = {} } = opts;
+  const {
+    wtKg,
+    htCm,
+    ageYears,
+    ageDays = ageYears * 365.25,
+    bmi,
+    icMeasuredKcal = 0,
+    icCaf = 1.0,
+  } = patient;
 
-export function calcBSA(htCm: number, wtKg: number): number {
-  if (htCm <= 0 || wtKg <= 0) return 0;
-  return Math.sqrt((htCm * wtKg) / 3600);
-}
+  const htM   = htCm / 100;
+  const htIn  = htCm / 2.54;
+  const wtLbs = wtKg * 2.2046;
+  const ibwKg = calcIBW(htCm, sex);
+  const bsa   = calcBSA(htCm, wtKg);
+  const msjKcal       = calcMSJ(wtKg, htCm, ageYears, sex);
+  const schofieldKcal = calcSchofieldBMR(wtKg, htM, ageYears, sex);
 
-// ─── Fleisch BMR (kcal/m²/hr) ────────────────────────────────────────────────
-
-export function calcFleischBMR(ageYears: number, sex: "M" | "F"): number {
-  if (ageYears >= 20) {
-    if (sex === "M") return Math.max(30, 38 - 0.073 * (ageYears - 20));
-    return Math.max(28, 35 - 0.064 * (ageYears - 20));
+  // Normalize extra inputs to dollar-prefixed numeric keys
+  const extraNormalized: Record<string, number> = {};
+  for (const [k, v] of Object.entries(extraInputs)) {
+    const key = k.startsWith("$") ? k : `$${k}`;
+    const num = typeof v === "number" ? v : parseFloat(v as string);
+    extraNormalized[key] = isNaN(num) ? 0 : num;
   }
-  if (sex === "M") {
-    if (ageYears < 5)  return 53 - (ageYears - 1) * 0.925;
-    if (ageYears < 10) return 49.3 - (ageYears - 5) * 0.98;
-    if (ageYears < 15) return 44.4 - (ageYears - 10) * 0.52;
-    return 41.8 - (ageYears - 15) * 0.64;
-  } else {
-    if (ageYears < 5)  return 53 - (ageYears - 1) * 1.15;
-    if (ageYears < 10) return 48.4 - (ageYears - 5) * 0.92;
-    if (ageYears < 15) return 43.8 - (ageYears - 10) * 0.8;
-    return 39.8 - (ageYears - 15) * 0.9;
+
+  const ctx: RuntimeContext = {
+    $wtKg:           wtKg,
+    $wtLbs:          wtLbs,
+    $ibwKg:          ibwKg,
+    $ibwLbs:         ibwKg * 2.2046,
+    $adjIbwKg:       ibwKg,
+    $edwKg:          wtKg,
+    $htCm:           htCm,
+    $htIn:           htIn,
+    $htM:            htM,
+    $ageDays:        ageDays,
+    $ageYears:       ageYears,
+    $ageMonths:      ageDays / 30.4375,
+    $bmi:            bmi,
+    $bsa:            bsa,
+    $msjKcal:        msjKcal,
+    $schofieldKcal:  schofieldKcal,
+    $icMeasuredKcal: icMeasuredKcal,
+    $icCaf:          icCaf,
+    ...extraNormalized,
+  };
+
+  return ctx;
+}
+
+// ─── resolveEquation ─────────────────────────────────────────────────────────
+//
+// Safe, sandboxed evaluator for arithmetic expression strings that reference
+// dollar-prefixed RuntimeContext variables.
+//
+// Supported:
+//   - Variable references:  $wtKg, $ibwKg, $msjKcal, etc.
+//   - Arithmetic operators: + - * / ( )
+//   - Math functions:       min(...), max(...), round(...)
+//   - Numeric literals
+//
+// NOT supported (and will throw):
+//   - Any identifier not starting with $ (prevents code injection)
+//   - eval(), Function(), or any JS execution primitive besides the
+//     controlled Function constructor below (which only receives a
+//     fully numeric + operators string after substitution)
+//
+// Example:
+//   resolveEquation("$wtKg * 1.5", ctx) → 108.75  (for wtKg = 72.5)
+//   resolveEquation("max($ibwKg, $edwKg) * 1.2", ctx) → ...
+//
+// Milestone 2: this function will be called by the Settings equation builder
+// to validate user-entered expressions before saving to the DB.
+
+export function resolveEquation(expr: string, ctx: RuntimeContext): number {
+  // Step 1 — substitute all $variable references with their numeric values
+  const substituted = expr.replace(/\$[a-zA-Z][a-zA-Z0-9]*/g, (match) => {
+    const val = (ctx as unknown as Record<string, number>)[match];
+    if (val === undefined) {
+      throw new Error(`resolveEquation: unknown variable "${match}"`);
+    }
+    return String(val);
+  });
+
+  // Step 2 — strip allowed function names, then verify only safe chars remain
+  const withoutFns = substituted
+    .replace(/\bmin\s*\(/g, "(")
+    .replace(/\bmax\s*\(/g, "(")
+    .replace(/\bround\s*\(/g, "(");
+
+  if (!/^[\d\s\+\-\*\/\(\)\.\,]+$/.test(withoutFns)) {
+    throw new Error(`resolveEquation: unsafe expression after substitution: "${substituted}"`);
+  }
+
+  // Step 3 — evaluate using a controlled Function constructor on a fully
+  // numeric string. Safe because Step 2 guarantees no identifiers remain.
+  try {
+    const fn = new Function(
+      "min", "max", "round",
+      `"use strict"; return (${substituted});`
+    );
+    const result = fn(Math.min, Math.max, Math.round);
+    if (typeof result !== "number" || !isFinite(result)) {
+      throw new Error(`resolveEquation: non-finite result for "${expr}"`);
+    }
+    return result;
+  } catch (e) {
+    throw new Error(`resolveEquation: evaluation failed for "${expr}": ${(e as Error).message}`);
   }
 }
 
-// ─── Harris-Benedict BMR ──────────────────────────────────────────────────────
+// ─── buildSnapshot ────────────────────────────────────────────────────────────
+//
+// Lifts a completed NutritionEvaluation + RuntimeContext into the
+// EvaluationSnapshot shape that gets written into notes.standards.
+//
+// Called by evaluateNutritionRx() after the result rows are assembled.
+// The snapshot is also returned to the caller so NutritionStandardsDomain
+// can pass it to useStandardsStore.setStandards() without a second pass.
 
-export function calcHarrisBenedict(
-  wtKg: number,
-  htCm: number,
-  ageYears: number,
-  sex: "M" | "F"
-): number {
-  if (sex === "M") return 88.362 + 13.397 * wtKg + 4.799 * htCm - 5.677 * ageYears;
-  return 447.593 + 9.247 * wtKg + 3.098 * htCm - 4.330 * ageYears;
-}
-
-// ─── MSJ REE ─────────────────────────────────────────────────────────────────
-
-export function calcMSJ(wtKg: number, htCm: number, ageYears: number, sex: "M" | "F"): number {
-  if (sex === "M") return 10 * wtKg + 6.25 * htCm - 5 * ageYears + 5;
-  return 10 * wtKg + 6.25 * htCm - 5 * ageYears - 161;
-}
-
-// ─── PSU 2003b ───────────────────────────────────────────────────────────────
-
-export function calcPSU2003b(msjRee: number, tmaxF: number, veLPerMin: number): number {
-  const tmaxC = (tmaxF - 32) * (5 / 9);
-  return msjRee * 0.96 + tmaxC * 167 + veLPerMin * 31 - 6212;
-}
-
-// ─── PSU 2010 (obese adults ≥ 60) ────────────────────────────────────────────
-
-export function calcPSU2010(msjRee: number, tmaxF: number, veLPerMin: number): number {
-  const tmaxC = (tmaxF - 32) * (5 / 9);
-  return msjRee * 0.71 + veLPerMin * 64 + tmaxC * 85 - 3085;
-}
-
-// ─── Toronto Burns Equation ───────────────────────────────────────────────────
-
-export function calcToronto(
-  tbsaPct: number,
-  caloricIntakeKcal: number,
-  hbeKcal: number,
-  coreTempC: number,
-  pbd: number
-): number {
-  return -4343 + 10.5 * tbsaPct + 0.23 * caloricIntakeKcal + 0.84 * hbeKcal + 114 * coreTempC - 4.5 * pbd;
-}
-
-// ─── Schofield BMR (adult) ────────────────────────────────────────────────────
-
-export function calcSchofieldBMR(wtKg: number, htM: number, ageYears: number, sex: "M" | "F"): number {
-  if (sex === "F") {
-    if (ageYears < 60) return 8.7 * wtKg - 25 * htM + 865;
-    return 9.2 * wtKg + 637 * htM - 302;
-  } else {
-    if (ageYears < 60) return 11.3 * wtKg + 16 * htM + 901;
-    return 8.8 * wtKg + 1128 * htM - 1071;
+export function buildSnapshot(
+  evaluation: NutritionEvaluation,
+  ctx: RuntimeContext,
+  conditionKey: ConditionKey,
+  variantKey: string
+): EvaluationSnapshot {
+  const contextVars: Record<string, number> = {};
+  for (const [k, v] of Object.entries(ctx)) {
+    if (typeof v === "number" && isFinite(v)) {
+      contextVars[k] = v;
+    }
   }
-}
 
-// ─── CF BMR table (adult Schofield-based brackets) ───────────────────────────
-
-export function calcCFBMR(wtKg: number, ageYears: number, sex: "M" | "F"): number {
-  if (sex === "F") {
-    if (ageYears >= 10 && ageYears < 18) return 12.2 * wtKg + 746;
-    if (ageYears >= 18 && ageYears < 30) return 14.7 * wtKg + 496;
-    return 8.7 * wtKg + 829;
-  } else {
-    if (ageYears >= 10 && ageYears < 18) return 17.5 * wtKg + 651;
-    if (ageYears >= 18 && ageYears < 30) return 15.3 * wtKg + 679;
-    return 11.6 * wtKg + 879;
-  }
-}
-
-// ─── SCD REE (Pediatric) ──────────────────────────────────────────────────────
-
-export function calcSCDREEPeds(wtKg: number, hgbGdL: number, sex: "M" | "F"): number {
-  if (sex === "M") return 1305 + 18.6 * wtKg - 55.7 * hgbGdL;
-  return 1100 + 13.3 * wtKg - 30.2 * hgbGdL;
-}
-
-// ─── Holliday-Segar ───────────────────────────────────────────────────────────
-
-export function calcHolidaySegar(wtKg: number): number {
-  if (wtKg <= 10) return wtKg * 100;
-  if (wtKg <= 20) return 1000 + (wtKg - 10) * 50;
-  if (wtKg <= 40) return 1500 + (wtKg - 20) * 20;
-  return 1700;
-}
-
-// ─── Eval helpers (used in barrel result-assembly) ────────────────────────────
-
-function evalStatus(current: number, low: number, high: number): EvalStatus {
-  if (current < low) return "LOW";
-  if (current > high) return "HIGH";
-  return "WNL";
-}
-
-function fmtRange(low: number, high: number, unit: string): string {
-  if (Math.abs(low - high) < 0.5) return `${Math.round(low)} ${unit}`;
-  return `${Math.round(low)}–${Math.round(high)} ${unit}`;
-}
-
-// ─── Pediatric gate helper ────────────────────────────────────────────────────
-
-function isPedsAge(ageYears: number): boolean {
-  return ageYears > 0 && ageYears < 18;
+  return {
+    evaluatedAt:  new Date().toISOString(),
+    conditionKey,
+    variantKey,
+    eeSource:     evaluation.eeSource,
+    weightUsedKg: evaluation.weightUsed,
+    weightLabel:  evaluation.weightLabel,
+    isPediatric:  evaluation.isPediatric,
+    results:      evaluation.results,
+    flags:        evaluation.flags,
+    contextVars,
+  };
 }
 
 // ─── Condition Labels ─────────────────────────────────────────────────────────
@@ -364,50 +408,77 @@ export const CONDITION_EXTRA_INPUTS: Partial<Record<ConditionKey, {
 };
 
 // ─── Main Evaluation Engine ───────────────────────────────────────────────────
+//
+// Milestone 1 return type change:
+//   Now returns { evaluation, snapshot } instead of just NutritionEvaluation.
+//   NutritionStandardsDomain reads .evaluation for the chart and passes
+//   .snapshot to useStandardsStore.setStandards() for autosave.
 
-export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
+export interface EvaluateResult {
+  evaluation: NutritionEvaluation;
+  snapshot: EvaluationSnapshot;
+}
+
+export function evaluateNutritionRx(opts: EvalOptions): EvaluateResult {
   const { variant, patient, currentRx, extraInputs = {} } = opts;
   const condition: ConditionKey = opts.condition === "cancer" ? "oncology" : opts.condition;
 
-  const { wtKg, htCm, ageYears, sex, bmi, icMeasuredKcal, icCaf, weightLabel } = patient;
+  const sexRaw = (patient as any).sex as "M" | "F" | "";
+  const sex: "M" | "F" = sexRaw === "F" ? "F" : "M";
+
+  const { wtKg, htCm, ageYears, bmi, icMeasuredKcal, icCaf, weightLabel } = patient;
   const ageDays: number = (patient as any).ageDays ?? ageYears * 365.25;
   const isPeds = isPedsAge(ageYears);
 
   const ibwKg = calcIBW(htCm, sex);
   const ree   = calcMSJ(wtKg, htCm, ageYears, sex);
 
-  // ── IC override pre-computation ──────────────────────────────────────────────
-  const useIC        = !!icMeasuredKcal && icMeasuredKcal > 0;
-  const activeIcCaf  = icCaf || 1.0;
-  const icFloor      = useIC ? icMeasuredKcal * activeIcCaf      : 0;
-  const icCeiling    = useIC ? icMeasuredKcal * (activeIcCaf + 0.1) : 0;
+  // ── Build RuntimeContext ──────────────────────────────────────────────────
+  const ctx = buildRuntimeContext(opts, sex);
 
-  // ── Build shared context ──────────────────────────────────────────────────────
-  const ctx: SharedEvalContext = {
-    wtKg, htCm, ageYears, ageDays, sex, bmi,
-    ibwKg, ree,
-    useIC, icFloor, icCeiling, activeIcCaf,
+  // ── IC override pre-computation ──────────────────────────────────────────
+  const useIC       = !!icMeasuredKcal && icMeasuredKcal > 0;
+  const activeIcCaf = icCaf || 1.0;
+  const icFloor     = useIC ? icMeasuredKcal * activeIcCaf        : 0;
+  const icCeiling   = useIC ? icMeasuredKcal * (activeIcCaf + 0.1) : 0;
+
+  // ── Bridge: SharedEvalContext for sub-engines ─────────────────────────────
+  // Sub-engines still receive the old shape. Migrating them to RuntimeContext
+  // directly is a future pass (the switch cases are unchanged for Milestone 1).
+  const sharedCtx: SharedEvalContext = {
+    wtKg:        ctx.$wtKg,
+    htCm:        ctx.$htCm,
+    ageYears:    ctx.$ageYears,
+    ageDays:     ctx.$ageDays,
+    sex,
+    bmi:         ctx.$bmi,
+    ibwKg:       ctx.$ibwKg,
+    ree,
+    useIC,
+    icFloor,
+    icCeiling,
+    activeIcCaf,
   };
 
-  // ── Delegate to the correct sub-engine ───────────────────────────────────────
+  // ── Delegate to the correct sub-engine ───────────────────────────────────
   const cr: ConditionResult = isPeds
-    ? evaluatePedsCondition({ ...opts, condition }, ctx)
-    : evaluateAdultCondition({ ...opts, condition }, ctx);
+    ? evaluatePedsCondition({ ...opts, condition }, sharedCtx)
+    : evaluateAdultCondition({ ...opts, condition }, sharedCtx);
 
-  // ── IC global override (applies to BOTH paths) ────────────────────────────────
+  // ── IC global override ────────────────────────────────────────────────────
   let { kcalLow, kcalHigh, eeKcal, eeSource, cafUsed } = cr;
   if (useIC) {
-    eeKcal    = icFloor;
-    eeSource  = "IC";
-    cafUsed   = activeIcCaf;
-    kcalLow   = icFloor;
-    kcalHigh  = icCeiling;
+    eeKcal   = icFloor;
+    eeSource = "IC";
+    cafUsed  = activeIcCaf;
+    kcalLow  = icFloor;
+    kcalHigh = icCeiling;
   }
 
   const { protLow, protHigh, protFixed, fluidLow, fluidHigh, fluidNote,
           wtForKcal, wtLabel, wtForProt, afUsed, flags } = cr;
 
-  // ── Build result rows ─────────────────────────────────────────────────────────
+  // ── Build result rows ─────────────────────────────────────────────────────
   const results: EvalResult[] = [];
 
   if (kcalLow > 0 && kcalHigh > 0) {
@@ -451,7 +522,8 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     flags.push(`Fluid: ${fluidNote}`);
   }
 
-  return {
+  // ── Assemble NutritionEvaluation ──────────────────────────────────────────
+  const evaluation: NutritionEvaluation = {
     ibwKg,
     reeKcal:     Math.round(ree),
     eeKcal:      Math.round(eeKcal),
@@ -464,6 +536,11 @@ export function evaluateNutritionRx(opts: EvalOptions): NutritionEvaluation {
     results,
     flags,
   };
+
+  // ── Build EvaluationSnapshot ──────────────────────────────────────────────
+  const snapshot = buildSnapshot(evaluation, ctx, condition, variant || "");
+
+  return { evaluation, snapshot };
 }
 
 // ─── Reference Tables ─────────────────────────────────────────────────────────
@@ -477,9 +554,9 @@ export const IC_ACTIVITY_FACTORS: { condition: string; cafLow: number; cafHigh: 
 ];
 
 export const MSJ_ACTIVITY_FACTORS: { label: string; af: number; description: string }[] = [
-  { label: "Sedentary",        af: 1.2,   description: "Little or no activity; bed rest" },
-  { label: "Lightly active",   af: 1.375, description: "Light exercise 1–3 days/week" },
-  { label: "Moderately active",af: 1.55,  description: "Moderate exercise 3–5 days/week" },
-  { label: "Very active",      af: 1.725, description: "Hard exercise 6–7 days/week" },
-  { label: "Extra active",     af: 1.9,   description: "Very hard exercise / physical job" },
+  { label: "Sedentary",         af: 1.2,   description: "Little or no activity; bed rest" },
+  { label: "Lightly active",    af: 1.375, description: "Light exercise 1–3 days/week" },
+  { label: "Moderately active", af: 1.55,  description: "Moderate exercise 3–5 days/week" },
+  { label: "Very active",       af: 1.725, description: "Hard exercise 6–7 days/week" },
+  { label: "Extra active",      af: 1.9,   description: "Very hard exercise / physical job" },
 ];
