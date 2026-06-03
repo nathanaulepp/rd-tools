@@ -108,9 +108,20 @@ export function evaluateAdultCondition(
 
     // ── AKI ──────────────────────────────────────────────────────────────────
     case "aki": {
-      afUsed = 1.05; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
-      kcalLow = wtKg * 20; kcalHigh = wtKg * 30;
+      const isHypermetabolic = variant === "dialysis" || variant === "crrt";
+      const { min: eeMin, max: eeMax } = calculateAdultAKIEnergy({
+        wtKg, htCm, ageYears, sex,
+        isHypermetabolic,
+        isOnCRRT: variant === "crrt",
+      });
+      eeKcal = (eeMin + eeMax) / 2;
+      eeSource = "MSJ×AF";
+      afUsed = variant === "crrt" ? 1.25 : variant === "dialysis" ? 1.15 : 1.05;
+      kcalLow = eeMin;
+      kcalHigh = eeMax;
+
       flags.push("⚠ Do NOT restrict protein in AKI — restriction worsens outcomes.");
+
       if (variant === "no_dialysis") {
         protLow = wtKg * 0.8; protHigh = wtKg * 1.0;
         fluidNote = "24h urine output + 500 mL insensible losses. Add +10% per 1°C fever above 37°C.";
@@ -119,7 +130,7 @@ export function evaluateAdultCondition(
         fluidNote = "24h urine output + 500 mL insensible losses. Add +10% per 1°C fever above 37°C.";
       } else if (variant === "crrt") {
         protLow = wtKg * 1.7; protHigh = wtKg * 2.5;
-        fluidNote = "Fluid unrestricted during CRRT — prevent dehydration during diuresis";
+        fluidNote = "Fluid unrestricted during CRRT — prevent dehydration during diuresis.";
         flags.push("CRRT: increase protein to 1.7–2.5 g/kg/day to compensate for amino acid dialysate losses.");
       } else {
         protLow = wtKg * 0.8; protHigh = wtKg * 1.5;
@@ -311,20 +322,39 @@ export function evaluateAdultCondition(
 
     // ── CIRRHOSIS ─────────────────────────────────────────────────────────────
     case "cirrhosis": {
+      const isDecompensated = variant === "critical";
+
       if (useIC) {
         eeKcal = icFloor; eeSource = "IC"; cafUsed = activeIcCaf;
         kcalLow = icFloor; kcalHigh = icCeiling;
+        flags.push("IC preferred for cirrhosis — REE is highly variable and unpredictable from predictive equations.");
+      } else if (isDecompensated) {
+        // Decompensated: MSJ × 1.3–1.5 to reflect hypermetabolic shift
+        afUsed = 1.4; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
+        kcalLow = ree * 1.3; kcalHigh = ree * 1.5;
+        flags.push(
+          `Decompensated cirrhosis: MSJ REE (${Math.round(ree)} kcal) × 1.3–1.5 hypermetabolic factor = ` +
+          `${Math.round(kcalLow)}–${Math.round(kcalHigh)} kcal/day. ` +
+          "Encephalopathy, infection, and ascites each independently raise REE 10–30%."
+        );
       } else {
         afUsed = 1.3; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
         kcalLow = wtKg * 35; kcalHigh = wtKg * 40;
+        flags.push("Compensated cirrhosis: 35–40 kcal/kg dry weight.");
       }
-      if (variant === "critical") {
+
+      if (isDecompensated) {
         protLow = wtKg * 1.5; protHigh = wtKg * 2.0;
+        // Fluid: restrict proportionally in decompensation
+        fluidLow = wtKg * 25; fluidHigh = wtKg * 30;
+        fluidNote = "Decompensated: restrict fluid 25–30 mL/kg dry weight. Strict sodium restriction (<2g/day). Monitor for dilutional hyponatremia.";
+        flags.push("⚠ Decompensated: sodium restriction <2g/day. Fluid restriction may be needed if serum Na <130 mEq/L.");
       } else {
         protLow = wtKg * 1.2; protHigh = wtKg * 1.5;
+        fluidLow = wtKg * 30; fluidHigh = wtKg * 35;
+        fluidNote = "Use dry body weight for calculations. Restrict fluid if hypervolemic hyponatremia or ascites present.";
       }
-      fluidLow = wtKg * 30; fluidHigh = wtKg * 35;
-      fluidNote = "Use dry body weight for calculations. Restrict fluid if hypervolemic hyponatremia or ascites present.";
+
       flags.push("ℹ Do NOT restrict protein in cirrhosis — adequate intake prevents sarcopenia.");
       flags.push("Provide a late-evening carbohydrate snack (200–400 kcal) to minimize overnight fasting catabolism.");
       flags.push("Use dry body weight or ideal weight-for-height; actual weight overestimates needs in ascites/fluid retention.");
@@ -442,26 +472,57 @@ export function evaluateAdultCondition(
 
     // ── PRESSURE INJURIES ─────────────────────────────────────────────────────
     case "pressure_injuries": {
-      afUsed = 1.25; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
-      kcalLow = ree * 1.2; kcalHigh = ree * 1.3;
-      if (variant === "stage_3_4") {
+      const isAdvanced = variant === "stage_3_4";
+
+      if (isAdvanced) {
+        // Stage 3–4: cavitated wounds with active tissue synthesis demands
+        afUsed = 1.4; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
+        kcalLow = ree * 1.35; kcalHigh = ree * 1.5;
         protLow = wtKg * 1.5; protHigh = wtKg * 2.0;
+        flags.push(`Stage 3–4 pressure injury: MSJ REE (${Math.round(ree)} kcal) × 1.35–1.50 = ${Math.round(kcalLow)}–${Math.round(kcalHigh)} kcal/day. Elevated to support tissue synthesis and debridement recovery.`);
       } else {
+        // Stage 1–2
+        afUsed = 1.25; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
+        kcalLow = ree * 1.2; kcalHigh = ree * 1.3;
         protLow = wtKg * 1.25; protHigh = wtKg * 1.5;
+        flags.push(`Stage 1–2 pressure injury: MSJ REE (${Math.round(ree)} kcal) × 1.2–1.3 = ${Math.round(kcalLow)}–${Math.round(kcalHigh)} kcal/day.`);
       }
+
       const prescribedKcalPI = Number(extraInputs.targetKcal || 0);
       fluidLow = wtKg * 30;
       fluidHigh = prescribedKcalPI > 0 ? prescribedKcalPI * 1.5 : wtKg * 35;
       fluidNote = "30 mL/kg/day OR 1.0–1.5 mL/kcal prescribed.";
-      flags.push(`MSJ REE (${Math.round(ree)} kcal) × 1.2–1.3 stress factor = ${Math.round(kcalLow)}–${Math.round(kcalHigh)} kcal/day.`);
       break;
     }
 
     // ── TRAUMA ────────────────────────────────────────────────────────────────
     case "trauma": {
       afUsed = 1.35; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
-      kcalLow = ree * 1.3; kcalHigh = ree * 1.4;
-      protLow = wtKg * 1.2; protHigh = wtKg * 2.0;
+      const exudateL = Number(extraInputs.exudateVolumeL) || 0;
+
+      if (variant === "open_abdomen" && exudateL > 0) {
+        const exudateProteinG = exudateL * 29;
+        const exudateKcal = exudateL * 116; // 29g × 4 kcal/g
+        kcalLow = ree * 1.3 + exudateKcal;
+        kcalHigh = ree * 1.4 + exudateKcal;
+        protLow = wtKg * 1.2 + exudateProteinG;
+        protHigh = wtKg * 2.0 + exudateProteinG;
+        flags.push(
+          `Open abdomen: exudate replacement added — ${exudateL}L × 29g protein = +${Math.round(exudateProteinG)}g/day; ` +
+          `+${Math.round(exudateKcal)} kcal/day energy.`
+        );
+        flags.push(
+          "Source: Hourigan et al. (2010). Loss of protein, immunoglobulins, and electrolytes in exudates from NPWT. " +
+          "Nutr Clin Pract, 25(5), 510–516. doi:10.1177/0884533610379852"
+        );
+      } else {
+        kcalLow = ree * 1.3; kcalHigh = ree * 1.4;
+        protLow = wtKg * 1.2; protHigh = wtKg * 2.0;
+        if (variant === "open_abdomen") {
+          flags.push("Enter exudate volume (L/day) to calculate protein and energy replacement for open abdomen losses.");
+        }
+      }
+
       flags.push(`MSJ REE (${Math.round(ree)} kcal) × 1.3–1.4 acute phase factor = ${Math.round(kcalLow)}–${Math.round(kcalHigh)} kcal/day.`);
       flags.push("Severe/polytrauma: protein may exceed 2.0 g/kg — individualize. Use IC to track energy expenditure changes.");
       break;
@@ -502,7 +563,21 @@ export function evaluateAdultCondition(
       const protFromEnergy = (midKcal * 0.20) / 4;
       protLow = Math.max(protFromEnergy, wtKg * 1.5);
       protHigh = Math.max(protFromEnergy * 1.1, wtKg * 2.0);
-      fluidNote = "Titrate to ostomy/stool loss; goal urine output >1200 mL/day.";
+
+      fluidLow = null;
+      fluidHigh = null;
+      fluidNote = "Fluid cannot be reliably estimated — SBS fluid needs depend on anatomy, ostomy/stool output, and adaptation phase. " +
+                  "Manual titration required: target urine output >1200 mL/day and urine sodium >20 mEq/L.";
+
+      flags.push("⚠ Fluid replacement requires individualized measurement of ostomy/stool output. No automated estimate is clinically valid.");
+      flags.push("Replace sodium at 80–100 mEq/L for high-output jejunostomy losses using oral rehydration solution (ORS).");
+      if (extraInputs.hasPreservedColon) {
+        flags.push("Preserved colon: water absorption improved. Reduce hypotonic fluid supplementation; monitor for D-lactic acidosis.");
+      }
+      if (extraInputs.remainingBowelShort) {
+        flags.push("Remaining bowel <40 cm or excessive output: PN-dependence likely. Fluid targets must be set by measured output.");
+      }
+
       flags.push("SBS: 20% of total energy from high biological value protein.");
       flags.push("Compensate for ~50% malabsorption with at least +20% energy buffer.");
       if (variant === "adult_standard") {

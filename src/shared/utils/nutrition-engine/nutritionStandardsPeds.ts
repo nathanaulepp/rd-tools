@@ -298,8 +298,12 @@ export function evaluatePedsCondition(
       kcalLow = pRange.min;
       kcalHigh = pRange.max;
       protLow = 2.5 * wtKg; protHigh = 3.0 * wtKg;
-      fluidLow = wtKg * 30; fluidHigh = wtKg * 35;
-      fluidNote = "Restrict if hypervolemic hyponatremia or ascites present.";
+
+      const holidayFluidCirr = calcHolidaySegar(wtKg);
+      fluidLow = holidayFluidCirr * 0.85;
+      fluidHigh = holidayFluidCirr;
+      fluidNote = `Holliday-Segar baseline (~${Math.round(holidayFluidCirr)} mL/day). Restrict 85–100% if ascites or hypervolemic hyponatremia present.`;
+
       flags.push(`ℹ Schofield WH BMR: ${Math.round(pedsBMR)} kcal × 1.3–1.5 = ${Math.round(kcalLow)}–${Math.round(kcalHigh)} kcal/day (targeting 120–140% of EAR).`);
       flags.push("Protein 2.5–3.0 g/kg/day to prevent sarcopenia and preserve lean mass.");
       flags.push("ℹ Mifflin-St Jeor and 25–35 kcal/kg severely underestimate pediatric ESLD needs.");
@@ -318,7 +322,12 @@ export function evaluatePedsCondition(
       kcalHigh = pRange.max;
       const protRange = calculatePediatricDiseaseProtein({ ageDays, weightKg: wtKg, condition: "liver_transplant", variant: variant || "", extraInputs });
       protLow = protRange.min; protHigh = protRange.max;
-      fluidLow = wtKg * 30; fluidHigh = wtKg * 35;
+
+      const holidayFluidLT = calcHolidaySegar(wtKg);
+      fluidLow = holidayFluidLT * 0.9;
+      fluidHigh = holidayFluidLT * 1.1;
+      fluidNote = `Holliday-Segar: ~${Math.round(holidayFluidLT)} mL/day. Adjust post-operatively for losses.`;
+
       flags.push(`ℹ Schofield WH BMR: ${Math.round(pedsBMR)} kcal × ${isAcute ? "1.4–1.5 (acute)" : "1.2–1.3 (chronic)"} = ${Math.round(kcalLow)}–${Math.round(kcalHigh)} kcal/day. Targeting minimum 120% EAR.`);
       flags.push("Static 30–35 kcal/kg represents a starvation diet for infants and young children.");
       break;
@@ -377,9 +386,12 @@ export function evaluatePedsCondition(
       if (variant === "stage_3_4") { protLow = 1.5 * wtKg; protHigh = 2.5 * wtKg; }
       else { protLow = 1.25 * wtKg; protHigh = 2.0 * wtKg; }
       const prescribedKcal = Number(extraInputs.targetKcal || 0);
-      fluidLow = wtKg * 30;
-      fluidHigh = prescribedKcal > 0 ? prescribedKcal * 1.5 : wtKg * 35;
-      fluidNote = "30 mL/kg/day OR 1.0–1.5 mL/kcal prescribed.";
+
+      const holidayFluidPI = calcHolidaySegar(wtKg);
+      fluidLow = holidayFluidPI;
+      fluidHigh = prescribedKcal > 0 ? prescribedKcal * 1.5 : holidayFluidPI * 1.2;
+      fluidNote = `Holliday-Segar baseline (~${Math.round(holidayFluidPI)} mL/day)${prescribedKcal > 0 ? ` or 1.0–1.5 mL × ${prescribedKcal} kcal prescribed` : ""}. Increase for wound exudate losses.`;
+
       flags.push(`ℹ Schofield WH BMR: ${Math.round(pedsBMR)} kcal × 1.2–1.4 injury factor = ${Math.round(kcalLow)}–${Math.round(kcalHigh)} kcal/day.`);
       flags.push("Applying adult target (35 kcal/kg) to immobile neurologically impaired pediatric patients causes rapid obesity.");
       flags.push("Protein target: replace measured exudate loss per unit of child's body mass.");
@@ -396,6 +408,27 @@ export function evaluatePedsCondition(
       kcalHigh = pRange.max;
       const protRange = calculatePediatricDiseaseProtein({ ageDays, weightKg: wtKg, condition: "trauma", variant: variant || "", extraInputs });
       protLow = protRange.min; protHigh = protRange.max;
+
+      const exudateL = Number(extraInputs.exudateVolumeL) || 0;
+      if (variant === "open_abdomen" && exudateL > 0) {
+        const exudateProteinG = exudateL * 29;
+        const exudateKcal = exudateL * 116;
+        kcalLow = pRange.min + exudateKcal;
+        kcalHigh = pRange.max + exudateKcal;
+        protLow = protRange.min + exudateProteinG;
+        protHigh = protRange.max + exudateProteinG;
+        flags.push(
+          `Open abdomen: ${exudateL}L exudate × 29g protein/L = +${Math.round(exudateProteinG)}g; ` +
+          `+${Math.round(exudateKcal)} kcal/day replacement.`
+        );
+        flags.push(
+          "Source: Hourigan et al. (2010). Loss of protein, immunoglobulins, and electrolytes in exudates from NPWT. " +
+          "Nutr Clin Pract, 25(5), 510–516. doi:10.1177/0884533610379852"
+        );
+      } else if (variant === "open_abdomen") {
+        flags.push("Enter exudate volume (L/day) to calculate protein and energy replacement.");
+      }
+
       const holidayFluid = calcHolidaySegar(wtKg);
       fluidLow = holidayFluid; fluidHigh = holidayFluid * 1.2;
       fluidNote = `Holliday-Segar: ~${Math.round(holidayFluid)} mL/day. Adjust for losses.`;
@@ -449,12 +482,6 @@ export function evaluatePedsCondition(
         } else {
           protLow = wtKg * 2.0; protHigh = wtKg * 3.0;
         }
-        let fluidBase = 120;
-        if (hasPreservedColon) fluidBase -= 20;
-        if (remainingBowelShort) fluidBase += 30;
-        const fluidMl = Math.min(Math.max(fluidBase, 110), 200) * wtKg;
-        fluidLow = fluidMl; fluidHigh = fluidMl;
-        fluidNote = `~${Math.round(fluidBase)} mL/kg/day (PN route). Adjusted for anatomy and output. Target urine output ≥1–2 mL/kg/hr.`;
 
       } else if (isEnteralAutonomous) {
         switch (ageGroup) {
@@ -485,19 +512,26 @@ export function evaluatePedsCondition(
         } else {
           protLow = wtKg * 2.0; protHigh = wtKg * 3.0;
         }
-        let fluidBaseE = 150;
-        if (hasPreservedColon) fluidBaseE -= 20;
-        if (remainingBowelShort) fluidBaseE += 30;
-        const fluidMlE = Math.min(Math.max(fluidBaseE, 110), 200) * wtKg;
-        fluidLow = fluidMlE; fluidHigh = fluidMlE;
-        fluidNote = `~${Math.round(fluidBaseE)} mL/kg/day (enteral route). High losses require aggressive replacement.`;
 
       } else {
         flags.push("Select a pediatric SBS sub-type (PN-Dependent or Enteral Autonomous) for individualized targets.");
         kcalLow = wtKg * 80; kcalHigh = wtKg * 130;
         eeKcal = (kcalLow + kcalHigh) / 2;
         protLow = wtKg * 2.0; protHigh = wtKg * 3.0;
-        fluidNote = "Titrate to output losses. Target urine output ≥1 mL/kg/hr.";
+      }
+
+      fluidLow = null;
+      fluidHigh = null;
+      fluidNote = "Fluid cannot be reliably estimated — SBS fluid needs depend on anatomy, ostomy/stool output, and adaptation phase. " +
+                  "Manual titration required: target urine output ≥1–2 mL/kg/hr and urine sodium >20 mEq/L.";
+
+      flags.push("⚠ Fluid replacement requires individualized measurement of ostomy/stool output. No automated estimate is clinically valid.");
+      flags.push("Replace sodium at 80–100 mEq/L for high-output jejunostomy losses using oral rehydration solution (ORS).");
+      if (hasPreservedColon) {
+        flags.push("Preserved colon: water absorption improved. Reduce hypotonic fluid supplementation; monitor for D-lactic acidosis.");
+      }
+      if (remainingBowelShort) {
+        flags.push("Remaining bowel <40 cm or excessive output: PN-dependence likely. Fluid targets must be set by measured output.");
       }
 
       if (growthSuboptimal) {

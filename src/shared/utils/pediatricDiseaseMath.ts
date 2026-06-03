@@ -537,9 +537,12 @@ export function calculatePediatricDiseaseProtein(opts: {
     const baseProtein = baseGPerKg * weightKg;
     const exudateL    = parseFloat(extraInputs.exudateVolumeL) || 0;
 
+    // Source: Hourigan et al. (2010). NPWT exudate protein loss is ~29g/L.
+    const extraProtein = exudateL * 29;
+
     return {
-      min: baseProtein + exudateL * 15,
-      max: baseProtein + exudateL * 30,
+      min: baseProtein + extraProtein,
+      max: baseProtein + extraProtein,
     };
   }
 
