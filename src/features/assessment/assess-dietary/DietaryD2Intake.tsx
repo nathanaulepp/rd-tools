@@ -149,14 +149,6 @@ export default function DietaryD2Intake() {
               onChange={(e) => handleUpdate("fluidIntake", e.target.value)}
             />
           </div>
-          <div className="input-group">
-            <label>D27: Eating Environment</label>
-            <input
-              type="text"
-              value={dietary?.eatingEnv || ""}
-              onChange={(e) => handleUpdate("eatingEnv", e.target.value)}
-            />
-          </div>
         </div>
       </div>
     </>

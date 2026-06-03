@@ -12,7 +12,6 @@ export interface Dietary {
   mealPatterns: string;
   currentDiets: string;
   fluidIntake: string;
-  eatingEnv: string;
   eeiPercent: string;
   eeiTimeframe: string;
 
@@ -45,6 +44,7 @@ export interface Dietary {
   // D7 — Cultural & Social Food Context
   culturalReligious: string;
   socialDynamics: string;
+  eatingEnv: string;
 
   // D8 — Supplements / Drug-Nutrient Interactions
   herbalCAM: string;

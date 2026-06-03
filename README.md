@@ -23,6 +23,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 ### RD Workstation
 - [x] **add** restructuring informatics, grouping data by unique patient and admission --> encounter/admissionDate/noteDate 
 - [x] *patch* legacy FSD violations
+- [ ] **add** dedicated settings pane on the homepage, and integrate a comparative standards condition editor into it
 - [ ] **add** Add keyboard shortcuts (root call is "ctrl + 0")
 - [ ] **add** Split panes function
 

@@ -166,7 +166,7 @@ export default function DietaryD3toD9() {
     case "D7":
       return (
         <div className="card">
-          <div className="grid-2-col">
+          <div className="grid-3-col">
             <div className="input-group">
               <label>D71: Religious & Spiritual Observances</label>
               <textarea
@@ -183,6 +183,14 @@ export default function DietaryD3toD9() {
                 style={{ minHeight: "100px" }}
                 value={dietary?.socialDynamics || ""}
                 onChange={(e) => handleUpdate("socialDynamics", e.target.value)}
+              />
+            </div>
+            <div className="input-group">
+              <label>D73: Eating Environment</label>
+              <textarea
+                style={{ minHeight: "100px" }}
+                value={dietary?.eatingEnv || ""}
+                onChange={(e) => handleUpdate("eatingEnv", e.target.value)}
               />
             </div>
           </div>
