@@ -104,7 +104,7 @@ export default function DietaryD3toD9() {
         <div className="card">
           <div className="grid-3-col">
             <div className="input-group">
-              <label>D51: Meal Prep Habits</label>
+              <label>D51: Meal Prep & Shopping Habits</label>
               <textarea
                 style={{ minHeight: "100px" }}
                 value={dietary?.mealPrep || ""}
