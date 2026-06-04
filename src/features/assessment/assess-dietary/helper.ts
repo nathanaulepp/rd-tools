@@ -75,11 +75,39 @@ export function calcGIR(dextGPerDay: number, wtKg: number): number | null {
 /**
  * GIR status classification
  */
-export function girStatus(gir: number): { label: string; color: string; bg: string } {
-  if (gir < 3)   return { label: "Low",    color: "#2563eb", bg: "#dbeafe" };
-  if (gir <= 7)  return { label: "Target", color: "#16a34a", bg: "#dcfce7" };
-  if (gir <= 10) return { label: "High",   color: "#d97706", bg: "#fef3c7" };
-  return             { label: "Excess",  color: "#dc2626", bg: "#fee2e2" };
+export function girStatus(
+  gir: number,
+  ageDays?: number | null
+): { label: string; color: string; bg: string } {
+
+  // ── Infant (< 1 year) ──────────────────────────────────────────────────────
+  if (ageDays !== undefined && ageDays !== null && ageDays < 365) {
+    if (gir < 10)  return { label: "Low",    color: "#2563eb", bg: "#dbeafe" };
+    if (gir <= 14) return { label: "Target", color: "#16a34a", bg: "#dcfce7" };
+    if (gir <= 18) return { label: "High",   color: "#d97706", bg: "#fef3c7" };
+    return               { label: "Excess",  color: "#dc2626", bg: "#fee2e2" };
+  }
+
+  // ── Child (1–10 y) ─────────────────────────────────────────────────────────
+  if (ageDays !== undefined && ageDays !== null && ageDays < 3653) {
+    if (gir < 8)   return { label: "Low",    color: "#2563eb", bg: "#dbeafe" };
+    if (gir <= 10) return { label: "Target", color: "#16a34a", bg: "#dcfce7" };
+    if (gir <= 12) return { label: "High",   color: "#d97706", bg: "#fef3c7" };
+    return               { label: "Excess",  color: "#dc2626", bg: "#fee2e2" };
+  }
+
+  // ── Adolescent (10–18 y) ───────────────────────────────────────────────────
+  if (ageDays !== undefined && ageDays !== null && ageDays < 6570) {
+    if (gir < 5)  return { label: "Low",    color: "#2563eb", bg: "#dbeafe" };
+    if (gir <= 6) return { label: "Target", color: "#16a34a", bg: "#dcfce7" };
+    if (gir <= 8) return { label: "High",   color: "#d97706", bg: "#fef3c7" };
+    return              { label: "Excess",  color: "#dc2626", bg: "#fee2e2" };
+  }
+
+  // ── Adult (≥ 18 y, or ageDays not provided) ────────────────────────────────
+  if (gir < 3)  return { label: "Preferred", color: "#16a34a", bg: "#dcfce7" };
+  if (gir <= 5) return { label: "Target",    color: "#65a30d", bg: "#f7fee7" };
+  return              { label: "Excess",     color: "#dc2626", bg: "#fee2e2" };
 }
 
 export function makeENFeed(id: number): ENFeed {

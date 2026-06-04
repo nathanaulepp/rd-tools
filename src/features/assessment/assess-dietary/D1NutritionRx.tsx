@@ -14,15 +14,16 @@ import { SectionHeader } from "../../../shared/ui/SectionHeader";
 import { Tooltip } from "../../../shared/ui/Tooltip";
 import { useDietaryStore } from "../../../stores/useDietaryStore";
 import { useAnthroStore } from "../../../stores/useAnthroStore";
+import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 import type { Dietary } from "../../../types";
 
 // ─── GIR Badge ────────────────────────────────────────────────────────────────
-function GIRBadge({ dextGPerDay, wtKg, label = "GIR" }: { dextGPerDay: number; wtKg: number; label?: string }) {
+function GIRBadge({ dextGPerDay, wtKg, label = "GIR", ageDays }: { dextGPerDay: number; wtKg: number; label?: string; ageDays?: number | null }) {
   const gir = helper.calcGIR(dextGPerDay, wtKg);
   if (gir === null) return null;
-  const status = helper.girStatus(gir);
+  const status = helper.girStatus(gir, ageDays);
   return (
-    <Tooltip text="Glucose Infusion Rate = (Dextrose g/day × 1000) ÷ (weight kg × 1440 min). Target: 3–7 mg/kg/min.">
+    <Tooltip text="Glucose Infusion Rate = (Dextrose g/day × 1000) ÷ (weight kg × 1440 min). Targets: infants 10–14, children 8–10, adolescents 5–6, adults <5 mg/kg/min (ASPEN).">
       <span style={{
         display: "inline-flex", alignItems: "center", gap: "4px",
         background: status.bg, color: status.color,
@@ -39,11 +40,11 @@ function GIRBadge({ dextGPerDay, wtKg, label = "GIR" }: { dextGPerDay: number; w
 }
 
 // ─── TNA Delivery Summary ─────────────────────────────────────────────────────
-function TNASummary({ totalVol, rate, dextG, aaG, lipidG, dextConc, aaConc, lipidConc, bagGIR, patientWtKg }: {
+function TNASummary({ totalVol, rate, dextG, aaG, lipidG, dextConc, aaConc, lipidConc, bagGIR, patientWtKg, ageDays }: {
   totalVol: number; rate: number;
   dextG: number; aaG: number; lipidG: number;
   dextConc: string; aaConc: string; lipidConc: string;
-  bagGIR: number | null; patientWtKg: number;
+  bagGIR: number | null; patientWtKg: number; ageDays?: number | null;
 }) {
   const dGL = helper.num(dextConc) * 10;
   const aGL = helper.num(aaConc) * 10;
@@ -66,7 +67,7 @@ function TNASummary({ totalVol, rate, dextG, aaG, lipidG, dextConc, aaConc, lipi
       </div>
       {bagGIR !== null && (
         <div style={{ marginTop: "0.75rem", paddingTop: "0.6rem", borderTop: "1px solid #e9d8fd" }}>
-          <GIRBadge dextGPerDay={dextG} wtKg={patientWtKg} label="GIR (this bag)" />
+          <GIRBadge dextGPerDay={dextG} wtKg={patientWtKg} label="GIR (this bag)" ageDays={ageDays} />
         </div>
       )}
     </div>
@@ -85,7 +86,101 @@ function DerivedBadge({ g, kcal, unit, color }: { g: number; kcal: number; unit:
   );
 }
 
+// ─── Lipid derived display — shows both per-infusion and avg/day ──────────────
+function LipidDerivedBadge({
+  derivedResult,
+  freq,
+  color,
+}: {
+  derivedResult: { g: number; kcal: number } | null;
+  freq: string;
+  color: string;
+}) {
+  if (!derivedResult || derivedResult.g <= 0) return null;
+
+  // Parse frequency multiplier (e.g. "3x" → 3/7 of daily)
+  const freqNum = freq && freq.endsWith("x") ? parseInt(freq) : 7;
+  const isEveryDay = freqNum === 7;
+
+  // derivedResult.g already accounts for the weekly multiplier (via deriveLipid helper)
+  // so it IS the avg g/day. Back-calculate per-infusion g:
+  const avgGPerDay = derivedResult.g;
+  const avgKcalPerDay = derivedResult.kcal;
+  const gPerInfusion = isEveryDay ? avgGPerDay : avgGPerDay * 7 / freqNum;
+  const kcalPerInfusion = isEveryDay ? avgKcalPerDay : avgKcalPerDay * 7 / freqNum;
+
+  if (isEveryDay) {
+    return (
+      <div style={{ display: "inline-flex", gap: "6px", alignItems: "center", background: `${color}10`, border: `1px solid ${color}30`, borderRadius: "6px", padding: "3px 8px", fontSize: "0.76rem", marginTop: "3px", flexWrap: "wrap" }}>
+        <span style={{ color, fontWeight: 700 }}>{Math.round(avgGPerDay * 10) / 10} g lipid</span>
+        <span style={{ color: "#718096" }}>·</span>
+        <span style={{ color, fontWeight: 600 }}>{Math.round(avgKcalPerDay)} kcal</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "3px", marginTop: "4px" }}>
+      {/* Per-infusion row */}
+      <div style={{ display: "inline-flex", gap: "6px", alignItems: "center", background: `${color}10`, border: `1px solid ${color}30`, borderRadius: "6px", padding: "3px 8px", fontSize: "0.76rem", flexWrap: "wrap" }}>
+        <span style={{ fontSize: "0.65rem", color: "#718096", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Per infusion</span>
+        <span style={{ color, fontWeight: 700 }}>{Math.round(gPerInfusion * 10) / 10} g lipid</span>
+        <span style={{ color: "#718096" }}>·</span>
+        <span style={{ color, fontWeight: 600 }}>{Math.round(kcalPerInfusion)} kcal</span>
+      </div>
+      {/* Avg/day row */}
+      <div style={{ display: "inline-flex", gap: "6px", alignItems: "center", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: "6px", padding: "3px 8px", fontSize: "0.76rem", flexWrap: "wrap" }}>
+        <span style={{ fontSize: "0.65rem", color: "#718096", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>Avg/day ({freqNum}×/wk)</span>
+        <span style={{ color: "#64748b", fontWeight: 700 }}>{Math.round(avgGPerDay * 10) / 10} g</span>
+        <span style={{ color: "#718096" }}>·</span>
+        <span style={{ color: "#64748b", fontWeight: 600 }}>{Math.round(avgKcalPerDay)} kcal</span>
+      </div>
+    </div>
+  );
+}
+
+// ─── Shared Duration + Hours row (used by TNA and 2-in-1 shared fields) ───────
+interface SharedDurationRowProps {
+  label: string;
+  color: string;
+  duration: string;
+  onDuration: (v: string) => void;
+  hrs: string | number;
+  onHrs: (v: string) => void;
+  hrsDisabled?: boolean;
+}
+
+function SharedDurationRow({ label, color, duration, onDuration, hrs, onHrs, hrsDisabled }: SharedDurationRowProps) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: "0.75rem", flexWrap: "wrap",
+      background: `${color}08`, border: `1px solid ${color}25`,
+      borderRadius: "6px", padding: "0.5rem 0.75rem", marginBottom: "0.6rem",
+    }}>
+      <span style={{ fontSize: "0.72rem", fontWeight: 700, color, textTransform: "uppercase", letterSpacing: "0.04em", minWidth: "fit-content" }}>
+        {label}
+      </span>
+      <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+        <Field label="Duration" style={{ minWidth: "130px" }}>
+          <Sel value={duration} onChange={onDuration} options={constant.PN_DURATIONS} placeholder="Select..." />
+        </Field>
+        <Field label="Hrs" style={{ minWidth: "70px" }}>
+          <Tooltip text={hrsDisabled ? "Continuous is fixed at 24h." : ""}>
+            <NumInput value={hrs} onChange={onHrs} placeholder="24" disabled={hrsDisabled} />
+          </Tooltip>
+        </Field>
+      </div>
+      {duration === "Cyclic" && (
+        <span style={{ fontSize: "0.68rem", color: "#94a3b8", fontStyle: "italic" }}>
+          Cyclic: set hours below 24 to run over a defined infusion window.
+        </span>
+      )}
+    </div>
+  );
+}
+
 // ─── PN MacroSection (compact) ────────────────────────────────────────────────
+// hideDurationHrs: when true, suppresses the Duration + Hrs columns (shared above)
 interface MacroSectionProps {
   label: string;
   color: string;
@@ -104,6 +199,10 @@ interface MacroSectionProps {
   derivedUnit: string;
   extra?: React.ReactNode;
   concPlaceholder?: string;
+  /** When true, hides Duration + Hrs columns (because a shared row handles them) */
+  hideDurationHrs?: boolean;
+  /** Pass freq for lipid-specific avg/day display; undefined uses standard DerivedBadge */
+  lipidFreqForDisplay?: string;
 }
 
 function MacroSection({
@@ -113,27 +212,39 @@ function MacroSection({
   conc, onConc, concOptions = [], showConc,
   derivedResult, derivedUnit, extra,
   concPlaceholder,
+  hideDurationHrs = false,
+  lipidFreqForDisplay,
 }: MacroSectionProps) {
-  // Compact: single row grid
-  const cols: string[] = ["120px", "65px"];
-  if (onFreq) cols.push("105px");
-  if (showRate) cols.push("95px");
-  cols.push("1fr");
-  if (showConc) cols.push("95px");
+  // Build column template dynamically based on what's visible
+  const cols: string[] = [];
+  if (!hideDurationHrs) {
+    cols.push("120px"); // Duration
+    cols.push("65px");  // Hrs
+  }
+  if (onFreq) cols.push("105px");  // Frequency
+  if (showRate) cols.push("95px"); // Rate
+  cols.push("1fr");                // Amount
+  if (showConc) cols.push("95px"); // Conc
   if (extra) cols.push("120px");
+
+  const isLipid = lipidFreqForDisplay !== undefined;
 
   return (
     <div style={{ background: "#fff", border: `1px solid ${color}25`, borderRadius: "6px", padding: "0.6rem 0.75rem", marginBottom: "0.5rem" }}>
       <div style={{ fontSize: "0.72rem", fontWeight: 700, color, marginBottom: "0.5rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>{label}</div>
       <div style={{ display: "grid", gridTemplateColumns: cols.join(" "), gap: "0.4rem", alignItems: "end" }}>
-        <Field label="Duration">
-          <Sel value={duration} onChange={onDuration} options={constant.PN_DURATIONS} placeholder="Select..." />
-        </Field>
-        <Field label="Hrs">
-          <Tooltip text={hrsDisabled ? "Continuous is fixed at 24h." : ""}>
-            <NumInput value={hrs} onChange={onHrs} placeholder="24" disabled={hrsDisabled} />
-          </Tooltip>
-        </Field>
+        {!hideDurationHrs && (
+          <Field label="Duration">
+            <Sel value={duration} onChange={onDuration} options={constant.PN_DURATIONS} placeholder="Select..." />
+          </Field>
+        )}
+        {!hideDurationHrs && (
+          <Field label="Hrs">
+            <Tooltip text={hrsDisabled ? "Continuous is fixed at 24h." : ""}>
+              <NumInput value={hrs} onChange={onHrs} placeholder="24" disabled={hrsDisabled} />
+            </Tooltip>
+          </Field>
+        )}
         {onFreq && (
           <Field label="Frequency">
             <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
@@ -172,8 +283,11 @@ function MacroSection({
         )}
         {extra}
       </div>
-      {derivedResult && (
-        <DerivedBadge g={derivedResult.g} kcal={derivedResult.kcal} unit={derivedUnit} color={color} />
+      {/* Lipid: show per-infusion + avg/day when frequency < 7x; otherwise standard badge */}
+      {isLipid ? (
+        <LipidDerivedBadge derivedResult={derivedResult} freq={lipidFreqForDisplay!} color={color} />
+      ) : (
+        derivedResult && <DerivedBadge g={derivedResult.g} kcal={derivedResult.kcal} unit={derivedUnit} color={color} />
       )}
     </div>
   );
@@ -637,12 +751,60 @@ interface PNFeedCardProps {
   onRemove: () => void;
   /** Patient weight in kg — passed down for GIR calculation */
   patientWtKg: number;
+  ageDays: number | null;
 }
 
-function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg }: PNFeedCardProps) {
+function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg, ageDays }: PNFeedCardProps) {
   const update = (field: keyof PNFeed, val: any) => onChange({ ...feed, [field]: val });
   const isExpanded = feed.expanded;
   const rateMode = helper.getRateMode(feed.delivery);
+
+  // ── Shared duration/hrs handlers for TNA and 2-in-1 ──────────────────────
+  // TNA: one Duration+Hrs drives all three macros (dext, aa, lipid)
+  // 2-in-1: one Duration+Hrs drives dext+aa; lipid keeps its own
+  const sharedDuration = feed.dextDuration; // canonical shared field
+  const sharedHrs      = feed.dextHrs;      // canonical shared field
+  const sharedHrsDisabled = sharedDuration === "Continuous";
+
+  const handleSharedDurationChange = (plan: string) => {
+    const isContTNA    = rateMode === "tna";
+    const isContTwoOne = rateMode === "twoplusone";
+    const updates: Partial<PNFeed> = {
+      dextDuration: plan,
+      aaDuration:   plan,
+    };
+    if (isContTNA) {
+      updates.lipidDuration = plan;
+    }
+    if (plan === "Continuous") {
+      updates.dextHrs = "24";
+      updates.aaHrs   = "24";
+      if (isContTNA) updates.lipidHrs = "24";
+    } else if (plan === "Cyclic") {
+      // Clear if previously locked to 24
+      if (feed.dextHrs === "24") updates.dextHrs = "";
+      if (feed.aaHrs === "24")   updates.aaHrs   = "";
+      if (isContTNA && feed.lipidHrs === "24") updates.lipidHrs = "";
+    }
+    onChange({ ...feed, ...updates });
+  };
+
+  const handleSharedHrsChange = (v: string) => {
+    const updates: Partial<PNFeed> = {
+      dextHrs: v,
+      aaHrs:   v,
+    };
+    if (rateMode === "tna") updates.lipidHrs = v;
+    onChange({ ...feed, ...updates });
+  };
+
+  // Lipid-only duration handler (2-in-1: lipid is independent)
+  const handleLipidDurationChange = (plan: string) => {
+    const updates: Partial<PNFeed> = { lipidDuration: plan };
+    if (plan === "Continuous") updates.lipidHrs = "24";
+    else if (plan === "Cyclic" && feed.lipidHrs === "24") updates.lipidHrs = "";
+    onChange({ ...feed, ...updates });
+  };
 
   const updateElectrolyte = (key: string, sf: string, val: string) =>
     onChange({ ...feed, electrolytes: { ...feed.electrolytes, [key]: { ...(feed.electrolytes[key] || {}), [sf]: val } } });
@@ -653,19 +815,21 @@ function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg }: PNFeedCardPr
   const effectiveAARate    = (rateMode === "tna" || rateMode === "twoplusone") ? feed.combinedRate : feed.aaRate;
   const effectiveLipidRate = rateMode === "tna" ? feed.combinedRate : feed.lipidRate;
 
-  // For TNA, we often want to fallback to a shared duration (dextHrs or 24) if others are blank
-  const masterHrs = rateMode === "tna" ? (helper.num(feed.dextHrs) || helper.num(feed.aaHrs) || helper.num(feed.lipidHrs) || 24) : 0;
-  const dHrs = (rateMode === "tna" && !feed.dextHrs) ? masterHrs : feed.dextHrs;
-  const aHrs = (rateMode === "tna" && !feed.aaHrs)   ? masterHrs : feed.aaHrs;
+  // For TNA, fallback to shared hrs if individual fields are blank
+  const masterHrs = rateMode === "tna"
+    ? (helper.num(feed.dextHrs) || helper.num(feed.aaHrs) || helper.num(feed.lipidHrs) || 24)
+    : 0;
+  const dHrs = (rateMode === "tna" && !feed.dextHrs)  ? masterHrs : feed.dextHrs;
+  const aHrs = (rateMode === "tna" && !feed.aaHrs)    ? masterHrs : feed.aaHrs;
   const lHrs = (rateMode === "tna" && !feed.lipidHrs) ? masterHrs : feed.lipidHrs;
 
-  // Bi-directional calculation helpers
+  // Volume and derived calculations
   const lipidMultiplier = (feed.lipidFreq && feed.lipidFreq.endsWith("x")) ? (parseInt(feed.lipidFreq) / 7) : 1;
   let totalVol = 0;
   if (rateMode === "tna") {
     totalVol = helper.num(effectiveDextRate) * helper.num(dHrs);
   } else if (rateMode === "twoplusone") {
-    const mainVol = helper.num(effectiveDextRate) * (helper.num(feed.dextHrs) || 24);
+    const mainVol  = helper.num(effectiveDextRate) * (helper.num(feed.dextHrs) || 24);
     const lipidVol = (helper.num(effectiveLipidRate) * (helper.num(feed.lipidHrs) || 24)) * lipidMultiplier;
     totalVol = mainVol + lipidVol;
   } else {
@@ -691,19 +855,19 @@ function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg }: PNFeedCardPr
   const totalCal  = Math.round(dextG * 3.4 + aaG * 4 + lipidG * (rateMode === "tna" ? 10 : (constant.getLipidMeta(feed.lipidConc).kcalPerMl / constant.getLipidMeta(feed.lipidConc).gPerMl)));
   const totalProt = Math.round(aaG * 10) / 10;
 
+  // For "three" mode, each macro has its own rate column
   const dextShowRate  = rateMode === "three";
   const aaShowRate    = rateMode === "three";
   const lipidShowRate = rateMode === "three";
 
-  const handleDurationChange = (macro: "dext" | "aa" | "lipid", plan: string) => {
-    const updates: any = { [`${macro}Duration`]: plan };
-    if (plan === "Continuous") updates[`${macro}Hrs`] = "24";
-    else if (plan === "Cyclic" && feed[`${macro}Hrs` as keyof PNFeed] === "24") updates[`${macro}Hrs`] = "";
-    onChange({ ...feed, ...updates });
-  };
+  // Shared: TNA hides duration/hrs per-macro; 2-in-1 hides for dext+aa only
+  const hideSharedMacroDurationHrs = rateMode === "tna" || rateMode === "twoplusone";
 
   // GIR for this individual bag
   const bagGIR = helper.calcGIR(dextG, patientWtKg);
+
+  // Lipid frequency for display
+  const lipidFreqDisplay = feed.lipidFreq || "7x";
 
   return (
     <div style={{ border: "1px solid #e2e8f0", borderRadius: "7px", marginBottom: "0.75rem", overflow: "hidden" }}>
@@ -717,7 +881,7 @@ function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg }: PNFeedCardPr
       {isExpanded && (
         <div style={{ padding: "0.75rem", borderTop: "1px solid #e2e8f0", background: "#fff" }}>
 
-          {/* Row 1: Bag identity fields — compact 2×3 grid */}
+          {/* Row 1: Bag identity fields */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem", marginBottom: "0.6rem" }}>
             <Field label="Bag Label">
               <input type="text" value={feed.label} onChange={e => update("label", e.target.value)} placeholder={`PN Bag ${idx + 1}`}
@@ -747,6 +911,7 @@ function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg }: PNFeedCardPr
               Macronutrients
             </div>
 
+            {/* ── Combined rate bar (TNA and 2-in-1) ── */}
             {(rateMode === "tna" || rateMode === "twoplusone") && (
               <div style={{ marginBottom: "0.6rem", display: "flex", alignItems: "center", gap: "10px", background: "#ede9fe", borderRadius: "5px", padding: "0.45rem 0.75rem", flexWrap: "wrap" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
@@ -766,9 +931,38 @@ function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg }: PNFeedCardPr
               </div>
             )}
 
+            {/* ── Shared Duration + Hrs row for TNA (all 3 macros) and 2-in-1 (dext+aa) ── */}
+            {rateMode === "tna" && (
+              <SharedDurationRow
+                label="Bag Duration (all macros)"
+                color="#6b46c1"
+                duration={sharedDuration}
+                onDuration={handleSharedDurationChange}
+                hrs={sharedHrs}
+                onHrs={handleSharedHrsChange}
+                hrsDisabled={sharedHrsDisabled}
+              />
+            )}
+            {rateMode === "twoplusone" && (
+              <SharedDurationRow
+                label="Dextrose + AA Duration"
+                color="#3182ce"
+                duration={sharedDuration}
+                onDuration={handleSharedDurationChange}
+                hrs={sharedHrs}
+                onHrs={handleSharedHrsChange}
+                hrsDisabled={sharedHrsDisabled}
+              />
+            )}
+
+            {/* ── Amino Acids ── */}
             <MacroSection label="Amino Acids" color="#3182ce"
               hrs={feed.aaHrs} onHrs={v => update("aaHrs", v)} hrsDisabled={feed.aaDuration === "Continuous"}
-              duration={feed.aaDuration} onDuration={v => handleDurationChange("aa", v)}
+              duration={feed.aaDuration} onDuration={v => {
+                const updates: any = { aaDuration: v };
+                if (v === "Continuous") updates.aaHrs = "24";
+                onChange({ ...feed, ...updates });
+              }}
               rate={feed.aaRate} onRate={v => update("aaRate", v)} showRate={aaShowRate}
               amount={feed.aaAmount} onAmount={v => {
                 const updates: any = { aaAmount: v };
@@ -782,11 +976,18 @@ function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg }: PNFeedCardPr
               }}
               concOptions={constant.AA_CONC_OPTIONS} showConc={true}
               concPlaceholder={rateMode === "tna" ? calcTNAConc(feed.aaAmount) : "%"}
-              derivedResult={aaDerived} derivedUnit="g protein" />
+              derivedResult={aaDerived} derivedUnit="g protein"
+              hideDurationHrs={hideSharedMacroDurationHrs}
+            />
 
+            {/* ── Dextrose ── */}
             <MacroSection label="Dextrose" color="#d69e2e"
               hrs={feed.dextHrs} onHrs={v => update("dextHrs", v)} hrsDisabled={feed.dextDuration === "Continuous"}
-              duration={feed.dextDuration} onDuration={v => handleDurationChange("dext", v)}
+              duration={feed.dextDuration} onDuration={v => {
+                const updates: any = { dextDuration: v };
+                if (v === "Continuous") updates.dextHrs = "24";
+                onChange({ ...feed, ...updates });
+              }}
               rate={feed.dextRate} onRate={v => update("dextRate", v)} showRate={dextShowRate}
               amount={feed.dextAmount} onAmount={v => {
                 const updates: any = { dextAmount: v };
@@ -800,11 +1001,14 @@ function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg }: PNFeedCardPr
               }}
               concOptions={constant.DEXT_CONC_OPTIONS} showConc={true}
               concPlaceholder={rateMode === "tna" ? calcTNAConc(feed.dextAmount) : "%"}
-              derivedResult={dextDerived} derivedUnit="g dextrose" />
+              derivedResult={dextDerived} derivedUnit="g dextrose"
+              hideDurationHrs={hideSharedMacroDurationHrs}
+            />
 
+            {/* ── Lipids — 2-in-1 lipid keeps its own Duration+Hrs; TNA lipid shares ── */}
             <MacroSection label="Lipids (ILE)" color="#e67e22"
               hrs={feed.lipidHrs} onHrs={v => update("lipidHrs", v)} hrsDisabled={feed.lipidDuration === "Continuous"}
-              duration={feed.lipidDuration} onDuration={v => handleDurationChange("lipid", v)}
+              duration={feed.lipidDuration} onDuration={handleLipidDurationChange}
               freq={rateMode !== "tna" ? (feed.lipidFreq || "7x") : undefined}
               onFreq={rateMode !== "tna" ? v => update("lipidFreq", v) : undefined}
               rate={feed.lipidRate} onRate={v => update("lipidRate", v)} showRate={lipidShowRate}
@@ -822,7 +1026,12 @@ function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg }: PNFeedCardPr
               showConc={rateMode === "tna"}
               concPlaceholder={rateMode === "tna" ? calcTNAConc(feed.lipidAmount) : "%"}
               derivedResult={lipidDerived} derivedUnit="g lipid"
-              extra={rateMode !== "tna" ? <LipidConcButtons value={feed.lipidConc} onChange={v => update("lipidConc", v)} color="#e67e22" /> : null} />
+              extra={rateMode !== "tna" ? <LipidConcButtons value={feed.lipidConc} onChange={v => update("lipidConc", v)} color="#e67e22" /> : null}
+              // TNA lipid shares Duration+Hrs via the shared row above
+              hideDurationHrs={rateMode === "tna"}
+              // Pass freq for the per-infusion vs avg/day display (only for non-TNA)
+              lipidFreqForDisplay={rateMode !== "tna" ? lipidFreqDisplay : undefined}
+            />
 
             {/* Insulin */}
             <div style={{ display: "flex", alignItems: "center", gap: "8px", marginTop: "0.25rem" }}>
@@ -845,6 +1054,7 @@ function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg }: PNFeedCardPr
               lipidConc={feed.lipidConc || calcTNAConc(feed.lipidAmount)}
               bagGIR={bagGIR}
               patientWtKg={patientWtKg}
+              ageDays={ageDays}
             />
           ) : (
             <div style={{ background: "#f8f4ff", border: "1px solid #e9d8fd", borderRadius: "7px", padding: "0.85rem 1rem", marginBottom: "0.6rem", color: "#4a5568" }}>
@@ -852,9 +1062,8 @@ function PNFeedCard({ feed, idx, onChange, onRemove, patientWtKg }: PNFeedCardPr
                 <NutrientChip label="Est. Calories" value={totalCal  > 0 ? totalCal  : "—"} unit="kcal/day" color="#e67e22" />
                 <NutrientChip label="Est. Protein"  value={totalProt > 0 ? totalProt : "—"} unit="g/day"    color="#8e44ad" />
                 <NutrientChip label="Est. Volume"   value={totalVol  > 0 ? Math.round(totalVol) : "—"} unit="mL/day" color="#3498db" />
-                {/* GIR badge inline with other chips */}
                 {bagGIR !== null && (
-                  <GIRBadge dextGPerDay={dextG} wtKg={patientWtKg} label="GIR (this bag)" />
+                  <GIRBadge dextGPerDay={dextG} wtKg={patientWtKg} label="GIR (this bag)" ageDays={ageDays} />
                 )}
               </div>
               {bagGIR === null && patientWtKg <= 0 && dextG > 0 && (
@@ -885,9 +1094,10 @@ interface D13ParenteralProps {
   setState: (s: PNState) => void;
   /** Patient weight kg for GIR calculation — sourced from anthro state */
   patientWtKg: number;
+  ageDays: number | null;
 }
 
-function D13Parenteral({ state, setState, patientWtKg }: D13ParenteralProps) {
+function D13Parenteral({ state, setState, patientWtKg, ageDays }: D13ParenteralProps) {
   const addBag    = () => setState({ bags: [...state.bags, helper.makePNFeed(state.nextId)], nextId: state.nextId + 1 });
   const updateBag = (id: number, updated: PNFeed) => setState({ ...state, bags: state.bags.map(b => b.id === id ? updated : b) });
   const removeBag = (id: number) => setState({ ...state, bags: state.bags.filter(b => b.id !== id) });
@@ -919,7 +1129,7 @@ function D13Parenteral({ state, setState, patientWtKg }: D13ParenteralProps) {
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           {showAggregateGIR && (
-            <GIRBadge dextGPerDay={aggregateDextG} wtKg={patientWtKg} label="Total GIR" />
+            <GIRBadge dextGPerDay={aggregateDextG} wtKg={patientWtKg} label="Total GIR" ageDays={ageDays} />
           )}
           <button onClick={addBag} style={{ background: "#8e44ad", color: "#fff", border: "none", borderRadius: "5px", padding: "6px 12px", cursor: "pointer", fontSize: "0.82rem", fontWeight: 600, whiteSpace: "nowrap" }}>
             + Add PN Bag
@@ -928,7 +1138,7 @@ function D13Parenteral({ state, setState, patientWtKg }: D13ParenteralProps) {
       </div>
 
       {state.bags.map((bag, idx) => (
-        <PNFeedCard key={bag.id} feed={bag} idx={idx} onChange={updated => updateBag(bag.id, updated)} onRemove={() => removeBag(bag.id)} patientWtKg={patientWtKg} />
+        <PNFeedCard key={bag.id} feed={bag} idx={idx} onChange={updated => updateBag(bag.id, updated)} onRemove={() => removeBag(bag.id)} patientWtKg={patientWtKg} ageDays={ageDays} />
       ))}
 
       {/* Aggregate GIR summary when multiple bags */}
@@ -938,13 +1148,13 @@ function D13Parenteral({ state, setState, patientWtKg }: D13ParenteralProps) {
             Aggregate PN Glucose Load (All Bags)
           </div>
           <div style={{ display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-            <GIRBadge dextGPerDay={aggregateDextG} wtKg={patientWtKg} label="Combined GIR" />
+            <GIRBadge dextGPerDay={aggregateDextG} wtKg={patientWtKg} label="Combined GIR" ageDays={ageDays} />
             <span style={{ fontSize: "0.72rem", color: "#64748b" }}>
               Total dextrose: {Math.round(aggregateDextG * 10) / 10} g/day across {state.bags.length} bags
             </span>
           </div>
           <p style={{ fontSize: "0.68rem", color: "#94a3b8", margin: "6px 0 0" }}>
-            Target GIR: 3–7 mg/kg/min (neonates: 4–6). Exceeding ~10 mg/kg/min risks hyperglycemia and hepatic steatosis.
+            ASPEN targets: infants 10–14, children 8–10, adolescents 5–6, adults &lt;5 mg/kg/min (preferred &lt;3). Excess GIR risks hyperglycemia and hepatic steatosis.
           </p>
         </div>
       )}
@@ -963,7 +1173,8 @@ const TABS = [
 export default function D1NutritionRx() {
   const { dietary, setDietary } = useDietaryStore();
   const { anthro } = useAnthroStore();
-  const patientWtKg = helper.num(anthro.weight);
+  const patientWtKg = helper.num(anthro.wt);
+  const { ageDays } = useCalculatedMetrics();
 
   const [activeTab, setActiveTab] = useState<string>("D11");
 
@@ -1007,7 +1218,7 @@ export default function D1NutritionRx() {
         <D12Enteral state={enState} setState={setEnState} savedFormulas={savedFormulas} onAddFormula={handleAddFormula} onDeleteFormula={handleDeleteFormula} />
       </div>
       <div style={{ display: activeTab === "D13" ? "block" : "none" }}>
-        <D13Parenteral state={pnState} setState={setPnState} patientWtKg={patientWtKg} />
+        <D13Parenteral state={pnState} setState={setPnState} patientWtKg={patientWtKg} ageDays={ageDays} />
       </div>
 
       <div className="card" style={{ marginTop: "1.5rem", borderTop: "2px solid #3498db" }}>

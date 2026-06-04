@@ -23,7 +23,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 ### RD Workstation
 - [x] **add** restructuring informatics, grouping data by unique patient and admission --> encounter/admissionDate/noteDate 
 - [x] *patch* legacy FSD violations
-- [ ] *patch* problem with deletion of patients from records
+- [x] *patch* problem with deletion of patients from records
 - [ ] **add** dedicated settings pane on the homepage, and integrate a comparative standards condition editor into it
 - [ ] **add** Add keyboard shortcuts (root call is "ctrl + 0")
 - [ ] **add** Split panes function
@@ -47,9 +47,9 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [x] *patch* formula name submissions for EN
 - [x] **add** create functionality for EN modulars (mL/bolus isn't enough)
 - [x] *patch* broken autosave for D12 and D13
-- [ ] **add** D2.1 automated estimated oral intake
-- [ ] **add** Incorporate a persistent EN formulary database into ./src/shared/api
-- [ ] **add** GIR check (timeline layout with dynamic points for unique intervals from 0:00 to 23:59)
+- [ ] **add** D2.1 automated estimated oral intake, integrating Multiple Pass Dietary Recall
+- [ ] **add** Build a modifiable EN formulary database into ./src/shared/api
+- [x] **add** GIR check
 
 #### Standards
 - [x] **add** automate comparative standards
