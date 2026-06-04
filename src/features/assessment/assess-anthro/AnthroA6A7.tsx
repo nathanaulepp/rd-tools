@@ -3,6 +3,7 @@
 
 import React from "react";
 import GrowthVelocityTable from "./GrowthVelocityTable";
+import ZScoreVelocityTable from "./ZScoreVelocityTable";
 import GrowthStandardsTable from "./GrowthStandardsTable";
 import { MeasurementInput } from "../../../shared/ui/MeasurementInput";
 import { useAnthroStore } from "../../../stores/useAnthroStore";
@@ -63,6 +64,7 @@ export default function AnthroA6A7() {
           patientData={patientData}
           calculatedMetrics={calculatedMetrics}
         />
+        <ZScoreVelocityTable />
       </div>
 
       <GrowthStandardsTable

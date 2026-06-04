@@ -328,19 +328,10 @@ export function evaluateAdultCondition(
         eeKcal = icFloor; eeSource = "IC"; cafUsed = activeIcCaf;
         kcalLow = icFloor; kcalHigh = icCeiling;
         flags.push("IC preferred for cirrhosis — REE is highly variable and unpredictable from predictive equations.");
-      } else if (isDecompensated) {
-        // Decompensated: MSJ × 1.3–1.5 to reflect hypermetabolic shift
-        afUsed = 1.4; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
-        kcalLow = ree * 1.3; kcalHigh = ree * 1.5;
-        flags.push(
-          `Decompensated cirrhosis: MSJ REE (${Math.round(ree)} kcal) × 1.3–1.5 hypermetabolic factor = ` +
-          `${Math.round(kcalLow)}–${Math.round(kcalHigh)} kcal/day. ` +
-          "Encephalopathy, infection, and ascites each independently raise REE 10–30%."
-        );
       } else {
-        afUsed = 1.3; eeKcal = ree * afUsed; eeSource = "MSJ×AF";
+        afUsed = 1.3; eeKcal = ree * afUsed; eeSource = "35–40 x kg";
         kcalLow = wtKg * 35; kcalHigh = wtKg * 40;
-        flags.push("Compensated cirrhosis: 35–40 kcal/kg dry weight.");
+        flags.push("Cirrhosis: 35–40 kcal/kg dry weight.");
       }
 
       if (isDecompensated) {

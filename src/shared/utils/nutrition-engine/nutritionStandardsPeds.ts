@@ -514,7 +514,6 @@ export function evaluatePedsCondition(
         }
 
       } else {
-        flags.push("Select a pediatric SBS sub-type (PN-Dependent or Enteral Autonomous) for individualized targets.");
         kcalLow = wtKg * 80; kcalHigh = wtKg * 130;
         eeKcal = (kcalLow + kcalHigh) / 2;
         protLow = wtKg * 2.0; protHigh = wtKg * 3.0;

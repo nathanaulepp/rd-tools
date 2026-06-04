@@ -13,6 +13,7 @@ import { useAnthroStore } from "../../stores/useAnthroStore";
 import { useDietaryStore } from "../../stores/useDietaryStore";
 import { useClinicalStore } from "../../stores/useClinicalStore";
 import { useCalculatedMetrics } from "../../stores/useCalculatedMetrics";
+import PediatricMalnutritionTable from "./PediatricMalnutritionTable";
 
 import type {
   Anthro,
@@ -1000,6 +1001,7 @@ function PESCard({ index, isPrimary, data, onChange, onRemove }: PESCardProps) {
 
 export default function DiagnosisDomain() {
   const { diagnosis, setDiagnosis } = useDiagnosisStore();
+  const calculatedMetrics = useCalculatedMetrics();
 
   const update = <K extends keyof Diagnosis>(field: K, val: Diagnosis[K]) =>
     setDiagnosis({ [field]: val });
@@ -1053,7 +1055,11 @@ export default function DiagnosisDomain() {
       <DomainHeader title="Dx. Nutrition Diagnosis" />
 
       {/* ASPEN Malnutrition Engine */}
-      <MalnutritionTable />
+      {calculatedMetrics?.ageDays != null && calculatedMetrics.ageDays < 6570 ? (
+        <PediatricMalnutritionTable />
+      ) : (
+        <MalnutritionTable />
+      )}
 
       {/* PES Builder */}
       <div className="card">

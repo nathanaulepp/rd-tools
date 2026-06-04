@@ -166,3 +166,28 @@ export function calcLMSValue(
   }
   return SD3neg + (z + 3) * (SD2neg - SD3neg);
 }
+
+// ─── Velocity & Deltas ───────────────────────────────────────────────────────
+
+/**
+ * Return the linear difference between two z-scores.
+ */
+export function calculateZScoreDelta(currentZ: number, pastZ: number): number {
+  return currentZ - pastZ;
+}
+
+/**
+ * Calculate growth velocity (weight gain/loss per day).
+ * @param currentWt  Current weight in kg
+ * @param pastWt     Past weight in kg
+ * @param timeDiff   Time difference in days
+ * @returns          Velocity in g/day
+ */
+export function calculateGrowthVelocity(
+  currentWt: number,
+  pastWt: number,
+  timeDiff: number
+): number {
+  if (timeDiff <= 0) return 0;
+  return ((currentWt - pastWt) / timeDiff) * 1000;
+}
