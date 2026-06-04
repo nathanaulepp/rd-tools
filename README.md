@@ -38,8 +38,8 @@ By reducing time spent on charting, clinicians can expand their scope:
 #### Clinical
 - [x] **add** import drug database
 - [x] **add** add drug lookup
-- [ ] **add** Automated drug-nutrient interactions
 - [ ] **add** Automated refeeding risk chart
+- [ ] **add** Automated drug-nutrient interactions
 
 #### Dietary
 - [x] **add** current nutrition rx
@@ -63,7 +63,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [x] **add** PES statement builder
 - [x] **add** allow for creation of new etiology blocks through saved ADIMEs
 - [x] **add** Automated malnutrition chart
-- [ ] **add** automated pediatric malnutrition chart
+- [x] **add** automated pediatric malnutrition chart
 - [x] **add** Build skeleton for contextual suggestions for signs & symptoms (s/s) --> use assessment data
 - [x] *patch* PES s/s contextual suggestions missing chip selection and dropdowns
 - [ ] **add** Differentials to guide continued/ordered assessment

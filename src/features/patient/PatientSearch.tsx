@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, CSSProperties } from "react";
-import { Patient, Encounter, getAllPatients, deletePatient, getEncountersByPatient } from "../../shared/api/db";
+import { Patient, Encounter, getAllPatients, deletePatient, getEncountersByPatient, deleteEncounter } from "../../shared/api/db";
 import { Field } from "../../shared/ui/Field";
 import { FormError } from "../../shared/ui/FormError";
 import { getLocalIsoDate } from "../../shared/utils/date";
@@ -27,6 +27,7 @@ export const PatientSearch = ({
   
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [encounterToDelete, setEncounterToDelete] = useState<string | null>(null);
   const [internalError, setInternalError] = useState("");
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -93,6 +94,22 @@ export const PatientSearch = ({
     } catch (e) {
       console.error(e);
       setInternalError("Failed to delete patient record. Please try again.");
+    }
+  };
+
+  const handleDeleteEncounter = async (encounterId: string) => {
+    try {
+      await deleteEncounter(encounterId);
+      setEncounters(encounters.filter(e => e.id !== encounterId));
+      setEncounterToDelete(null);
+      // If the selected admission date belonged to this encounter, reset to today
+      const deleted = encounters.find(e => e.id === encounterId);
+      if (deleted && selectedAdmDate === deleted.admission_date) {
+        setSelectedAdmDate(getLocalIsoDate());
+      }
+    } catch (e) {
+      console.error(e);
+      setInternalError("Failed to delete encounter. Please try again.");
     }
   };
 
@@ -218,8 +235,8 @@ export const PatientSearch = ({
             <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#3498db', textTransform: 'uppercase', marginBottom: '1rem' }}>Encounter Context</div>
             
             <Field label="Choose Admission Date">
-              <select 
-                value={selectedAdmDate} 
+              <select
+                value={selectedAdmDate}
                 onChange={(e) => setSelectedAdmDate(e.target.value)}
                 style={{ ...styles.input, fontWeight: 700 }}
               >
@@ -237,6 +254,36 @@ export const PatientSearch = ({
                 )}
               </select>
             </Field>
+
+            {/* Per-encounter delete controls */}
+            {encounters.length > 0 && (
+              <div style={{ marginTop: '0.75rem' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.4rem' }}>
+                  Delete an Admission
+                </div>
+                {encounters.map(e => (
+                  <div key={e.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.35rem 0', borderBottom: '1px solid #f1f5f9' }}>
+                    <span style={{ fontSize: '0.8rem', color: '#475569', fontWeight: 600 }}>
+                      {e.admission_date}
+                    </span>
+                    {encounterToDelete === e.id ? (
+                      <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.7rem', color: '#b91c1c', fontWeight: 700 }}>Delete all notes?</span>
+                        <button style={{ ...styles.btnSmall, ...styles.btnDanger }} onClick={() => handleDeleteEncounter(e.id)}>Yes</button>
+                        <button style={{ ...styles.btnSmall, ...styles.btnSecondary }} onClick={() => setEncounterToDelete(null)}>No</button>
+                      </div>
+                    ) : (
+                      <button
+                        style={{ ...styles.btnSmall, ...styles.btnDangerOutline }}
+                        onClick={() => setEncounterToDelete(e.id)}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
 
             <div style={{ marginTop: '1rem', fontSize: '0.75rem', color: '#718096', fontStyle: 'italic', lineHeight: 1.4 }}>
               {selectedAdmDate === getLocalIsoDate() && !encounters.find(e => e.admission_date === selectedAdmDate) 

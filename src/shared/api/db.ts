@@ -270,6 +270,7 @@ export async function getPatientById(id: string): Promise<Patient | null> {
 export async function deletePatient(patientId: string): Promise<void> {
   const db = await getDb();
   await db.execute(`DELETE FROM notes WHERE patient_id = ?`, [patientId]);
+  await db.execute(`DELETE FROM encounters WHERE patient_id = ?`, [patientId]);
   await db.execute(`DELETE FROM patients WHERE id = ?`, [patientId]);
 }
 
@@ -515,6 +516,13 @@ export async function getEncountersByPatient(patientId: string): Promise<Encount
     `SELECT * FROM encounters WHERE patient_id = ? ORDER BY admission_date DESC`,
     [patientId]
   );
+}
+
+export async function deleteEncounter(encounterId: string): Promise<void> {
+  const db = await getDb();
+  // Delete all notes belonging to this encounter first, then the encounter itself
+  await db.execute(`DELETE FROM notes WHERE encounter_id = ?`, [encounterId]);
+  await db.execute(`DELETE FROM encounters WHERE id = ?`, [encounterId]);
 }
 
 export async function getAllNotes(): Promise<NoteWithPatient[]> {
