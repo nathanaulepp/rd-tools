@@ -7,7 +7,6 @@ import { useNoteStore } from "../../../stores/useNoteStore";
 import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 import type { Anthro } from "../../../types";
 
-// Imported child sub-components from the old A6-A7 layout
 import GrowthVelocityTable from "./GrowthVelocityTable";
 import ZScoreVelocityTable from "./ZScoreVelocityTable";
 import GrowthStandardsTable from "./GrowthStandardsTable";
@@ -35,7 +34,9 @@ export default function AnthroA1A7() {
   const showGrowthTables = ageDays !== null && ageDays >= 0 && ageDays < 7305;
   const [growthUnits, setGrowthUnits] = React.useState<"metric" | "imperial">("metric");
 
-  const showUbw = ageInMonths === null || ageInMonths >= 24;
+  // Hide UBW for patients under 18 years old (ageDays < 6570)
+  // Also hide if age is unknown (null)
+  const showUbw = ageDays !== null && ageDays >= 6570;
 
   const wtChangeDetails = useMemo(() => {
     if (!showUbw || !anthro.wt || !anthro.ubw) return null;
@@ -58,7 +59,7 @@ export default function AnthroA1A7() {
       isSevere,
       timeStr,
     };
-  }, [anthro.wt, anthro.ubw, ubwTimeframeDays]);
+  }, [anthro.wt, anthro.ubw, ubwTimeframeDays, showUbw]);
 
   const toggleAmputation = (label: string) => {
     const current = anthro.amputations ?? [];
@@ -74,7 +75,7 @@ export default function AnthroA1A7() {
     <>
       <div className="card">
         <h4 className="mb-1 flex-between">
-          A1-A3: Height/Length, Weight, BMI, UBW
+          A1-A3: Height/Length, Weight, BMI{showUbw ? ", UBW" : ""}
           <div style={{ display: "flex", gap: "8px" }}>
             <span
               className={`chip ${
@@ -126,7 +127,7 @@ export default function AnthroA1A7() {
                 label="UBW"
                 value={anthro.ubw}
                 onChange={(v) => handleUpdate("ubw", v)}
-                placeholder="Adult Patients Only"
+                placeholder="Usual Body Weight"
               />
               <div className="input-group">
                 <label>UBW Date (for timeframe)</label>
@@ -334,13 +335,9 @@ export default function AnthroA1A7() {
         )}
       </div>
 
+      {/* A7: Growth Standards — reads stores directly, no props needed */}
       {showGrowthTables && (
-        <GrowthStandardsTable
-          anthro={anthro}
-          patientData={patientData}
-          calculatedMetrics={calculatedMetrics}
-          units={growthUnits}
-        />
+        <GrowthStandardsTable units={growthUnits} />
       )}
     </>
   );
