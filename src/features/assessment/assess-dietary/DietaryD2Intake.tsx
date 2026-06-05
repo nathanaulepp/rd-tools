@@ -121,10 +121,11 @@ export default function DietaryD2Intake() {
             />
           </div>
           <div className="input-group">
-            <label>D23: Macro & Micronutrient Adequacy</label>
-            <textarea
-              value={dietary?.macroAdequacy || ""}
-              onChange={(e) => handleUpdate("macroAdequacy", e.target.value)}
+            <label>D26: Fluid Intake</label>
+            <input
+              type="text"
+              value={dietary?.fluidIntake || ""}
+              onChange={(e) => handleUpdate("fluidIntake", e.target.value)}
             />
           </div>
           <div className="input-group">
@@ -142,11 +143,10 @@ export default function DietaryD2Intake() {
             />
           </div>
           <div className="input-group">
-            <label>D26: Fluid Intake</label>
-            <input
-              type="text"
-              value={dietary?.fluidIntake || ""}
-              onChange={(e) => handleUpdate("fluidIntake", e.target.value)}
+            <label>D23: Macro & Micronutrient Adequacy</label>
+            <textarea
+              value={dietary?.macroAdequacy || ""}
+              onChange={(e) => handleUpdate("macroAdequacy", e.target.value)}
             />
           </div>
         </div>

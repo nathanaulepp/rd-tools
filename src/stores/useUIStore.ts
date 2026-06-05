@@ -85,11 +85,11 @@ export const useUIStore = create<UIState>((set, get) => ({
 
   // ── Domain navigation ────────────────────────────────────────────────────────
   activeDomain: "A",
-  activeSubDomain: "A1-A5",
+  activeSubDomain: "A1-A7",
 
   setActiveDomain: (domain) => {
     const defaultSub: Partial<Record<DomainKey, string>> = {
-      A: "A1-A5",
+      A: "A1-A7",
       B: "B1",
       C: "C1",
       D: "D1",

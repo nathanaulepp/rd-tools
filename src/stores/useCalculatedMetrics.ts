@@ -84,6 +84,7 @@ export interface CalculatedMetrics {
   ibw: number;
   adjIbw: number | null;
   ageDays: number | null;
+  ageInMonths: number | null;
   ubwTimeframeDays: number | null;
 
   // Normalised SI values (always in kg / cm) for equations
@@ -155,6 +156,8 @@ export function useCalculatedMetrics(): CalculatedMetrics {
       new Date(patientData.dob).getTime();
     ageDays = Math.floor(ms / (1000 * 60 * 60 * 24));
   }
+
+  const ageInMonths = ageDays !== null ? ageDays / 30.4375 : null;
 
   // ── UBW timeframe ───────────────────────────────────────────────────────────
   let ubwTimeframeDays: number | null = null;
@@ -275,6 +278,7 @@ export function useCalculatedMetrics(): CalculatedMetrics {
     ibw: ibwKg,
     adjIbw,
     ageDays,
+    ageInMonths,
     ubwTimeframeDays,
     wtKg,
     htCm,

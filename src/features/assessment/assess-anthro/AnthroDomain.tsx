@@ -8,8 +8,7 @@ import { ASSESSMENT_CATEGORIES } from "../../../shared/constants/adimeSideBarCat
 import { useUIStore } from "../../../stores/useUIStore";
 import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 
-import AnthroA1A5 from "./AnthroA1A5";
-import AnthroA6A7 from "./AnthroA6A7";
+import AnthroA1A7 from "./AnthroA1A7";
 import AnthroA8 from "./AnthroA8";
 
 export default function AnthroDomain() {
@@ -22,10 +21,8 @@ export default function AnthroDomain() {
 
   const renderContent = () => {
     switch (activeSubDomain) {
-      case "A1-A5":
-        return <AnthroA1A5 />;
-      case "A6-A7":
-        return <AnthroA6A7 />;
+      case "A1-A7":
+        return <AnthroA1A7 />;
       case "A8":
         return <AnthroA8 />;
       default:

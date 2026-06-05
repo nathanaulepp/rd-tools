@@ -65,5 +65,6 @@ export interface CalculatedMetrics {
   ibw: number;
   adjIbw: number | null;
   ageDays: number | null;
+  ageInMonths: number | null;
   ubwTimeframeDays: number | null;
 }
