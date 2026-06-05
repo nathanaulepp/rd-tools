@@ -427,12 +427,13 @@ export default function PediatricMalnutritionTable() {
       wtGainVelocityZSev: "Not Applicable",
       wtGainVelocityPct:    null,
       wtGainVelocityPctSev: "Not Applicable",
-      wtLossPct_infant:    isInfant ? (wtLossPct || null) : null,
-      wtLossPct_infantSev: isInfant ? evaluateWtLossPct(wtLossPct || null) : "Not Applicable",
 
       // Child block
       deltaWtForAgeZ_child:    !isInfant ? deltaWtZ : null,
       deltaWtForAgeZ_childSev: !isInfant ? evaluateDeltaWtForAgeZ_child(deltaWtZ) : "Not Applicable",
+
+      wtLossPct_child:    !isInfant ? (wtLossPct || null) : null,
+      wtLossPct_childSev: !isInfant ? evaluateWtLossPct(wtLossPct || null) : "Not Applicable",
     };
 
     return { primary, multi, ageConditional };
@@ -578,19 +579,19 @@ export default function PediatricMalnutritionTable() {
       unavailable: true,
       unavailableNote: "Velocity % not yet implemented",
     },
+  ];
+
+  const childRows: DataRow[] = [
     {
       label: "Weight loss % (UBW)",
       mild: "5% UBW",
       moderate: "7.5% UBW",
       severe: "10% UBW",
       patientVal: fmtPct(computed.wtLossPct || null),
-      outcome: criteria.ageConditional.wtLossPct_infantSev,
+      outcome: criteria.ageConditional.wtLossPct_childSev,
       unavailable: !anthro.ubw || Number(anthro.ubw) <= 0,
       unavailableNote: "Enter UBW in Anthropometrics",
     },
-  ];
-
-  const childRows: DataRow[] = [
     {
       label: "Δ Wt-for-age Z (2–20y thresholds)",
       mild: "Decline in 0.66 Z-score",

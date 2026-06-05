@@ -74,12 +74,18 @@ export function buildRuntimeContext(opts: EvalOptions, sex: "M" | "F"): RuntimeC
     bmi,
     icMeasuredKcal = 0,
     icCaf = 1.0,
+    correctedWtKg = wtKg,
+    adjIbwKg: adjIbwFromPatient,
   } = patient;
 
   const htM   = htCm / 100;
   const htIn  = htCm / 2.54;
   const wtLbs = wtKg * 2.2046;
   const ibwKg = calcIBW(htCm, sex);
+  // Use caller-supplied adjIbw if provided (accounts for amputations),
+  // otherwise fall back to standard IBW.
+  const adjIbwKg = adjIbwFromPatient ?? ibwKg;
+
   const bsa   = calcBSA(htCm, wtKg);
   const msjKcal       = calcMSJ(wtKg, htCm, ageYears, sex);
   const schofieldKcal = calcSchofieldBMR(wtKg, htM, ageYears, sex);
@@ -97,7 +103,8 @@ export function buildRuntimeContext(opts: EvalOptions, sex: "M" | "F"): RuntimeC
     $wtLbs:          wtLbs,
     $ibwKg:          ibwKg,
     $ibwLbs:         ibwKg * 2.2046,
-    $adjIbwKg:       ibwKg,
+    $adjIbwKg:       adjIbwKg,
+    $correctedWtKg:  correctedWtKg,
     $edwKg:          wtKg,
     $htCm:           htCm,
     $htIn:           htIn,
@@ -334,6 +341,10 @@ export const CONDITION_VARIANTS: Partial<Record<ConditionKey, { key: string; lab
     { key: "standard",    label: "Ischemic / Standard" },
     { key: "hemorrhagic", label: "Hemorrhagic / High Protein" },
   ],
+  trauma: [
+    { key: "standard",     label: "Standard / Major Trauma" },
+    { key: "open_abdomen", label: "Open Abdomen / NPWT" },
+  ],
   sickle_cell: [
     { key: "peds_stable",  label: "Pediatric — Stable",       maxAge: 17.9 },
     { key: "peds_crisis",  label: "Pediatric — VOC / Crisis", maxAge: 17.9 },
@@ -380,7 +391,7 @@ export const CONDITION_EXTRA_INPUTS: Partial<Record<ConditionKey, {
     { key: "coreTemp",      label: "Core Temperature (°C)",             type: "number", hint: "Required for Toronto equation", minAge: 18, onlyForVariants: ["adult_toronto"] },
   ],
   trauma: [
-    { key: "exudateVolumeL", label: "Exudate Volume (L)", type: "number", hint: "Required for open abdomen adjustment" },
+    { key: "exudateVolumeL", label: "Exudate Volume (L)", type: "number", hint: "Required for open abdomen adjustment", onlyForVariants: ["open_abdomen"] },
   ],
   sickle_cell: [
     { key: "hgb", label: "Hemoglobin (g/dL)", type: "number", autoPullFrom: "labs.Hgb" },

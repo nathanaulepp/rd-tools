@@ -75,8 +75,16 @@ export function evaluateAdultCondition(
   let protFixed: number | null = null;
   let fluidLow: number | null = null, fluidHigh: number | null = null;
   let fluidNote = "";
-  let wtForKcal = wtKg;
-  let wtLabel = "Actual Wt";
+
+  // If the patient has documented amputations, use the corrected (intact) weight
+  // for REE and kcal/kg calculations to avoid underestimating needs.
+  const correctedWt = (ctx as any).$correctedWtKg ?? wtKg;
+  const hasAmputations = correctedWt > wtKg + 0.1;
+  const effectiveWt = hasAmputations ? correctedWt : wtKg;
+  const initialWtLabel = hasAmputations ? "Corrected Wt (Amputee)" : "Actual Wt";
+
+  let wtForKcal = effectiveWt;
+  let wtLabel = initialWtLabel;
   let wtForProt = wtKg;
   let eeKcal = ree;
   let eeSource: ConditionResult["eeSource"] = "MSJ×AF";

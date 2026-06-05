@@ -6,6 +6,7 @@ import {
   evaluateNutritionRx,
   calcIBW,
   calcMSJ,
+  calcSchofieldBMR,
   CONDITION_LABELS,
   CONDITION_VARIANTS,
   CONDITION_EXTRA_INPUTS,
@@ -550,12 +551,14 @@ export default function NutritionStandardsDomain() {
         htCm,
         ageYears,
         sex,
-        bmi,
-        weightLabel: weightBasis,
-        icMeasuredKcal: icKcal ? parseFloat(icKcal) : undefined,
-        icCaf: parseFloat(icCaf) || 1.0,
-      },
-      currentRx: {
+        bmi:      parseFloat(calculatedMetrics.bmi) || 0,
+        correctedWtKg: calculatedMetrics.correctedWtKg,
+        adjIbwKg:      calculatedMetrics.adjIbw ?? undefined,
+        icMeasuredKcal: parseFloat(standards.icKcal) || 0,
+        icCaf:          parseFloat(standards.icCaf)  || 1.0,
+        weightLabel:    calculatedMetrics.adjIbw ? "Corrected Wt (Amputee)" : weightBasis,
+        },
+        currentRx: {
         kcalPerDay: parseFloat(currentKcal) || 0,
         proteinGPerDay: parseFloat(currentProtein) || 0,
         fatGPerDay: parseFloat(currentFat) || 0,
@@ -619,8 +622,20 @@ export default function NutritionStandardsDomain() {
           <p style={{ margin: 0, fontSize: "0.78rem", color: "#64748b" }}>Evaluate nutrition prescription against condition-specific evidence.</p>
         </div>
         <div style={{ display: "flex", gap: "12px", textAlign: "right" }}>
-          <QuickStat label="IBW" value={htCm > 0 ? `${calcIBW(htCm, sex)}kg` : "—"} />
-          <QuickStat label="MSJ REE" value={wtKg > 0 && ageYears > 0 ? `${Math.round(calcMSJ(wtKg, htCm, ageYears, sex))}kcal` : "—"} />
+          {ageYears >= 18 && (
+            <QuickStat label="IBW" value={htCm > 0 ? `${calcIBW(htCm, sex)}kg` : "—"} />
+          )}
+          {ageYears < 18 ? (
+            <QuickStat 
+              label="Schofield REE" 
+              value={wtKg > 0 && ageYears > 0 ? `${Math.round(calcSchofieldBMR(wtKg, htCm / 100, ageYears, sex))}kcal` : "—"} 
+            />
+          ) : (
+            <QuickStat 
+              label="MSJ REE" 
+              value={wtKg > 0 && ageYears > 0 ? `${Math.round(calcMSJ(wtKg, htCm, ageYears, sex))}kcal` : "—"} 
+            />
+          )}
           <QuickStat label="BMI" value={bmi > 0 ? bmi.toFixed(1) : "—"} />
         </div>
       </div>

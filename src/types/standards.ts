@@ -67,6 +67,8 @@ export interface RuntimeContext {
   $ibwLbs: number;
   /** Adjusted IBW accounting for amputations; equals ibwKg when no amputations */
   $adjIbwKg: number;
+  /** Amputation-corrected intact weight estimate (scale wt ÷ (1 − amp%)) */
+  $correctedWtKg: number;
   /** Estimated dry weight (fluid-shift corrected); equals wtKg when not applicable */
   $edwKg: number;
 
@@ -114,6 +116,10 @@ export interface PatientInputs {
   weightLabel?: string;
   icMeasuredKcal?: number;
   icCaf?: number;
+  /** Amputation-corrected intact weight. Passed from useCalculatedMetrics.correctedWtKg. */
+  correctedWtKg?: number;
+  /** Adjusted IBW accounting for amputations. Passed from useCalculatedMetrics.adjIbw. */
+  adjIbwKg?: number;
 }
 
 export interface CurrentRx {

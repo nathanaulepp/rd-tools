@@ -91,6 +91,8 @@ export interface CalculatedMetrics {
   wtKg: number;
   htCm: number;
   ibwKg: number;
+  /** Amputation-corrected weight (intact weight estimate). Equals wtKg when no amputations. */
+  correctedWtKg: number;
 
   // Display-ready values in the user's chosen units (for UI fields)
   wtDisplay: number;
@@ -147,6 +149,17 @@ export function useCalculatedMetrics(): CalculatedMetrics {
     }, 0);
     adjIbw = Number((ibwKg * (100 - totalPct) / 100).toFixed(1));
   }
+
+  // ── Amputation-corrected (intact) weight ──────────────────────────────────
+  // Reverses the limb-loss mass to estimate what the patient would weigh intact.
+  // Formula: scalewt / (1 - totalAmputationPct/100)
+  const totalAmputationPct = amputations.reduce((acc, label) => {
+    const entry = AMPUTATION_DATA.find((d) => d.label === label);
+    return acc + (entry?.pct ?? 0);
+  }, 0);
+  const correctedWtKg = totalAmputationPct > 0
+    ? wtKg / (1 - totalAmputationPct / 100)
+    : wtKg;
 
   // ── Age in days ─────────────────────────────────────────────────────────────
   let ageDays: number | null = null;
@@ -283,6 +296,7 @@ export function useCalculatedMetrics(): CalculatedMetrics {
     wtKg,
     htCm,
     ibwKg,
+    correctedWtKg,
     wtDisplay,
     wtDisplayUnit,
     htDisplay,

@@ -99,63 +99,63 @@ export interface AgeConditionalIndicators {
   wtGainVelocityPct: number | null;
   wtGainVelocityPctSev: Severity;
 
-  /** Wt loss % of UBW (infant thresholds: 5% / 7.5% / 10%) */
-  wtLossPct_infant: number | null;
-  wtLossPct_infantSev: Severity;
-
   // ── Child block (2–20y) ──────────────────────────────────────────────────
+  /** Wt loss % of UBW (child thresholds: 5% / 7.5% / 10%) */
+  wtLossPct_child: number | null;
+  wtLossPct_childSev: Severity;
+
   /**
    * Δ Wt-for-age Z (child thresholds differ from infant):
-   *   Mild: 0.66 Z decline
+   *   Mild:     0.66 Z decline
    *   Moderate: 0.67–1.33 Z decline
-   *   Severe: ≥1.34 Z decline
+   *   Severe:   ≥1.34 Z decline
    */
   deltaWtForAgeZ_child: number | null;
   deltaWtForAgeZ_childSev: Severity;
-}
+  }
 
-// ─── Full Criteria Bundle ─────────────────────────────────────────────────────
+  // ─── Full Criteria Bundle ─────────────────────────────────────────────────────
 
-export interface PediatricMalnutritionCriteria {
+  export interface PediatricMalnutritionCriteria {
   primary: PrimaryIndicators;
   multi: MultiIndicators;
   ageConditional: AgeConditionalIndicators;
-}
+  }
 
-// ─── Diagnosis Result ─────────────────────────────────────────────────────────
+  // ─── Diagnosis Result ─────────────────────────────────────────────────────────
 
-export interface PediatricMalnutritionDiagnosis {
+  export interface PediatricMalnutritionDiagnosis {
   diagnosis: "None" | "Mild Malnutrition" | "Moderate Malnutrition" | "Severe Malnutrition";
   reasoning: string[];
   /** Which section drove the diagnosis */
   drivingSection: "primary" | "multi" | "age-conditional" | "none";
   /** The highest severity found across all criteria (for display colouring) */
   highestSeverity: Severity;
-}
+  }
 
-// ─── Section 1 Evaluators ─────────────────────────────────────────────────────
+  // ─── Section 1 Evaluators ─────────────────────────────────────────────────────
 
-/** Standard Z-score → severity (all four thresholds including Mild). */
-export function evaluateZScoreSeverity(z: number | null): Severity {
+  /** Standard Z-score → severity (all four thresholds including Mild). */
+  export function evaluateZScoreSeverity(z: number | null): Severity {
   if (z === null) return "Not Applicable";
   if (z <= -3) return "Severe";
   if (z <= -2) return "Moderate";
   if (z <= -1) return "Mild";
   return "None";
-}
+  }
 
-/** Length/Height Z uses Moderate/Severe only (no Mild stunting in ASPEN criteria). */
-export function evaluateLengthHtZ(z: number | null): Severity {
+  /** Length/Height Z uses Moderate/Severe only (no Mild stunting in ASPEN criteria). */
+  export function evaluateLengthHtZ(z: number | null): Severity {
   if (z === null) return "Not Applicable";
   if (z <= -3) return "Severe";
   if (z <= -2) return "Moderate";
   return "None";
-}
+  }
 
-// ─── Section 2 Evaluators ─────────────────────────────────────────────────────
+  // ─── Section 2 Evaluators ─────────────────────────────────────────────────────
 
-/** Deceleration in wt-for-length or height Z from a past measurement. */
-export function evaluateDecelerationZ(delta: number | null): Severity {
+  /** Deceleration in wt-for-length or height Z from a past measurement. */
+  export function evaluateDecelerationZ(delta: number | null): Severity {
   if (delta === null) return "Not Applicable";
   // delta is current − past; a decline is negative
   const decline = -delta; // positive = worsening
@@ -163,26 +163,26 @@ export function evaluateDecelerationZ(delta: number | null): Severity {
   if (decline >= 2) return "Moderate";
   if (decline >= 1) return "Mild";
   return "None";
-}
+  }
 
-/** Nutrient intake as % of estimated needs. */
-export function evaluateNutrientIntake(pct: number | null): Severity {
+  /** Nutrient intake as % of estimated needs. */
+  export function evaluateNutrientIntake(pct: number | null): Severity {
   if (pct === null) return "Not Applicable";
   if (pct <= 25) return "Severe";
   if (pct <= 50) return "Moderate";
   if (pct <= 75) return "Mild";
   return "None";
-}
+  }
 
-/**
- * Derive physical assessment severity from raw NFPE fields.
- * Accepts the muscle fields and fat fields as string arrays.
- * Returns the worst severity found across all fields.
- */
-export function evaluatePhysicalAssessment(
+  /**
+  * Derive physical assessment severity from raw NFPE fields.
+  * Accepts the muscle fields and fat fields as string arrays.
+  * Returns the worst severity found across all fields.
+  */
+  export function evaluatePhysicalAssessment(
   muscleValues: string[],
   fatValues: string[]
-): { sev: Severity; note: string } {
+  ): { sev: Severity; note: string } {
   const all = [...muscleValues, ...fatValues];
   let worst: Severity = "None";
   const abnormal: string[] = [];
@@ -198,19 +198,19 @@ export function evaluatePhysicalAssessment(
     : `${worst} wasting documented on NFPE`;
 
   return { sev: worst, note };
-}
+  }
 
-/**
- * Derive functional capacity severity from grip strength + clinical context.
- * Severe criteria (from spreadsheet): measurably reduced strength, confined to bed/chair
- * >50% waking time, postural HR/BP changes.
- * We map the current grip strength field:
- *   "Measurably Reduced" → Moderate (one indicator; Severe requires additional functional signs
- *   not yet tracked — flagged for future expansion).
- */
-export function evaluateFunctionalCapacity(
+  /**
+  * Derive functional capacity severity from grip strength + clinical context.
+  * Severe criteria (from spreadsheet): measurably reduced strength, confined to bed/chair
+  * >50% waking time, postural HR/BP changes.
+  * We map the current grip strength field:
+  *   "Measurably Reduced" → Moderate (one indicator; Severe requires additional functional signs
+  *   not yet tracked — flagged for future expansion).
+  */
+  export function evaluateFunctionalCapacity(
   gripStrength: string
-): { sev: Severity; note: string } {
+  ): { sev: Severity; note: string } {
   if (gripStrength === "Measurably Reduced") {
     return {
       sev: "Moderate",
@@ -218,87 +218,87 @@ export function evaluateFunctionalCapacity(
     };
   }
   return { sev: "None", note: "No functional impairment documented" };
-}
+  }
 
-// ─── Section 3 Evaluators ─────────────────────────────────────────────────────
+  // ─── Section 3 Evaluators ─────────────────────────────────────────────────────
 
-/** Δ Wt-for-age Z for infants (<2y): thresholds are 1 / 2 / 3 Z decline. */
-export function evaluateDeltaWtForAgeZ_infant(delta: number | null): Severity {
+  /** Δ Wt-for-age Z for infants (<2y): thresholds are 1 / 2 / 3 Z decline. */
+  export function evaluateDeltaWtForAgeZ_infant(delta: number | null): Severity {
   if (delta === null) return "Not Applicable";
   const decline = -delta;
   if (decline >= 3) return "Severe";
   if (decline >= 2) return "Moderate";
   if (decline >= 1) return "Mild";
   return "None";
-}
+  }
 
-/**
- * Δ Wt-for-age Z for children (2–20y): thresholds differ:
- *   Mild:     0.66 Z decline
- *   Moderate: 0.67–1.33 Z decline
- *   Severe:   ≥1.34 Z decline
- */
-export function evaluateDeltaWtForAgeZ_child(delta: number | null): Severity {
+  /**
+  * Δ Wt-for-age Z for children (2–20y): thresholds differ:
+  *   Mild:     0.66 Z decline
+  *   Moderate: 0.67–1.33 Z decline
+  *   Severe:   ≥1.34 Z decline
+  */
+  export function evaluateDeltaWtForAgeZ_child(delta: number | null): Severity {
   if (delta === null) return "Not Applicable";
   const decline = -delta;
   if (decline >= 1.34) return "Severe";
   if (decline >= 0.67) return "Moderate";
   if (decline >= 0.66) return "Mild";
   return "None";
-}
+  }
 
-/** WHO wt gain velocity Z-score for infants. */
-export function evaluateWtGainVelocityZ(z: number | null): Severity {
+  /** WHO wt gain velocity Z-score for infants. */
+  export function evaluateWtGainVelocityZ(z: number | null): Severity {
   if (z === null) return "Not Applicable";
   if (z <= -3) return "Severe";
   if (z <= -2) return "Moderate";       // -2 to -2.9
   if (z < -1) return "Mild";            // -1 to -1.99
   return "None";
-}
+  }
 
-/** Wt gain velocity as % of expected norm. */
-export function evaluateWtGainVelocityPct(pct: number | null): Severity {
+  /** Wt gain velocity as % of expected norm. */
+  export function evaluateWtGainVelocityPct(pct: number | null): Severity {
   if (pct === null) return "Not Applicable";
   if (pct < 25) return "Severe";
   if (pct < 50) return "Moderate";
   if (pct < 75) return "Mild";
   return "None";
-}
+  }
 
-/** Wt loss % of UBW (same thresholds for both age groups: 5% / 7.5% / 10%). */
-export function evaluateWtLossPct(pct: number | null): Severity {
+  /** Wt loss % of UBW (same thresholds for both age groups: 5% / 7.5% / 10%). */
+  export function evaluateWtLossPct(pct: number | null): Severity {
   if (pct === null) return "Not Applicable";
   if (pct >= 10) return "Severe";
   if (pct >= 7.5) return "Moderate";
   if (pct >= 5) return "Mild";
   return "None";
-}
+  }
 
-// ─── Diagnosis Aggregator ─────────────────────────────────────────────────────
+  // ─── Diagnosis Aggregator ─────────────────────────────────────────────────────
 
-const SEV_RANK: Record<Severity, number> = {
+  const SEV_RANK: Record<Severity, number> = {
   "None": 0,
   "Not Applicable": 0,
   "Mild": 1,
   "Moderate": 2,
   "Severe": 3,
-};
+  };
 
-function maxSev(...sevs: Severity[]): Severity {
+  function maxSev(...sevs: Severity[]): Severity {
   return sevs.reduce<Severity>((best, s) =>
     SEV_RANK[s] > SEV_RANK[best] ? s : best, "None");
-}
+  }
 
-function sevToLabel(s: Severity): "None" | "Mild Malnutrition" | "Moderate Malnutrition" | "Severe Malnutrition" {
+  function sevToLabel(s: Severity): "None" | "Mild Malnutrition" | "Moderate Malnutrition" | "Severe Malnutrition" {
   if (s === "Severe") return "Severe Malnutrition";
   if (s === "Moderate") return "Moderate Malnutrition";
   if (s === "Mild") return "Mild Malnutrition";
   return "None";
-}
+  }
 
-export function diagnosePediatricMalnutrition(
+  export function diagnosePediatricMalnutrition(
   criteria: PediatricMalnutritionCriteria
-): PediatricMalnutritionDiagnosis {
+  ): PediatricMalnutritionDiagnosis {
   const reasoning: string[] = [];
   let highestSev: Severity = "None";
   let drivingSection: PediatricMalnutritionDiagnosis["drivingSection"] = "none";
@@ -355,7 +355,6 @@ export function diagnosePediatricMalnutrition(
       ac.deltaWtForAgeZ_infantSev,
       ac.wtGainVelocityZSev,
       ac.wtGainVelocityPctSev,
-      ac.wtLossPct_infantSev,
     );
     if (SEV_RANK[infantSev] > SEV_RANK[highestSev]) {
       highestSev = infantSev;
@@ -365,13 +364,16 @@ export function diagnosePediatricMalnutrition(
       reasoning.push(`Infant velocity/loss block: ${infantSev.toLowerCase()} criterion met.`);
     }
   } else {
-    const childSev = ac.deltaWtForAgeZ_childSev;
-    if (SEV_RANK[childSev] > SEV_RANK[highestSev]) {
-      highestSev = childSev;
+    const combinedChildSev = maxSev(
+      ac.wtLossPct_childSev,
+      ac.deltaWtForAgeZ_childSev,
+    );
+    if (SEV_RANK[combinedChildSev] > SEV_RANK[highestSev]) {
+      highestSev = combinedChildSev;
       drivingSection = "age-conditional";
     }
-    if (childSev !== "None" && childSev !== "Not Applicable") {
-      reasoning.push(`Child Δ Wt-for-age Z block (2–20y thresholds): ${childSev.toLowerCase()} criterion met.`);
+    if (combinedChildSev !== "None" && combinedChildSev !== "Not Applicable") {
+      reasoning.push(`Child age-conditional block (2–20y): ${combinedChildSev.toLowerCase()} criterion met.`);
     }
   }
 
