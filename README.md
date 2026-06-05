@@ -66,6 +66,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [x] **add** automated pediatric malnutrition chart
 - [x] **add** Build skeleton for contextual suggestions for signs & symptoms (s/s) --> use assessment data
 - [x] *patch* PES s/s contextual suggestions missing chip selection and dropdowns
+- [ ] *patch* error of UBW displaying as criterion for pediatric malnutrition for <2 yrs age
 - [ ] **add** Differentials to guide continued/ordered assessment
 
 ### Intervention

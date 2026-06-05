@@ -7,24 +7,26 @@ import { useNoteStore } from "../../../stores/useNoteStore";
 import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 import type { Anthro } from "../../../types";
 
+import { AmpSilhouetteWidget, type AmpData } from "./AmpSilhouetteWidget";
+
 import GrowthVelocityTable from "./GrowthVelocityTable";
 import ZScoreVelocityTable from "./ZScoreVelocityTable";
 import GrowthStandardsTable from "./GrowthStandardsTable";
-
-const AMPUTATION_DATA = [
-  { label: "Hand",             pct: 0.7  },
-  { label: "Forearm",          pct: 2.3  },
-  { label: "Entire Arm",       pct: 5.0  },
-  { label: "Foot",             pct: 1.5  },
-  { label: "BKA (Below Knee)", pct: 5.9  },
-  { label: "AKA (Above Knee)", pct: 11.0 },
-  { label: "Entire Leg",       pct: 16.0 },
-] as const;
 
 export default function AnthroA1A7() {
   const { anthro, setAnthro } = useAnthroStore();
   const patientData = useNoteStore((s) => s.patientData);
   const calculatedMetrics = useCalculatedMetrics();
+
+  const [intactWeightKg, setIntactWeightKg] = React.useState<number | null>(null);
+  const [isAmputee, setIsAmputee] = React.useState(false);
+
+  const handleAmpDataChange = React.useCallback(
+    (_data: AmpData, intactKg: number | null) => {
+      setIntactWeightKg(intactKg);
+    },
+    []
+  );
 
   const handleUpdate = (field: keyof Anthro, val: any) =>
     setAnthro({ [field]: val });
@@ -60,16 +62,6 @@ export default function AnthroA1A7() {
       timeStr,
     };
   }, [anthro.wt, anthro.ubw, ubwTimeframeDays, showUbw]);
-
-  const toggleAmputation = (label: string) => {
-    const current = anthro.amputations ?? [];
-    handleUpdate(
-      "amputations",
-      current.includes(label)
-        ? current.filter((l) => l !== label)
-        : [...current, label]
-    );
-  };
 
   return (
     <>
@@ -185,7 +177,7 @@ export default function AnthroA1A7() {
       <div className="card">
         <h4 className="mb-1">Fluid Shift & Amputations</h4>
         <div style={{ display: "flex", gap: "2rem", flexWrap: "wrap" }}>
-          {/* Fluid shift */}
+          {/* Fluid shift — UNCHANGED */}
           <div style={{ flex: 1, minWidth: "300px" }}>
             <div
               className="input-group"
@@ -202,7 +194,7 @@ export default function AnthroA1A7() {
                 [x] Fluid Shift / Renal Patient
               </label>
             </div>
-
+      
             {anthro.isFluidShift && (
               <div
                 className="fade-in"
@@ -223,35 +215,41 @@ export default function AnthroA1A7() {
               </div>
             )}
           </div>
-
+      
           <div style={{ flex: 2, minWidth: "400px" }}>
-            <label
-              style={{
-                fontSize: "0.75rem", fontWeight: 800, color: "#64748b",
-                textTransform: "uppercase", marginBottom: "8px", display: "block",
-              }}
+            {/* Amputee toggle — hidden by default, widget only mounts when enabled */}
+            <div
+              className="input-group"
+              style={{ flexDirection: "row", alignItems: "center", gap: "8px", marginBottom: isAmputee ? "12px" : 0 }}
             >
-              Amputation / Body Segment Loss
-            </label>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-              {AMPUTATION_DATA.map((amp) => (
-                <button
-                  key={amp.label}
-                  onClick={() => toggleAmputation(amp.label)}
-                  className={`chip ${anthro.amputations?.includes(amp.label) ? "active" : ""}`}
-                  style={{
-                    cursor: "pointer", border: "1px solid #e2e8f0",
-                    background: anthro.amputations?.includes(amp.label) ? "var(--primary)" : "white",
-                  }}
-                >
-                  {amp.label} ({amp.pct}%)
-                </button>
-              ))}
+              <input
+                type="checkbox"
+                id="isAmputee"
+                checked={isAmputee}
+                onChange={(e) => setIsAmputee(e.target.checked)}
+                style={{ width: "auto", margin: 0 }}
+              />
+              <label htmlFor="isAmputee" style={{ margin: 0, fontWeight: 700, cursor: "pointer" }}>
+                [x] Patient has amputation(s) — Osterkamp weight adjustment
+              </label>
             </div>
-            {adjIbw && (
-              <div className="mt-1" style={{ fontSize: "0.8rem", fontWeight: 700, color: "#0f172a" }}>
-                Estimated/Adjusted IBW:{" "}
-                <span style={{ color: "#2ab3a3" }}>{adjIbw}kg</span>
+
+            {isAmputee && (
+              <div className="fade-in">
+                <AmpSilhouetteWidget
+                  wtKg={calculatedMetrics.wtKg}
+                  wtUnit={anthro.wtUnit}
+                  onAmpDataChange={handleAmpDataChange}
+                />
+                {intactWeightKg !== null && (
+                  <div className="mt-1" style={{ fontSize: "0.8rem", fontWeight: 700, color: "#0f172a" }}>
+                    Est. Intact Weight:{" "}
+                    <span style={{ color: "#2ab3a3" }}>{intactWeightKg.toFixed(2)} kg</span>
+                    <span style={{ color: "#94a3b8", fontWeight: 400, marginLeft: "6px" }}>
+                      ({(intactWeightKg * 2.2046).toFixed(1)} lbs)
+                    </span>
+                  </div>
+                )}
               </div>
             )}
           </div>
