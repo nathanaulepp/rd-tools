@@ -8,7 +8,8 @@ import React, { useMemo } from "react";
 interface GrowthVelocityTableProps {
   anthro: any;
   patientData: any;
-  calculatedMetrics: any; // { ageDays: number | null, bmi: string }
+  calculatedMetrics: any;
+  units?: "metric" | "imperial";
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -39,6 +40,15 @@ function fmt(v: number | null, digits = 2): string {
   if (v === null || isNaN(v)) return "—";
   if (Math.abs(v) < 0.001) return "—";
   return v.toFixed(digits);
+}
+function convertVelocity(v: number | null, measureKey: "weightG" | "weightKg" | "length" | "head", imperial: boolean): number | null {
+  if (v === null) return null;
+  if (!imperial) return v;
+  if (measureKey === "weightG")  return v / 28.3495;   // g → oz
+  if (measureKey === "weightKg") return v * 2.2046;    // kg → lbs
+  if (measureKey === "length")   return v / 2.54;      // cm → in
+  if (measureKey === "head")     return v / 2.54;      // cm → in
+  return v;
 }
 
 // ─── Clinical relevance map ───────────────────────────────────────────────────
@@ -75,7 +85,7 @@ function relevance(measure: "weightG" | "weightKg" | "length" | "head", period: 
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
-export default function GrowthVelocityTable({ anthro, patientData, calculatedMetrics }: GrowthVelocityTableProps) {
+export default function GrowthVelocityTable({ anthro, patientData, calculatedMetrics, units = "metric" }: GrowthVelocityTableProps) {
   const ageDays = calculatedMetrics?.ageDays ?? null;
 
   // ── Compute intervals and deltas ───────────────────────────────────────────
@@ -142,11 +152,12 @@ export default function GrowthVelocityTable({ anthro, patientData, calculatedMet
 
   // ── Rows definition ────────────────────────────────────────────────────────
   type MeasureKey = "weightG" | "weightKg" | "length" | "head";
+  const imp = units === "imperial";
   const rows: { key: MeasureKey; label: string; unit: string; digits: number; hasData: boolean }[] = [
-    { key: "weightG",  label: "Weight",          unit: "g/period",  digits: 1, hasData: data.wtDays !== null },
-    { key: "weightKg", label: "Weight",          unit: "kg/period", digits: 3, hasData: data.wtDays !== null },
-    { key: "length",   label: "Length / Height", unit: "cm/period", digits: 2, hasData: data.htDays !== null },
-    { key: "head",     label: "Head Circ.",       unit: "cm/period", digits: 2, hasData: data.hdDays !== null },
+    { key: "weightG",  label: "Weight",          unit: imp ? "oz/period"  : "g/period",  digits: imp ? 2 : 1, hasData: data.wtDays !== null },
+    { key: "weightKg", label: "Weight",          unit: imp ? "lbs/period" : "kg/period", digits: 3,           hasData: data.wtDays !== null },
+    { key: "length",   label: "Length / Height", unit: imp ? "in/period"  : "cm/period", digits: 2,           hasData: data.htDays !== null },
+    { key: "head",     label: "Head Circ.",       unit: imp ? "in/period"  : "cm/period", digits: 2,           hasData: data.hdDays !== null },
   ];
 
   const periods: { key: "day" | "week" | "month" | "year"; label: string }[] = [
@@ -181,7 +192,6 @@ export default function GrowthVelocityTable({ anthro, patientData, calculatedMet
       fontSize: "0.78rem",
       textAlign: "center",
       borderBottom: "1px solid #e2e8f0",
-      transition: "background 0.2s",
       verticalAlign: "middle",
       whiteSpace: "nowrap",
     };
@@ -189,16 +199,16 @@ export default function GrowthVelocityTable({ anthro, patientData, calculatedMet
     if (!hasValue) return { ...base, color: "#a0aec0" };
 
     switch (rel) {
-      case "primary":   return { ...base, background: "#ebf8ff", color: "#1a365d", fontWeight: 700, borderLeft: "3px solid #3182ce" };
-      case "secondary": return { ...base, background: "#f0fff4", color: "#22543d", fontWeight: 600, borderLeft: "3px solid #38a169" };
+      case "primary":   return { ...base, fontWeight: 700 };
+      case "secondary": return { ...base, fontWeight: 600, color: "#4a5568" };
       case "rare":      return { ...base, color: "#718096" };
       case "none":      return { ...base, color: "#cbd5e0", fontStyle: "italic" };
     }
   };
 
   const badgeStyle = (rel: Relevance): React.CSSProperties | undefined => {
-    if (rel === "primary") return { display: "inline-block", fontSize: "0.6rem", marginLeft: "4px", background: "#3182ce", color: "#fff", borderRadius: "8px", padding: "1px 5px", verticalAlign: "middle" };
-    if (rel === "secondary") return { display: "inline-block", fontSize: "0.6rem", marginLeft: "4px", background: "#38a169", color: "#fff", borderRadius: "8px", padding: "1px 5px", verticalAlign: "middle" };
+    if (rel === "primary")   return { display: "inline-block", fontSize: "0.6rem", marginLeft: "4px", background: "#e2e8f0", color: "#4a5568", borderRadius: "8px", padding: "1px 5px", verticalAlign: "middle" };
+    if (rel === "secondary") return { display: "inline-block", fontSize: "0.6rem", marginLeft: "4px", background: "#edf2f7", color: "#718096", borderRadius: "8px", padding: "1px 5px", verticalAlign: "middle" };
     return undefined;
   };
 
@@ -235,12 +245,11 @@ export default function GrowthVelocityTable({ anthro, patientData, calculatedMet
       {/* Legend */}
       <div style={{ display: "flex", gap: "12px", marginBottom: "0.75rem", flexWrap: "wrap" }}>
         {[
-          { rel: "primary" as Relevance, label: "Standard / gold standard" },
-          { rel: "secondary" as Relevance, label: "Common in practice" },
-          { rel: "none" as Relevance, label: "Not clinically used" },
-        ].map(({ rel, label }) => (
-          <div key={rel} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "0.68rem", color: "#4a5568" }}>
-            <div style={{ width: 10, height: 10, borderRadius: 2, background: rel === "primary" ? "#3182ce" : rel === "secondary" ? "#38a169" : "#e2e8f0" }} />
+          { weight: 700, label: "Standard / gold standard" },
+          { weight: 600, label: "Common in practice" },
+          { weight: 400, label: "Not clinically used", muted: true },
+        ].map(({ weight, label, muted }) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "0.68rem", color: muted ? "#a0aec0" : "#4a5568", fontWeight: weight }}>
             {label}
           </div>
         ))}
@@ -278,7 +287,8 @@ export default function GrowthVelocityTable({ anthro, patientData, calculatedMet
                   const rel = relevance(row.key, p.key, ageDays);
                   const rawVal = data[row.key][p.key];
                   const hasValue = rawVal !== null && row.hasData;
-                  const displayVal = hasValue ? fmt(rawVal!, row.digits) : rel === "none" ? "✕" : "—";
+                  const converted = convertVelocity(rawVal, row.key, imp);
+                  const displayVal = hasValue ? fmt(converted, row.digits) : rel === "none" ? "✕" : "—";
 
                   return (
                     <td key={p.key} style={cellStyle(rel, hasValue)}>
@@ -318,7 +328,7 @@ export default function GrowthVelocityTable({ anthro, patientData, calculatedMet
       {/* Footnote */}
       <p style={{ marginTop: "0.5rem", fontSize: "0.68rem", color: "#a0aec0", marginBottom: 0 }}>
         Velocities extrapolated linearly from the interval between past measurement date and Note Date.
-        Blue highlight = standard clinical metric for this age. Green = commonly used. Grey ✕ = not clinically applied.
+        Bold = standard clinical metric for this age. Medium weight = commonly used. Grey ✕ = not clinically applied.
         Age used for highlighting: {ageDays !== null ? `${(ageDays / 30.4375).toFixed(1)} months` : "unknown"}.
       </p>
     </div>

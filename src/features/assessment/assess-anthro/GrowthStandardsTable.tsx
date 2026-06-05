@@ -27,9 +27,10 @@ const formatImperial = (measure: string, val: number) => {
   return '--';
 };
 
-export default function GrowthStandardsTable({ anthro, patientData, calculatedMetrics }: any) {
+export default function GrowthStandardsTable({ anthro, patientData, calculatedMetrics, units = "metric" }: any) {
   const [results, setResults] = useState<any[]>([]);
   const [showTable, setShowTable] = useState(false);
+  const imp = units === "imperial";
 
   const handleGenerate = () => {
     const ageDays = calculatedMetrics?.ageDays;
@@ -208,30 +209,23 @@ export default function GrowthStandardsTable({ anthro, patientData, calculatedMe
 
                   return (
                     <tr key={i} style={{ background: rowColor, borderBottom: '1px solid var(--border)' }}>
-                      <td style={{ padding: '0.6rem 0.75rem', fontWeight: 600 }}>{row.measure}</td>
                       <td style={{ padding: '0.6rem 0.75rem' }}>
-                        {formatMetric(row.measure, row.value)}
+                        {imp ? formatImperial(row.measure, row.value) : formatMetric(row.measure, row.value)}
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '4px' }}>
-                          ({formatImperial(row.measure, row.value)})
+                          ({imp ? formatMetric(row.measure, row.value) : formatImperial(row.measure, row.value)})
                         </span>
                       </td>
-                      <td style={{ padding: '0.6rem 0.75rem', fontWeight: 700, color: zColor }}>
-                        {row.z >= 0 ? '+' : ''}{row.z.toFixed(2)}
-                      </td>
-                      <td style={{ padding: '0.6rem 0.75rem', fontWeight: 600, color: zColor }}>
-                        {row.p < 0.1 ? '<0.1' : row.p > 99.9 ? '>99.9' : row.p.toFixed(1)}th
-                      </td>
                       <td style={{ padding: '0.6rem 0.75rem', color: 'var(--text-muted)' }}>
-                        {formatMetric(row.measure, row.p50)}
+                        {imp ? formatImperial(row.measure, row.p50) : formatMetric(row.measure, row.p50)}
                       </td>
                       <td style={{ padding: '0.6rem 0.75rem' }}>
                         {row.monthly !== null
-                          ? `${row.monthly >= 0 ? '+' : ''}${formatMetric(row.measure, row.monthly)}`
+                          ? `${row.monthly >= 0 ? '+' : ''}${imp ? formatImperial(row.measure, row.monthly) : formatMetric(row.measure, row.monthly)}`
                           : '—'}
                       </td>
                       <td style={{ padding: '0.6rem 0.75rem' }}>
-                        {row.yearly !== null 
-                          ? `${row.yearly >= 0 ? '+' : ''}${formatMetric(row.measure, row.yearly)}`
+                        {row.yearly !== null
+                          ? `${row.yearly >= 0 ? '+' : ''}${imp ? formatImperial(row.measure, row.yearly) : formatMetric(row.measure, row.yearly)}`
                           : '—'}
                       </td>
                     </tr>

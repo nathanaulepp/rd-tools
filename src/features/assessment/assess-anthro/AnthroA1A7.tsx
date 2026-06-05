@@ -1,4 +1,4 @@
-// src/features/assessment/assess-anthro/AnthroA1A5.tsx
+// src/features/assessment/assess-anthro/AnthroA1A7.tsx
 import React, { useMemo } from "react";
 import { formatAge } from "../../../shared/utils/date";
 import { MeasurementInput } from "../../../shared/ui/MeasurementInput";
@@ -30,7 +30,10 @@ export default function AnthroA1A7() {
   const handleUpdate = (field: keyof Anthro, val: any) =>
     setAnthro({ [field]: val });
 
-  const { adjIbw, bmi, ubwTimeframeDays, ageInMonths } = calculatedMetrics;
+  const { adjIbw, bmi, ubwTimeframeDays, ageInMonths, ageDays } = calculatedMetrics;
+
+  const showGrowthTables = ageDays !== null && ageDays >= 0 && ageDays < 7305;
+  const [growthUnits, setGrowthUnits] = React.useState<"metric" | "imperial">("metric");
 
   const showUbw = ageInMonths === null || ageInMonths >= 24;
 
@@ -255,7 +258,33 @@ export default function AnthroA1A7() {
       </div>
 
       <div className="card">
-        <h4 className="mb-1">A6: Growth Velocity (Pediatrics)</h4>
+        <h4 className="mb-1 flex-between">
+          A6: Growth Velocity (Pediatrics)
+          {showGrowthTables && (
+            <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", borderRadius: "6px", padding: "2px" }}>
+              {(["metric", "imperial"] as const).map((u) => (
+                <button
+                  key={u}
+                  onClick={() => setGrowthUnits(u)}
+                  style={{
+                    padding: "3px 10px",
+                    fontSize: "0.75rem",
+                    fontWeight: 600,
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    background: growthUnits === u ? "#fff" : "transparent",
+                    color: growthUnits === u ? "var(--primary)" : "#64748b",
+                    boxShadow: growthUnits === u ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                    transition: "all 0.15s",
+                  }}
+                >
+                  {u === "metric" ? "Metric" : "Imperial"}
+                </button>
+              ))}
+            </div>
+          )}
+        </h4>
         <div className="grid-3-col">
           <MeasurementInput
             label="Past Height/Length"
@@ -292,19 +321,27 @@ export default function AnthroA1A7() {
           />
         </div>
 
-        <GrowthVelocityTable
+        {showGrowthTables && (
+          <>
+            <GrowthVelocityTable
+              anthro={anthro}
+              patientData={patientData}
+              calculatedMetrics={calculatedMetrics}
+              units={growthUnits}
+            />
+            <ZScoreVelocityTable units={growthUnits} />
+          </>
+        )}
+      </div>
+
+      {showGrowthTables && (
+        <GrowthStandardsTable
           anthro={anthro}
           patientData={patientData}
           calculatedMetrics={calculatedMetrics}
+          units={growthUnits}
         />
-        <ZScoreVelocityTable />
-      </div>
-
-      <GrowthStandardsTable
-        anthro={anthro}
-        patientData={patientData}
-        calculatedMetrics={calculatedMetrics}
-      />
+      )}
     </>
   );
 }

@@ -13,7 +13,7 @@ import {
   calculateZScoreDelta
 } from "../../../shared/utils/growthStandardsMath";
 
-export default function ZScoreVelocityTable() {
+export default function ZScoreVelocityTable({ units: _units = "metric" }: { units?: "metric" | "imperial" }) {
   const anthro = useAnthroStore((s) => s.anthro);
   const patientData = useNoteStore((s) => s.patientData);
   const calculatedMetrics = useCalculatedMetrics();
