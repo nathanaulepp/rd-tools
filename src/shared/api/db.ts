@@ -127,6 +127,16 @@ async function initSchema(db: Database): Promise<void> {
     )
   `);
 
+  // Phase 8: User presets — global, not per-note
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS user_presets (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      lab_keys    TEXT NOT NULL,
+      created_at  TEXT NOT NULL
+    )
+  `);
+
   const now = new Date().toISOString();
   const defaultRequirements = [
     { field_key: "first_name", label: "First Name" },
@@ -635,4 +645,76 @@ export async function addSubmissionRequirement(
      VALUES (?, ?, 1, ?)`,
     [fieldKey, label, new Date().toISOString()]
   );
-}
+  }
+
+  // ─── User Preset commands ─────────────────────────────────────────────────────
+
+  export interface UserPreset {
+  id: string;
+  name: string;
+  /** JSON-serialised string[] of catalog slug keys */
+  lab_keys: string;
+  created_at: string;
+  }
+
+  /**
+  * Fetch all saved lab presets, ordered by creation time.
+  * Returns a typed array ready for useLabsStore.setUserPresets().
+  */
+  export async function getLabPresets(): Promise<import("../../types").LabPreset[]> {
+  const db = await getDb();
+  const rows = await db.select<UserPreset[]>(
+    `SELECT * FROM user_presets ORDER BY created_at ASC`
+  );
+  return rows.map((r) => ({
+    id:      r.id,
+    name:    r.name,
+    labKeys: JSON.parse(r.lab_keys) as string[],
+  }));
+  }
+
+  /**
+  * Persist a new preset.
+  * Called immediately after useLabsStore.saveCurrentViewAsPreset() returns
+  * so the in-memory and DB states stay in sync.
+  */
+  export async function insertLabPreset(
+  preset: import("../../types").LabPreset
+  ): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `INSERT INTO user_presets (id, name, lab_keys, created_at)
+     VALUES (?, ?, ?, ?)`,
+    [
+      preset.id,
+      preset.name,
+      JSON.stringify(preset.labKeys),
+      new Date().toISOString(),
+    ]
+  );
+  }
+
+  /**
+  * Remove a preset by ID.
+  * Called immediately after useLabsStore.deletePreset() so both layers stay
+  * in sync without a full re-fetch.
+  */
+  export async function deleteLabPreset(presetId: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(`DELETE FROM user_presets WHERE id = ?`, [presetId]);
+  }
+
+  /**
+  * Rename an existing preset in place.
+  * Not currently surfaced in the UI but provided for future Settings page use.
+  */
+  export async function renameLabPreset(
+  presetId: string,
+  newName: string
+  ): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE user_presets SET name = ? WHERE id = ?`,
+    [newName, presetId]
+  );
+  }

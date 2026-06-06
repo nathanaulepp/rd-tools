@@ -11,9 +11,10 @@
 
 import { useEffect } from "react";
 import "./App.css";
-import { getDb }          from "../shared/api/db";
+import { getDb, getLabPresets } from "../shared/api/db";
 import { initDrugSync }   from "../features/drugs/DrugLookupTool";
 import { useUIStore }     from "../stores/useUIStore";
+import { useLabsStore }   from "../stores/useLabsStore";
 import RouteRenderer      from "../widgets/RouteRenderer";
 import LoginPage          from "./LoginPage";
 import { DevErrorPanel }  from "../shared/ui/ErrorBoundary";
@@ -43,6 +44,11 @@ export default function App() {
     getDb().catch((err) =>
       console.error("Failed to initialise database:", err)
     );
+
+    // Hydrate user lab presets from DB — runs once, before any note opens
+    getLabPresets()
+      .then((presets) => useLabsStore.getState().setUserPresets(presets))
+      .catch((err) => console.error("Failed to load lab presets:", err));
 
     // Pre-warm the RxNorm drug database in the background.
     initDrugSync().then((r) => {

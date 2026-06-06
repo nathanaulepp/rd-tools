@@ -19,7 +19,7 @@ export type {
   GripStrengthStatus,
   PedalEdema,
 } from "./clinical";
-export type { Labs, LabEntry } from "./labs";
+export type { Labs, LabEntry, LabPreset } from "./labs";
 export type { Dietary, RecallMeal } from "./dietary";
 export type { Diagnosis, PESStatement } from "./diagnosis";
 export type { Intervention } from "./intervention";
