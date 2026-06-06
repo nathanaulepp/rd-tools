@@ -66,10 +66,10 @@ export default function BiochemicalDomain() {
               </thead>
               <tbody>
                 {activeLabKeys.map((slug, rowIndex) => {
-                  const entry   = labs[slug];
+                  const entry = labs[slug];
                   const catalog = GLOBAL_LAB_CATALOG[slug];
-                  const label   = catalog?.name        ?? entry?.loincName ?? slug;
-                  const unit    = entry?.unit           ?? catalog?.defaultUnit ?? "";
+                  const label = catalog?.name ?? entry?.loincName ?? slug;
+                  const unit = entry?.unit || catalog?.defaultUnit || "";
                   const placeholder = unit ? `-- ${unit}` : "--";
 
                   // tabIndex: historical = even, current = odd, flowing top-to-bottom

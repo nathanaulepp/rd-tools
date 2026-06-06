@@ -155,16 +155,22 @@ export const DEFAULT_PANEL_KEYS: Record<string, string[]> = {
 };
 
 // ── Runtime merge helper ──────────────────────────────────────────────────────
-// Called by LabSearchBar when a clinician selects a result that isn't in the
-// seeded catalog. The entry is added for the current session only; it is NOT
+// Called by LabSearchBar when a clinician selects a result sourced from the
+// NLM LOINC API. The entry is added for the current session only; it is NOT
 // written back to the static file.
+//
+// IMPORTANT: This always overwrites an existing runtime entry (no guard).
+// This ensures the unit/name is always current from the most recent API
+// response, and prevents stale empty-unit skeletons from persisting when a
+// clinician removes then re-adds the same test.
 
 export function registerRuntimeEntry(
   slug: string,
   entry: CatalogEntry
 ): void {
-  if (!GLOBAL_LAB_CATALOG[slug]) {
-    // @ts-ignore - GLOBAL_LAB_CATALOG is const but the object is mutable
-    (GLOBAL_LAB_CATALOG as Record<string, CatalogEntry>)[slug] = entry;
-  }
+  // Always overwrite — do not guard with `if (!GLOBAL_LAB_CATALOG[slug])`.
+  // Rationale: the static catalog slugs use kebab-case names (not "loinc-XXXXX"),
+  // so runtime entries never collide with static ones. Always writing ensures
+  // the unit and display name are current from the latest API response.
+  (GLOBAL_LAB_CATALOG as Record<string, CatalogEntry>)[slug] = entry;
 }

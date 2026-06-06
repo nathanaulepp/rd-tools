@@ -44,10 +44,20 @@ function parseNlmResponse(data: NlmResponse): LoincResult[] {
       .replace(/\bin\b.*/i, "")
       .trim();
 
+    // EXAMPLE_UCUM_UNITS is illustrative and can contain:
+    //   - Pipe-delimited alternatives: "ng/dL|nmol/L"
+    //   - UCUM qualifiers in braces: "ng/dL{total}"
+    //   - Empty strings for dimensionless or poorly-cataloged tests
+    // Take the first alternative, strip any curly-brace qualifiers.
+    const cleanUnit = unitStr
+      .split("|")[0]          // take first option from pipe list
+      .replace(/\{[^}]*\}/g, "") // strip {qualifier} expressions
+      .trim();
+
     return {
       loincCode:   code,
       loincName:   name,
-      defaultUnit: unitStr,
+      defaultUnit: cleanUnit,
       shortName:   shortName || name,
     };
   });

@@ -7,6 +7,15 @@
 //
 // On selection: fires addLabToView(slug) + registerRuntimeEntry() for
 // API-sourced results not already in the catalog.
+//
+// Bug fixes (v2):
+//   - Duplicate entries: dedup now uses the full `labs` store map (all slugs
+//     ever registered this session) rather than only `activeLabKeys`. This
+//     prevents a previously-removed runtime entry from reappearing because it
+//     was written into GLOBAL_LAB_CATALOG permanently during the first add.
+//   - Missing unit placeholder: after selectResult, the skeleton LabEntry in
+//     the store is updated with the resolved unit so the table shows "-- ng/dL"
+//     instead of "--" for remote LOINC results.
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { useLabsStore } from "../../../stores/useLabsStore";
@@ -43,12 +52,24 @@ type SearchResult = LocalResult | RemoteResult;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function searchLocalCatalog(query: string, activeKeys: string[]): LocalResult[] {
+/**
+ * Search the local catalog.
+ * Excludes slugs that are either currently active OR were ever registered
+ * into the runtime catalog this session (i.e. present in `allKnownSlugs`).
+ * This prevents previously-removed API results from showing as duplicates
+ * because registerRuntimeEntry writes them into GLOBAL_LAB_CATALOG permanently.
+ */
+function searchLocalCatalog(
+  query: string,
+  activeKeys: string[],
+  allKnownSlugs: Set<string>
+): LocalResult[] {
   const q = query.toLowerCase();
   return Object.entries(GLOBAL_LAB_CATALOG)
     .filter(
       ([slug, entry]) =>
         !activeKeys.includes(slug) &&
+        !allKnownSlugs.has(slug) &&
         (entry.name.toLowerCase().includes(q) ||
           entry.loinc.includes(q) ||
           entry.panel.toLowerCase().includes(q))
@@ -66,14 +87,14 @@ function searchLocalCatalog(query: string, activeKeys: string[]): LocalResult[] 
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function LabSearchBar() {
-  const { activeLabKeys, addLabToView } = useLabsStore();
+  const { activeLabKeys, labs, addLabToView, updateLabField } = useLabsStore();
 
-  const [query, setQuery]           = useState("");
-  const [results, setResults]       = useState<SearchResult[]>([]);
+  const [query, setQuery]             = useState("");
+  const [results, setResults]         = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [fetchError, setFetchError]   = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
-  const [open, setOpen]             = useState(false);
+  const [open, setOpen]               = useState(false);
 
   const inputRef    = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -82,7 +103,15 @@ export default function LabSearchBar() {
   const runSearch = useCallback(
     async (q: string) => {
       setFetchError(false);
-      const local = searchLocalCatalog(q, activeLabKeys);
+
+      // Snapshot the known slug set at the time the search fires so the
+      // closure captures a stable reference even if the store updates mid-flight.
+      const knownAtSearchTime = new Set<string>([
+        ...useLabsStore.getState().activeLabKeys,
+        ...Object.keys(useLabsStore.getState().labs),
+      ]);
+
+      const local = searchLocalCatalog(q, Array.from(knownAtSearchTime), knownAtSearchTime);
       setResults(local);
       setOpen(true);
 
@@ -91,9 +120,16 @@ export default function LabSearchBar() {
       setIsSearching(true);
       try {
         const remote = await searchLoinc(q);
-        // Filter out anything already active or already in local results
+
+        // Recompute known slugs after the async gap — store may have changed
+        const knownAfterFetch = new Set<string>([
+          ...useLabsStore.getState().activeLabKeys,
+          ...Object.keys(useLabsStore.getState().labs),
+        ]);
+
+        // Filter out anything already active, already in labs, or already in local results
         const localSlugs = new Set([
-          ...activeLabKeys,
+          ...Array.from(knownAfterFetch),
           ...local.map((r) => r.slug),
         ]);
         const remoteFiltered: RemoteResult[] = remote
@@ -116,7 +152,8 @@ export default function LabSearchBar() {
         setIsSearching(false);
       }
     },
-    [activeLabKeys]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [] // intentionally stable — reads store state directly inside
   );
 
   useEffect(() => {
@@ -134,14 +171,25 @@ export default function LabSearchBar() {
 
   // ── Selection handler ─────────────────────────────────────────────────────
   const selectResult = (result: SearchResult) => {
-    // For API-sourced results, register into the runtime catalog first
     if (result.source === "remote") {
+      // Register the LOINC result into the runtime catalog so addLabToView
+      // can build a skeleton entry with the correct unit.
       registerRuntimeEntry(
         result.slug,
         loincResultToCatalogShape(result.loincResult)
       );
     }
+
     addLabToView(result.slug);
+
+    // Fix: ensure the unit field is explicitly set on the skeleton entry.
+    // addLabToView builds the skeleton from the catalog, but for remote results
+    // the catalog entry was just written — force-sync the unit so the
+    // placeholder in the table reflects the correct unit string immediately.
+    if (result.unit) {
+      updateLabField(result.slug, "unit", result.unit);
+    }
+
     setQuery("");
     setResults([]);
     setOpen(false);
@@ -193,7 +241,7 @@ export default function LabSearchBar() {
         <ul style={styles.dropdown} role="listbox">
           {results.map((r, i) => (
             <li
-              key={r.slug}
+              key={`${r.slug}-${i}`}
               role="option"
               aria-selected={i === highlighted}
               onMouseDown={() => selectResult(r)}
