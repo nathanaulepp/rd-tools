@@ -39,11 +39,6 @@ function parseNlmResponse(data: NlmResponse): LoincResult[] {
     const name    = tuple[1] ?? "";
     const unitStr = tuple[2] ?? "";
 
-    const shortName = name
-      .split(/[/[]/)[0]
-      .replace(/\bin\b.*/i, "")
-      .trim();
-
     // EXAMPLE_UCUM_UNITS is illustrative and can contain:
     //   - Pipe-delimited alternatives: "ng/dL|nmol/L"
     //   - UCUM qualifiers in braces: "ng/dL{total}"
@@ -58,7 +53,7 @@ function parseNlmResponse(data: NlmResponse): LoincResult[] {
       loincCode:   code,
       loincName:   name,
       defaultUnit: cleanUnit,
-      shortName:   shortName || name,
+      shortName:   name,
     };
   });
 }

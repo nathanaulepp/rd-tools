@@ -171,6 +171,7 @@ export default function LabSearchBar() {
 
   // ── Selection handler ─────────────────────────────────────────────────────
   const selectResult = (result: SearchResult) => {
+    console.log("LOINC select:", result.slug, "unit:", result.unit, "loincResult:", result.source === "remote" ? (result as RemoteResult).loincResult : null);
     if (result.source === "remote") {
       // Register the LOINC result into the runtime catalog so addLabToView
       // can build a skeleton entry with the correct unit.
@@ -285,7 +286,6 @@ const styles: Record<string, React.CSSProperties> = {
   wrapper: {
     position: "relative",
     width: "100%",
-    maxWidth: "480px",
   },
   inputRow: {
     display: "flex",
@@ -326,7 +326,7 @@ const styles: Record<string, React.CSSProperties> = {
     margin: 0,
     padding: "4px 0",
     zIndex: 500,
-    maxHeight: "320px",
+    maxHeight: "420px",
     overflowY: "auto",
   },
   item: {
@@ -345,9 +345,10 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     color: "var(--text-main)",
     flex: 1,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
+    overflow: "visible",
+    textOverflow: "clip",
+    whiteSpace: "normal",
+    lineHeight: "1.3",
   },
   itemMeta: {
     display: "flex",
