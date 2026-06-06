@@ -13,7 +13,6 @@ import { useNoteStore }     from "../stores/useNoteStore";
 import { useDietaryStore }  from "../stores/useDietaryStore";
 import { useClinicalStore } from "../stores/useClinicalStore";
 import { useLabsStore }     from "../stores/useLabsStore";
-import type { CrossDomainUpdate } from "../features/assessment/assess-standards/NutritionStandardsDomain";
 
 const DIETARY_DEBOUNCE_MS = 1200;
 

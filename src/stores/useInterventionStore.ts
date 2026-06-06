@@ -13,9 +13,17 @@ interface InterventionState {
     field: K,
     value: Intervention[K]
   ) => void;
+
+  // ── Leaf selection helpers ────────────────────────────────────────────────
+  /** Toggle a leaf label in/out of ndImplementation.selected.
+   *  When deselected, its note entry is also removed. */
+  toggleLeaf: (label: string) => void;
+
+  /** Set the free-text note for a selected leaf. */
+  setLeafNote: (label: string, note: string) => void;
 }
 
-export const useInterventionStore = create<InterventionState>((set) => ({
+export const useInterventionStore = create<InterventionState>((set, get) => ({
   intervention: defaultIntervention,
 
   setIntervention: (updates) =>
@@ -25,11 +33,62 @@ export const useInterventionStore = create<InterventionState>((set) => ({
     set((state) => ({
       intervention: { ...state.intervention, [field]: value },
     })),
+
+  toggleLeaf: (label) =>
+    set((state) => {
+      const impl = state.intervention.ndImplementation;
+      const isSelected = impl.selected.includes(label);
+
+      if (isSelected) {
+        // Deselect: remove from selected, drop its note
+        const nextNotes = { ...impl.notes };
+        delete nextNotes[label];
+        return {
+          intervention: {
+            ...state.intervention,
+            ndImplementation: {
+              selected: impl.selected.filter((l) => l !== label),
+              notes: nextNotes,
+            },
+          },
+        };
+      } else {
+        // Select: add to selected, initialise note as empty string
+        return {
+          intervention: {
+            ...state.intervention,
+            ndImplementation: {
+              selected: [...impl.selected, label],
+              notes: { ...impl.notes, [label]: "" },
+            },
+          },
+        };
+      }
+    }),
+
+  setLeafNote: (label, note) =>
+    set((state) => ({
+      intervention: {
+        ...state.intervention,
+        ndImplementation: {
+          ...state.intervention.ndImplementation,
+          notes: {
+            ...state.intervention.ndImplementation.notes,
+            [label]: note,
+          },
+        },
+      },
+    })),
 }));
 
 registerDomainReset("intervention", (raw) => {
   const parsed = raw ? tryParse(raw, defaultIntervention) : defaultIntervention;
-  useInterventionStore.setState({ intervention: parsed });
+  // Guard: if old shape (pre-tree) is detected, migrate to new shape
+  const intervention = parsed as any;
+  if (!intervention.ndImplementation) {
+    intervention.ndImplementation = { selected: [], notes: {} };
+  }
+  useInterventionStore.setState({ intervention });
 });
 
 registerDomainGetter("intervention", () => useInterventionStore.getState().intervention);

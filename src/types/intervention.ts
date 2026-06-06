@@ -68,95 +68,10 @@ export interface NpIvFluid {
   valuesInclusion: string;      // NP-1.4.5
 }
 
-// ── ND-1: Meals and Snacks ────────────────────────────────────────────────────
-
-export interface NdMealsSnacks {
-  selectedDietTypes: string[];
-  textureLevel: string;
-  proteinMods: string[];
-  aminoAcidMods: string[];
-  carbMods: string[];
-  fatMods: string[];
-  fiberMods: string[];
-  fluidMods: string[];
-  mineralMods: string[];
-  vitaminMods: string[];
-  foodGroupMods: string[];
-  specificFoodMods: string[];
-  intakeTiming: string[];
-  other: string[];
-  notes: string;
-}
-
-// ── ND-2: EN/PN Management ────────────────────────────────────────────────────
-
-export interface NdEnPnManagement {
-  enActions: string[];
-  pnActions: string[];
-  notes: string;
-}
-
-// ── ND-3: Supplement Therapy ──────────────────────────────────────────────────
-
-export interface NdSupplementTherapy {
-  medicalFoodActions: string[];
-  vitaminSupplements: string[];
-  mineralSupplements: string[];
-  bioactiveActions: string[];
-  notes: string;
-}
-
-// ── ND-4: Feeding Assistance ──────────────────────────────────────────────────
-
-export interface NdFeedingAssistance {
-  actions: string[];
-  notes: string;
-}
-
-// ── ND-5: Feeding Environment ─────────────────────────────────────────────────
-
-export interface NdFeedingEnvironment {
-  actions: string[];
-  notes: string;
-}
-
-// ── ND-6: Medication Management ──────────────────────────────────────────────
-
-export interface NdMedManagement {
-  actions: string[];
-  notes: string;
-}
-
-// ── ND-7: Infant Feeding (age-gated) ─────────────────────────────────────────
-
-export interface NdInfantFeeding {
-  breastmilkActions: string[];
-  formulaActions: string[];
-  notes: string;
-}
-
-// ── E: Nutrition Education ────────────────────────────────────────────────────
-
-export interface NcpEducation {
-  contentActions: string[];
-  applicationActions: string[];
-  notes: string;
-}
-
-// ── C: Nutrition Counseling ───────────────────────────────────────────────────
-
-export interface NcpCounseling {
-  theoreticalBasis: string[];
-  strategies: string[];
-  notes: string;
-}
-
-// ── RC: Coordination of Care ──────────────────────────────────────────────────
-
-export interface NcpCoordination {
-  collaborationActions: string[];
-  dischargeActions: string[];
-  notes: string;
+// ── ND/E/C/RC Implementation ─────────────────────────────────────────────────
+export interface NdImplementation {
+  selected: string[];
+  notes: Record<string, string>;
 }
 
 // ── Root Interface ────────────────────────────────────────────────────────────
@@ -168,20 +83,11 @@ export interface Intervention {
   npEnteral:     NpEnteralNutrition;
   npParenteral:  NpParenteralNutrition;
   npIvFluid:     NpIvFluid;
-
-  // ── Section 2: NCP Intervention Implementation ───────────────────────────────
-  ndMealsSnacks:        NdMealsSnacks;
-  ndEnPnManagement:     NdEnPnManagement;
-  ndSupplementTherapy:  NdSupplementTherapy;
-  ndFeedingAssistance:  NdFeedingAssistance;
-  ndFeedingEnvironment: NdFeedingEnvironment;
-  ndMedManagement:      NdMedManagement;
-  ndInfantFeeding:      NdInfantFeeding;
-  education:            NcpEducation;
-  counseling:           NcpCounseling;
-  coordination:         NcpCoordination;
-
-  // ── Retained from existing UI ────────────────────────────────────────────────
+ 
+  // ── Section 2: NCP Intervention Implementation (ND/E/C/RC) ──────────────────
+  ndImplementation: NdImplementation;
+ 
+  // ── Retained ─────────────────────────────────────────────────────────────────
   goalStatement:     string;
   goalTimeframe:     string;
   goalMeasurable:    string;
