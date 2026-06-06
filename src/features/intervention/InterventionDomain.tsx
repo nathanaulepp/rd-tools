@@ -10,15 +10,6 @@ import type { Intervention } from "../../types";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ED_CONTENT_OPTIONS = [
-  "Disease/health condition", "Recommended modifications", "Other guidelines",
-  "Skill development", "Result interpretation", "Nutrition relationship to health",
-  "Survival information", "Physiological function", "Food label reading",
-  "Home food preparation", "Grocery shopping", "Portion sizes", "Calorie counting",
-  "Carbohydrate counting", "Fluid restriction", "Supplement use",
-  "Nutrient timing", "Supplement/vitamin/mineral use",
-];
-
 const COUNSELING_THEORY_OPTIONS = [
   "Cognitive-Behavioral Theory (CBT)",
   "Health Belief Model",
@@ -65,20 +56,6 @@ export default function InterventionDomain() {
     <div className="fade-in">
       <DomainHeader title="I. Nutrition Intervention" />
 
-      {/* Goals */}
-      <div className="card" style={{ marginBottom: "1rem" }}>
-        <SectionHeader title="Intervention Goals" color="#27ae60" />
-        <div className="input-group">
-          <label>SMART Goals</label>
-          <textarea 
-            value={i.goalStatement || ""} 
-            onChange={e => update("goalStatement", e.target.value)} 
-            placeholder="Consolidate SMART goals here (Statement, Timeframe, Measurable outcomes)..." 
-            style={{ minHeight: "120px" }} 
-          />
-        </div>
-      </div>
-
       {/* ND: Nutrition Delivery */}
       <SubSection title="ND: Nutrition Delivery" color="#3498db">
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem" }}>
@@ -107,28 +84,23 @@ export default function InterventionDomain() {
 
       {/* E: Nutrition Education */}
       <SubSection title="E: Nutrition Education" color="#e67e22">
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginBottom: "0.75rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.75rem" }}>
           <div className="input-group">
             <label>E-1: Purpose / Rationale</label>
             <textarea value={i.ed_purpose || ""} onChange={e => update("ed_purpose", e.target.value)} placeholder="Explain why education was provided..." style={{ minHeight: "70px" }} />
+          </div>
+          <div className="input-group">
+            <label>E-2: Content Covered</label>
+            <textarea value={i.ed_content || ""} onChange={e => update("ed_content", e.target.value)} placeholder="What specific topics were taught..." style={{ minHeight: "70px" }} />
           </div>
           <div className="input-group">
             <label>E-3: Application / Follow-through</label>
             <textarea value={i.ed_application || ""} onChange={e => update("ed_application", e.target.value)} placeholder="How will patient apply this information..." style={{ minHeight: "70px" }} />
           </div>
         </div>
-        <div className="input-group">
-          <label>E-2: Content Covered</label>
-          <ChipGroup
-            options={ED_CONTENT_OPTIONS}
-            value={i.ed_content || []}
-            onChange={v => update("ed_content", v)}
-            multiSelect={true}
-          />
-        </div>
-        <div className="input-group" style={{ marginTop: "0.5rem" }}>
-          <label>Other Content Notes</label>
-          <input type="text" value={i.ed_other || ""} onChange={e => update("ed_other", e.target.value)} placeholder="Any additional education content..." />
+        <div className="input-group" style={{ marginTop: "0.75rem" }}>
+          <label>Other Education Notes</label>
+          <input type="text" value={i.ed_other || ""} onChange={e => update("ed_other", e.target.value)} placeholder="Any additional education content or outcomes..." />
         </div>
       </SubSection>
 
@@ -183,6 +155,20 @@ export default function InterventionDomain() {
           </div>
         </div>
       </SubSection>
+
+      {/* Goals */}
+      <div className="card" style={{ marginBottom: "1rem" }}>
+        <SectionHeader title="Intervention Goals" color="#27ae60" />
+        <div className="input-group">
+          <label>SMART Goals</label>
+          <textarea 
+            value={i.goalStatement || ""} 
+            onChange={e => update("goalStatement", e.target.value)} 
+            placeholder="Consolidate SMART goals here (Statement, Timeframe, Measurable outcomes)..." 
+            style={{ minHeight: "120px" }} 
+          />
+        </div>
+      </div>
 
       {/* Additional notes */}
       <div className="card">

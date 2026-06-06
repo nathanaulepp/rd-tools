@@ -20,7 +20,7 @@ import type {
   NutritionEvaluation,
   ConditionKey,
 } from "../../../types/standards";
-import { PalSlider } from "./PalSlider";
+import { PalSlider, PalSliderPeds } from "./PalSlider";
 
 import { useStandardsStore } from "../../../stores/useStandardsStore";
 import { useAnthroStore } from "../../../stores/useAnthroStore";
@@ -406,6 +406,7 @@ export default function NutritionStandardsDomain() {
   const sexRaw = (patientData?.sex || "") as "M" | "F" | "";
   const sex: "M" | "F" = sexRaw === "F" ? "F" : "M";
   const ageYears = useMemo(() => Math.floor((calculatedMetrics?.ageDays ?? 0) / 365.25), [calculatedMetrics?.ageDays]);
+  const isPeds = ageYears < 18;
   const bmi = useMemo(() => parseFloat(calculatedMetrics?.bmi) || 0, [calculatedMetrics?.bmi]);
 
   const [condition, setCondition] = useState<ConditionKey | "">(standards.condition || "");
@@ -744,11 +745,18 @@ export default function NutritionStandardsDomain() {
               </select>
             </div>
 
-            {condition === "healthy" || condition === "heart_failure" ? (
-              <PalSlider
-                value={Number(extraInputs.pal) || (condition === "heart_failure" ? 1.3 : 2.0)}
-                onChange={(val) => setExtraInputs(prev => ({ ...prev, pal: val.toString() }))}
-              />
+            {condition === "healthy" || (condition === "heart_failure" && !isPeds) ? (
+              isPeds ? (
+                <PalSliderPeds
+                  value={Number(extraInputs.pal) || 1.3}
+                  onChange={(val) => setExtraInputs(prev => ({ ...prev, pal: val.toString() }))}
+                />
+              ) : (
+                <PalSlider
+                  value={Number(extraInputs.pal) || (condition === "heart_failure" ? 1.3 : 1.5)}
+                  onChange={(val) => setExtraInputs(prev => ({ ...prev, pal: val.toString() }))}
+                />
+              )
             ) : filteredVariants.length > 0 && (
               <div className="input-group">
                 <select value={variant} onChange={e => setVariant(e.target.value)} style={selectStyle}>

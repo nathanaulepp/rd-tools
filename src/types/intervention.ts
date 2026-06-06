@@ -15,7 +15,7 @@ export interface Intervention {
 
   // E — Education
   ed_purpose: string;
-  ed_content: string[];
+  ed_content: string;
   ed_application: string;
   ed_other: string;
 

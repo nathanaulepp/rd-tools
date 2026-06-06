@@ -111,28 +111,32 @@ export const PalSliderPeds: React.FC<PalSliderPedsProps> = ({ value, onChange })
             position: 'relative'
           }}
         />
-        {/* Tick mark at 2.0 */}
-        <div style={{
-          position: 'absolute',
-          left: `${((2.0 - 1.0) / (2.5 - 1.0)) * 100}%`,
-          top: '50%',
-          transform: 'translate(-50%, -50%)',
-          width: '2px',
-          height: '14px',
-          background: '#64748b',
-          pointerEvents: 'none',
-          zIndex: 1
-        }} />
-        <span style={{
-          position: 'absolute',
-          left: `${((2.0 - 1.0) / (2.5 - 1.0)) * 100}%`,
-          top: '100%',
-          transform: 'translateX(-50%)',
-          fontSize: '0.6rem',
-          fontWeight: 800,
-          color: '#64748b',
-          marginTop: '2px'
-        }}>2.0</span>
+        {/* Interval Ticks */}
+        {[1.0, 1.4, 1.6, 1.9, 2.5].map(tick => (
+          <React.Fragment key={tick}>
+            <div style={{
+              position: 'absolute',
+              left: `${((tick - 1.0) / (2.5 - 1.0)) * 100}%`,
+              top: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '1px',
+              height: '10px',
+              background: '#cbd5e1',
+              pointerEvents: 'none',
+              zIndex: 1
+            }} />
+            <span style={{
+              position: 'absolute',
+              left: `${((tick - 1.0) / (2.5 - 1.0)) * 100}%`,
+              top: '100%',
+              transform: 'translateX(-50%)',
+              fontSize: '0.55rem',
+              fontWeight: 700,
+              color: '#94a3b8',
+              marginTop: '2px'
+            }}>{tick.toFixed(1)}</span>
+          </React.Fragment>
+        ))}
       </div>
  
       <div style={{ marginTop: '16px' }}>

@@ -196,7 +196,7 @@ export const defaultIntervention: Intervention = {
   nd_feedingEnvironment: "",
   nd_nutritionRelatedMedMgmt: "",
   ed_purpose: "",
-  ed_content: [],
+  ed_content: "",
   ed_application: "",
   ed_other: "",
   c_theory: "",

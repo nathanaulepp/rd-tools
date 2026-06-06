@@ -397,7 +397,7 @@ export const CONDITION_EXTRA_INPUTS: Partial<Record<ConditionKey, {
     { key: "hgb", label: "Hemoglobin (g/dL)", type: "number", autoPullFrom: "labs.Hgb" },
   ],
   heart_failure: [
-    { key: "pal", label: "Physical Activity Level (PAL)", type: "number", hint: "1.2 = sedentary, 1.5 = lightly active" },
+    { key: "pal", label: "Physical Activity Level (PAL)", type: "number", hint: "1.2 = sedentary, 1.5 = lightly active", minAge: 18 },
   ],
   ckd_5d: [
     { key: "urineOutputMlDay", label: "Urine Output (mL/day)", type: "number" },
