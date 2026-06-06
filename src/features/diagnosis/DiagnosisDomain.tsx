@@ -689,9 +689,7 @@ function SignsSuggestions({ problem, currentSigns, onAppend, onRemove }: SignsSu
     ]
   );
 
-  if (allHints.length === 0) return null;
-
-  // Group by category
+  // Group by category (Moved up so it always evaluates)
   const grouped = useMemo(() => {
     const map: Partial<Record<SSCategory, SSHint[]>> = {};
     for (const h of allHints) {
@@ -706,6 +704,9 @@ function SignsSuggestions({ problem, currentSigns, onAppend, onRemove }: SignsSu
     const needle = hint.text.toLowerCase().slice(0, 25).replace(/\s+/g, " ").trim();
     return currentSigns.toLowerCase().replace(/\s+/g, " ").includes(needle);
   };
+
+  // ✅ NOW SAFE TO RETURN EARLY — No hooks are below this line
+  if (allHints.length === 0) return null;
 
   const presentCategories = (Object.keys(grouped) as SSCategory[]).filter(
     (cat) => (grouped[cat] ?? []).length > 0
