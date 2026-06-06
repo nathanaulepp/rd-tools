@@ -1,7 +1,7 @@
 // src/entities/note/defaults.ts
 // Typed default values for every domain.
 // All defaults now satisfy the strict interfaces in src/types/.
-// Phase 8: Added tempMax, ve, fev1, tbsa to defaultClinical.
+// Phase 9: Extended defaultIntervention with full NCP taxonomy sub-objects.
 
 import { getLocalIsoDate } from "../../shared/utils/date";
 import type {
@@ -15,6 +15,22 @@ import type {
   Intervention,
   MonitorEval,
   Standards,
+} from "../../types";
+import type {
+  NpOralNutrition,
+  NpEnteralNutrition,
+  NpParenteralNutrition,
+  NpIvFluid,
+  NdMealsSnacks,
+  NdEnPnManagement,
+  NdSupplementTherapy,
+  NdFeedingAssistance,
+  NdFeedingEnvironment,
+  NdMedManagement,
+  NdInfantFeeding,
+  NcpEducation,
+  NcpCounseling,
+  NcpCoordination,
 } from "../../types";
 
 export const defaultPatientData: PatientData = {
@@ -186,26 +202,105 @@ export const defaultDiagnosis: Diagnosis = {
   priorityRanking: "",
 };
 
+// ── NP sub-object defaults ────────────────────────────────────────────────────
+
+const defaultNpOral: NpOralNutrition = {
+  energyKcal: "",
+  nutrientModifiers: [],
+  foodsAndPatterns: [],
+  textureModification: "",
+  oralSupplements: "",
+  isNpo: false,
+  valuesInclusion: "",
+};
+
+const defaultNpEnteral: NpEnteralNutrition = {
+  kcalLow: "",
+  kcalHigh: "",
+  proteinLow: "",
+  proteinHigh: "",
+  fluidLow: "",
+  fluidHigh: "",
+  formulaName: "",
+  dailyVolumeMl: "",
+  infusionRateMlHr: "",
+  adminMethod: "",
+  bodyPosition: "",
+  other: "",
+};
+
+const defaultNpParenteral: NpParenteralNutrition = {
+  energyKcal: "",
+  aminoAcidsG: "",
+  dextroseG: "",
+  lipidsG: "",
+  sodiumMeq: "",
+  potassiumMeq: "",
+  magnesiumMeq: "",
+  calciumMeq: "",
+  phosphorusMmol: "",
+  mviMl: "",
+  mteMl: "",
+  solutionType: "",
+  totalFluidVolumeMl: "",
+  adminMethod: "",
+  valuesInclusion: "",
+};
+
+const defaultNpIvFluid: NpIvFluid = {
+  energyKcal: "",
+  dextroseG: "",
+  electrolyteAdditives: "",
+  solution: "",
+  adminMethod: "",
+  valuesInclusion: "",
+};
+
+// ── ND/E/C/RC sub-object defaults ─────────────────────────────────────────────
+
+const defaultNdMealsSnacks: NdMealsSnacks = {
+  selectedDietTypes: [], textureLevel: "", proteinMods: [],
+  aminoAcidMods: [], carbMods: [], fatMods: [], fiberMods: [],
+  fluidMods: [], mineralMods: [], vitaminMods: [], foodGroupMods: [],
+  specificFoodMods: [], intakeTiming: [], other: [], notes: "",
+};
+
+const defaultNdEnPnManagement: NdEnPnManagement = { enActions: [], pnActions: [], notes: "" };
+const defaultNdSupplementTherapy: NdSupplementTherapy = {
+  medicalFoodActions: [], vitaminSupplements: [], mineralSupplements: [], bioactiveActions: [], notes: "",
+};
+const defaultNdFeedingAssistance: NdFeedingAssistance = { actions: [], notes: "" };
+const defaultNdFeedingEnvironment: NdFeedingEnvironment = { actions: [], notes: "" };
+const defaultNdMedManagement: NdMedManagement = { actions: [], notes: "" };
+const defaultNdInfantFeeding: NdInfantFeeding = { breastmilkActions: [], formulaActions: [], notes: "" };
+const defaultEducation: NcpEducation = { contentActions: [], applicationActions: [], notes: "" };
+const defaultCounseling: NcpCounseling = { theoreticalBasis: [], strategies: [], notes: "" };
+const defaultCoordination: NcpCoordination = { collaborationActions: [], dischargeActions: [], notes: "" };
+
 export const defaultIntervention: Intervention = {
-  goalStatement: "",
-  goalTimeframe: "",
-  goalMeasurable: "",
-  nd_mealsSnacks: "",
-  nd_supplementalFeeding: "",
-  nd_feedingAssistance: "",
-  nd_feedingEnvironment: "",
-  nd_nutritionRelatedMedMgmt: "",
-  ed_purpose: "",
-  ed_content: "",
-  ed_application: "",
-  ed_other: "",
-  c_theory: "",
-  c_strategy: [],
-  c_other: "",
-  cc_teamMembers: "",
-  cc_referrals: "",
-  cc_dischargeRecommendations: "",
-  cc_followUpPlan: "",
+  // ── NP ───────────────────────────────────────────────────────────────────────
+  npActiveModes:   [],
+  npOral:          defaultNpOral,
+  npEnteral:       defaultNpEnteral,
+  npParenteral:    defaultNpParenteral,
+  npIvFluid:       defaultNpIvFluid,
+
+  // ── ND/E/C/RC ────────────────────────────────────────────────────────────────
+  ndMealsSnacks:        defaultNdMealsSnacks,
+  ndEnPnManagement:     defaultNdEnPnManagement,
+  ndSupplementTherapy:  defaultNdSupplementTherapy,
+  ndFeedingAssistance:  defaultNdFeedingAssistance,
+  ndFeedingEnvironment: defaultNdFeedingEnvironment,
+  ndMedManagement:      defaultNdMedManagement,
+  ndInfantFeeding:      defaultNdInfantFeeding,
+  education:            defaultEducation,
+  counseling:           defaultCounseling,
+  coordination:         defaultCoordination,
+
+  // ── Retained ─────────────────────────────────────────────────────────────────
+  goalStatement:     "",
+  goalTimeframe:     "",
+  goalMeasurable:    "",
   interventionNotes: "",
 };
 
