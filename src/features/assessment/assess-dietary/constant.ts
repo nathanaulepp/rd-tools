@@ -115,3 +115,26 @@ export const VITAMINS: { key: string; label: string; defaultUnit: string }[] = [
 ];
 
 export const getLipidMeta = (pct: string) => LIPID_CONCS.find(c => c.pct === pct) ?? LIPID_CONCS[1];
+
+// ─── IV Orders ──────────────────────────────────────────────────────────────
+
+export const IV_KCAL_PER_ML: Record<string, number> = {
+  "Dextrose 5% (D5W)":                    0.17,   // 5g/100mL × 3.4 kcal/g
+  "Dextrose 10% (D10W)":                  0.34,
+  "Dextrose 20% (D20W)":                  0.68,
+  "Dextrose 50% (D50W)":                  1.70,
+  "Dextrose 70% (D70W)":                  2.38,
+  "Propofol 1% (10mg/mL)":               1.10,   // 10% lipid emulsion
+  "Clevidipine 0.5mg/mL (lipid emulsion)":1.10,   // 20% lipid emulsion, 0.2 mL/mL fat
+  "Trisodium Citrate (4% solution)":      0,      // kcal calculated separately via mmol
+};
+
+// Trisodium citrate: 0.59 kcal/mmol. MW of trisodium citrate dihydrate = 294.1 g/mol.
+// 4% solution = 40 mg/mL = 0.136 mmol/mL → 0.136 × 0.59 = 0.0803 kcal/mL
+export const CITRATE_KCAL_PER_ML = 0.0803;
+
+// Solutions that contribute lipid/fat calories — flag for manual macro review
+export const IV_LIPID_FLAG_TYPES = new Set([
+  "Propofol 1% (10mg/mL)",
+  "Clevidipine 0.5mg/mL (lipid emulsion)",
+]);

@@ -65,7 +65,7 @@ export const defaultClinical: Clinical = {
 
 export const defaultDietary: Dietary = {
   recall: [{ label: "Meal 1", value: "" }],
-  macroAdequacy: "", mealPatterns: "", currentDiets: "", fluidIntake: "",
+  mealPatterns: "", currentDiets: "", fluidIntake: "",
   eeiPercent: "", eeiTimeframe: "",
   dietOrder: "", oralCalories: "", oralProtein: "", oralWater: "",
   physicalLevel: "", adls: "", feedingTasks: "",
@@ -75,7 +75,8 @@ export const defaultDietary: Dietary = {
   culturalReligious: "", socialDynamics: "", eatingEnv: "",
   herbalCAM: "", supplements: "",
   perception: "", qolGoals: "",
-  totalKcal: "", totalProtein: "", totalFat: "", totalCho: "",
+  ivOrders: [],
+  ivNextId: 1,
 };
 
 export const defaultDiagnosis: Diagnosis = {

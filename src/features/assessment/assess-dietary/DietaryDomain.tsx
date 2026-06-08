@@ -25,12 +25,7 @@ export default function DietaryDomain() {
       case "D2":
         return <DietaryD2Intake />;
 
-      case "D3":
-      case "D4":
-      case "D5":
-      case "D6":
-      case "D7":
-      case "D9":
+      case "D3-D9":
         return <DietaryD3toD9 />;
 
       case "D8":

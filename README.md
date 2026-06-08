@@ -38,7 +38,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [ ] **add** DEXA scan functionality mapped and coded
 
 #### Biochemical
-- [ ] **add** LOINC test lookups and user-designed, hospital-derived template saver. capability to enter lab tests regardless of facility
+- [x] **add** LOINC test lookups and user-designed, hospital-derived template saver. capability to enter lab tests regardless of facility
 
 #### Clinical
 - [x] **add** import drug database

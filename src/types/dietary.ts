@@ -8,7 +8,6 @@ export interface RecallMeal {
 export interface Dietary {
   // D2 — 24-Hour Recall
   recall: RecallMeal[];
-  macroAdequacy: string;
   mealPatterns: string;
   currentDiets: string;
   fluidIntake: string;
@@ -59,9 +58,24 @@ export interface Dietary {
   pnState?: unknown;
   savedFormulas?: string[];
 
-  // Total Intakes (calculated sums)
-  totalKcal: string;
-  totalProtein: string;
-  totalFat: string;
-  totalCho: string;
+  ivOrders: IVOrder[];
+  ivNextId: number;
+}
+
+export type IVOrderType =
+  | "Dextrose 5% (D5W)"
+  | "Dextrose 10% (D10W)"
+  | "Dextrose 20% (D20W)"
+  | "Dextrose 50% (D50W)"
+  | "Dextrose 70% (D70W)"
+  | "Propofol 1% (10mg/mL)"
+  | "Clevidipine 0.5mg/mL (lipid emulsion)"
+  | "Trisodium Citrate (4% solution)";
+
+export interface IVOrder {
+  id: number;
+  type: IVOrderType | "";
+  totalVolumeMl: string;
+  rateMlHr: string;
+  hrsPerDay: string;
 }

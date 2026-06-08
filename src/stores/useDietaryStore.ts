@@ -27,7 +27,7 @@ export const useDietaryStore = create<DietaryState>((set) => ({
 
 registerDomainReset("dietary", (raw) => {
   const parsed = raw ? tryParse(raw, defaultDietary) : defaultDietary;
-  useDietaryStore.setState({ dietary: parsed });
+  useDietaryStore.setState({ dietary: { ...defaultDietary, ...parsed } });
 });
 
 registerDomainGetter("dietary", () => useDietaryStore.getState().dietary);

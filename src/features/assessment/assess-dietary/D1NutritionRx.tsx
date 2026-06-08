@@ -16,6 +16,7 @@ import { useDietaryStore } from "../../../stores/useDietaryStore";
 import { useAnthroStore } from "../../../stores/useAnthroStore";
 import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 import type { Dietary } from "../../../types";
+import DietaryD14IVOrders from "./DietaryD14IVOrders";
 
 // ─── GIR Badge ────────────────────────────────────────────────────────────────
 function GIRBadge({ dextGPerDay, wtKg, label = "GIR", ageDays }: { dextGPerDay: number; wtKg: number; label?: string; ageDays?: number | null }) {
@@ -1168,7 +1169,180 @@ const TABS = [
   { id: "D11", label: "D11 – Oral",       color: "#3498db" },
   { id: "D12", label: "D12 – Enteral",    color: "#27ae60" },
   { id: "D13", label: "D13 – Parenteral", color: "#8e44ad" },
+  { id: "D14", label: "D14 – IV Orders",  color: "#0891b2" },
 ];
+
+// ─── D15: Read-Only Totals Summary ────────────────────────────────────────────
+
+interface D15Props {
+  dietary: import("../../../types").Dietary;
+  enState: ENState;
+  pnState: PNState;
+}
+
+function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
+  const { totalKcal, totalProt, totalCho, totalFat, ivKcal, ivLipidFlagOrders } = helper.calculateDietaryTotals({
+    ...dietary,
+    enState,
+    pnState,
+  } as any);
+
+  const chipStyle = (color: string): React.CSSProperties => ({
+    background: `${color}12`,
+    border: `1px solid ${color}40`,
+    borderRadius: "8px",
+    padding: "8px 16px",
+    textAlign: "center" as const,
+    minWidth: "110px",
+  });
+
+  const labelStyle: React.CSSProperties = {
+    fontSize: "0.68rem",
+    color: "#718096",
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: "0.05em",
+  };
+
+  const valueStyle = (color: string): React.CSSProperties => ({
+    fontSize: "1.1rem",
+    fontWeight: 700,
+    color,
+    marginTop: "2px",
+  });
+
+  return (
+    <div
+      className="card"
+      style={{
+        marginTop: "1.5rem",
+        borderTop: "2px solid #2c3e50",
+        background: "#f8fafc",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "0.75rem",
+        }}
+      >
+        <div>
+          <div
+            style={{
+              fontWeight: 700,
+              fontSize: "1rem",
+              color: "var(--primary)",
+            }}
+          >
+            D15: Total Daily Intake
+          </div>
+          <div style={{ fontSize: "0.72rem", color: "#718096", marginTop: "2px" }}>
+            Auto-calculated from D11 + D12 + D13 + D14 — read only
+          </div>
+        </div>
+        <span
+          style={{
+            fontSize: "0.62rem",
+            fontWeight: 800,
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            padding: "3px 10px",
+            borderRadius: "10px",
+            background: "#f0fdf4",
+            color: "#166534",
+            border: "1px solid #bbf7d0",
+          }}
+        >
+          READ ONLY
+        </span>
+      </div>
+
+      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        <div style={chipStyle("#e67e22")}>
+          <div style={labelStyle}>Total Calories</div>
+          <div style={valueStyle("#e67e22")}>
+            {Math.round(totalKcal)}
+            <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
+              kcal/day
+            </span>
+          </div>
+        </div>
+
+        <div style={chipStyle("#8e44ad")}>
+          <div style={labelStyle}>Total Protein</div>
+          <div style={valueStyle("#8e44ad")}>
+            {Math.round(totalProt * 10) / 10}
+            <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
+              g/day
+            </span>
+          </div>
+        </div>
+
+        <div style={chipStyle("#d69e2e")}>
+          <div style={labelStyle}>Total CHO</div>
+          <div style={valueStyle("#d69e2e")}>
+            {Math.round(totalCho * 10) / 10}
+            <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
+              g/day
+            </span>
+          </div>
+          <div style={{ fontSize: "0.62rem", color: "#92400e", marginTop: "2px" }}>
+            PN only
+          </div>
+        </div>
+
+        <div style={chipStyle("#e67e22")}>
+          <div style={labelStyle}>Total Fat</div>
+          <div style={valueStyle("#c05621")}>
+            {Math.round(totalFat * 10) / 10}
+            <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
+              g/day
+            </span>
+          </div>
+          <div style={{ fontSize: "0.62rem", color: "#92400e", marginTop: "2px" }}>
+            PN only
+          </div>
+        </div>
+
+        <div style={chipStyle("#0891b2")}>
+          <div style={labelStyle}>IV Calories</div>
+          <div style={valueStyle("#0891b2")}>
+            {Math.round(ivKcal)}
+            <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
+              kcal/day
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Lipid-bearing IV flag ── */}
+      {ivLipidFlagOrders.length > 0 && (
+        <div
+          style={{
+            marginTop: "0.75rem",
+            background: "#fffbeb",
+            border: "1px solid #f59e0b",
+            borderLeft: "4px solid #f59e0b",
+            borderRadius: "6px",
+            padding: "0.6rem 0.85rem",
+            fontSize: "0.78rem",
+            color: "#78350f",
+            fontWeight: 600,
+          }}
+        >
+          ⚠ IV lipid-bearing solutions detected (
+          {ivLipidFlagOrders.map((o) => o.type).join(", ")}). IV calories
+          above reflect total kcal only. Fat and carbohydrate contributions
+          from these infusions are <strong>not</strong> added to the PN
+          macro totals — please manually account for lipid and CHO load when
+          reviewing the macro breakdown.
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function D1NutritionRx() {
   const { dietary, setDietary } = useDietaryStore();
@@ -1221,26 +1395,16 @@ export default function D1NutritionRx() {
         <D13Parenteral state={pnState} setState={setPnState} patientWtKg={patientWtKg} ageDays={ageDays} />
       </div>
 
-      <div className="card" style={{ marginTop: "1.5rem", borderTop: "2px solid #3498db" }}>
-        <SectionHeader title="D14: Total Daily Intake (Global)" color="#2c3e50" />
-        <p style={{ fontSize: "0.8rem", color: "#718096", marginBottom: "1rem" }}>
-          Final verified intakes used for calculations. (Optional)
-        </p>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "1rem" }}>
-          <Field label="Total Calories (kcal/d)">
-            <NumInput value={dietary.totalKcal || ""} onChange={v => setDietary({ totalKcal: v })} placeholder="Total kcal" />
-          </Field>
-          <Field label="Total Protein (g/d)">
-            <NumInput value={dietary.totalProtein || ""} onChange={v => setDietary({ totalProtein: v })} placeholder="Total g" />
-          </Field>
-          <Field label="Total Fat (g/d)">
-            <NumInput value={dietary.totalFat || ""} onChange={v => setDietary({ totalFat: v })} placeholder="Total g" />
-          </Field>
-          <Field label="Total CHO (g/d)">
-            <NumInput value={dietary.totalCho || ""} onChange={v => setDietary({ totalCho: v })} placeholder="Total g" />
-          </Field>
-        </div>
+      <div style={{ display: activeTab === "D14" ? "block" : "none" }}>
+        <DietaryD14IVOrders />
       </div>
+
+      {/* ── D15: Total Daily Intake — Read-Only Summation ── */}
+      <D15TotalsSummary
+        dietary={dietary}
+        enState={enState}
+        pnState={pnState}
+      />
     </div>
   );
 }

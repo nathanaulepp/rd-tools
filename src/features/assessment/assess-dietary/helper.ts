@@ -1,8 +1,108 @@
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-import { getLipidMeta } from "./constant";
-import { ENFeed, PNFeed } from "../../../shared/types/index";
+import { getLipidMeta, IV_KCAL_PER_ML, CITRATE_KCAL_PER_ML } from "./constant";
+import { ENFeed, PNFeed, ENState, PNState } from "../../../shared/types/index";
+import * as constant from "./constant";
+import { Dietary, IVOrder } from "../../../types/dietary";
 
 export const num = (v: string | number | undefined | null): number => (typeof v === "string" ? parseFloat(v) : v) || 0;
+
+export function calcIVOrderKcal(order: IVOrder): number {
+  const volMl = num(order.totalVolumeMl);
+  if (volMl <= 0 || !order.type) return 0;
+  if (order.type === "Trisodium Citrate (4% solution)") {
+    return volMl * CITRATE_KCAL_PER_ML;
+  }
+  return volMl * (IV_KCAL_PER_ML[order.type] ?? 0);
+}
+
+export function calculateDietaryTotals(dietary: Dietary) {
+  const enState = (dietary as any).enState as ENState | undefined;
+  const pnState = (dietary as any).pnState as PNState | undefined;
+
+  // ── Oral (D11) ────────────────────────────────────────────────────────────
+  const oralKcal = num(dietary.oralCalories);
+  const oralProt = num(dietary.oralProtein);
+
+  // ── Enteral (D12) ─────────────────────────────────────────────────────────
+  const enTotals = enState?.feeds.reduce(
+    (acc, f) => {
+      const n = calcENNutrients(f);
+      const mods: constant.ENModular[] = (f as any).modulars || [];
+      const modKcal = mods.reduce((s, m) => s + num(m.kcal), 0);
+      const modProt = mods.reduce((s, m) => s + num(m.protein), 0);
+      return {
+        kcal: acc.kcal + n.totalCal + modKcal,
+        prot: acc.prot + n.totalProt + modProt,
+      };
+    },
+    { kcal: 0, prot: 0 }
+  ) || { kcal: 0, prot: 0 };
+
+  // ── Parenteral (D13) ──────────────────────────────────────────────────────
+  const pnTotals = pnState?.bags.reduce(
+    (acc, bag) => {
+      const rateMode = getRateMode(bag.delivery);
+      const effectiveDextRate =
+        rateMode === "tna" || rateMode === "twoplusone"
+          ? bag.combinedRate
+          : bag.dextRate;
+      const masterHrs =
+        rateMode === "tna"
+          ? num(bag.dextHrs) || num(bag.aaHrs) || num(bag.lipidHrs) || 24
+          : 0;
+      const dHrs =
+        rateMode === "tna" && !bag.dextHrs ? masterHrs : bag.dextHrs;
+      const aHrs =
+        rateMode === "tna" && !bag.aaHrs ? masterHrs : bag.aaHrs;
+      const lHrs =
+        rateMode === "tna" && !bag.lipidHrs ? masterHrs : bag.lipidHrs;
+
+      const dextDerived = deriveDextrose(effectiveDextRate, dHrs, bag.dextConc);
+      const aaDerived = deriveAA(
+        rateMode === "tna" || rateMode === "twoplusone"
+          ? bag.combinedRate
+          : bag.aaRate,
+        aHrs,
+        bag.aaConc
+      );
+      const lipidDerived =
+        rateMode === "tna"
+          ? deriveTNALipid(bag.combinedRate, lHrs, bag.lipidConc)
+          : deriveLipid(bag.lipidRate, lHrs, bag.lipidConc, bag.lipidFreq);
+
+      const dG = dextDerived ? dextDerived.g : num(bag.dextAmount);
+      const aG = aaDerived ? aaDerived.g : num(bag.aaAmount);
+      const lG = lipidDerived ? lipidDerived.g : num(bag.lipidAmount);
+      const lipidKcalPerG =
+        rateMode === "tna"
+          ? 10
+          : constant.getLipidMeta(bag.lipidConc).kcalPerMl /
+            constant.getLipidMeta(bag.lipidConc).gPerMl;
+
+      return {
+        kcal: acc.kcal + dG * 3.4 + aG * 4 + lG * lipidKcalPerG,
+        prot: acc.prot + aG,
+        cho:  acc.cho  + dG,
+        fat:  acc.fat  + lG,
+      };
+    },
+    { kcal: 0, prot: 0, cho: 0, fat: 0 }
+  ) || { kcal: 0, prot: 0, cho: 0, fat: 0 };
+
+  // ── IV Orders (D14) ───────────────────────────────────────────────────────
+  const ivOrders: IVOrder[] = dietary.ivOrders || [];
+  const ivKcal = ivOrders.reduce((sum, o) => sum + calcIVOrderKcal(o), 0);
+  const ivLipidFlagOrders = ivOrders.filter((o) => constant.IV_LIPID_FLAG_TYPES.has(o.type as string));
+
+  return {
+    totalKcal: oralKcal + enTotals.kcal + pnTotals.kcal + ivKcal,
+    totalProt: oralProt + enTotals.prot + pnTotals.prot,
+    totalFat: pnTotals.fat,
+    totalCho: pnTotals.cho,
+    ivKcal,
+    ivLipidFlagOrders,
+  };
+}
 
 // Derive g and kcal from rate+conc. Returns null when inputs are blank/zero.
 export function deriveDextrose(rateMlHr: string | number, hrs: string | number, concPct: string) {

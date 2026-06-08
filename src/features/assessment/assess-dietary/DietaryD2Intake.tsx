@@ -142,13 +142,6 @@ export default function DietaryD2Intake() {
               onChange={(e) => handleUpdate("currentDiets", e.target.value)}
             />
           </div>
-          <div className="input-group">
-            <label>D23: Macro & Micronutrient Adequacy</label>
-            <textarea
-              value={dietary?.macroAdequacy || ""}
-              onChange={(e) => handleUpdate("macroAdequacy", e.target.value)}
-            />
-          </div>
         </div>
       </div>
     </>

@@ -92,7 +92,6 @@ const MASTER_DOMAINS = [
       { key: "oralProtein", label: "Oral Protein" },
       { key: "oralWater", label: "Oral Water" },
       { key: "fluidIntake", label: "Total Fluid Intake" },
-      { key: "macroAdequacy", label: "Macronutrient Adequacy" },
       { key: "mealPatterns", label: "Meal Patterns" },
       { key: "eeiPercent", label: "Estimated Intake (%)" },
       { key: "eeiTimeframe", label: "Intake Timeframe" },
