@@ -25,7 +25,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [x] *patch* legacy FSD violations
 - [x] *patch* problem with deletion of patients from records
 - [x] *patch* problem: Rendered more hooks than during the previous render
-- [ ] *patch* problem: note submission required fields doesn't read fields as entered
+- [x] *patch* problem: note submission required fields doesn't read fields as entered
 - [ ] **add** dedicated settings pane on the homepage, and integrate a comparative standards condition editor into it
 - [ ] **add** Add keyboard shortcuts (root call is "ctrl + 0")
 - [ ] **add** Split panes function
@@ -43,7 +43,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 #### Clinical
 - [x] **add** import drug database
 - [x] **add** add drug lookup
-- [ ] **add** Automated refeeding risk chart
+- [x] **add** Automated refeeding risk chart
 - [ ] **add** Automated drug-nutrient interactions
 
 #### Dietary
