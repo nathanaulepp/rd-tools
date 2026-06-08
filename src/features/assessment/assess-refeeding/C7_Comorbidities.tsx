@@ -46,7 +46,7 @@ export function C7_Comorbidities() {
         Select all applicable comorbidities. All listed conditions appear in both the Moderate Disease and Severe Disease columns of the ASPEN table. Presence of any condition scores as <b>Significant Risk</b>.
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "3px", width: "100%", minWidth: 0 }}>
         {COMORBIDITIES.map((label) => {
           const isSelected = s.c7_selected.includes(label);
           return (
@@ -62,15 +62,22 @@ export function C7_Comorbidities() {
                 border: `1px solid ${isSelected ? "#e74c3c" : "var(--border)"}`,
                 background: isSelected ? "#e74c3c10" : "transparent",
                 transition: "all 0.12s",
+                minWidth: 0,
               }}
             >
               <input
                 type="checkbox"
                 checked={isSelected}
                 onChange={() => toggle(label)}
-                style={{ marginTop: "2px", flexShrink: 0, accentColor: "#e74c3c" }}
+                style={{ marginTop: "2px", flexShrink: 0, accentColor: "#e74c3c", width: "auto" }}
               />
-              <span style={{ fontSize: "0.73rem", color: isSelected ? "#c0392b" : "#4a5568", fontWeight: isSelected ? 600 : 400 }}>
+              <span style={{ 
+                fontSize: "0.73rem", 
+                color: isSelected ? "#c0392b" : "#4a5568", 
+                fontWeight: isSelected ? 600 : 400,
+                minWidth: 0,
+                flex: 1
+              }}>
                 {label}
               </span>
             </label>

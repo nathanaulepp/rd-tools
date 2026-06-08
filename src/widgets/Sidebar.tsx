@@ -159,9 +159,9 @@ export default function Sidebar({
           onClick={() => handleDomainClick("S")}
         />
 
-        {/* RF — Refeeding Screen */}
+        {/* Refeeding Screen */}
         <NavItem
-          label="RF. Refeeding Screen"
+          label="Refeeding Screen"
           active={activeDomain === "RF"}
           onClick={() => handleDomainClick("RF")}
         />

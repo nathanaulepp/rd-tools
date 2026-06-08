@@ -31,11 +31,11 @@ export function scoreBMI(bmiNum: number): RiskLevel {
  *
  *   Significant (1 criterion needed for significant overall risk):
  *     ≥ 7.5% in ≤ 90 days  (≤ 3 months)
- *     OR > 10% in ≤ 180 days (≤ 6 months)
- *     OR on the linear interpolation line: f(day) from (91, 7.5%) to (180, 10%)
- *        → slope = (10 - 7.5) / (180 - 91) = 2.5 / 89
- *        → f(d) = 7.5 + (d - 91) * (2.5 / 89)
- *        For days 91–180: ≥ f(d) → significant
+ *     OR > 10% in ≤ 183 days (≤ 6 months)
+ *     OR on the linear interpolation line: f(day) from (90, 7.5%) to (183, 10%)
+ *        → slope = (10 - 7.5) / (183 - 90) = 2.5 / 93
+ *        → f(d) = 7.5 + (d - 90) * (2.5 / 93)
+ *        For days 91–183: ≥ f(d) → significant
  *
  * @param pct     Percent weight lost (positive number, e.g. 8.2 for 8.2%)
  * @param days    Days over which the loss occurred
@@ -49,15 +49,15 @@ export function scoreWeightLoss(pct: number, days: number): RiskLevel {
   // ≥ 7.5% in ≤ 90 days
   if (days <= 90 && pct >= 7.5) return "significant";
 
-  // Linear interpolation zone: days 91–180
-  // f(d) = 7.5 + (d - 91) * (2.5 / 89)  
-  if (days > 90 && days <= 180) {
-    const threshold = 7.5 + (days - 91) * (2.5 / 89);
+  // Linear interpolation zone: days 91–183
+  // f(d) = 7.5 + (d - 90) * (2.5 / 93)  
+  if (days > 90 && days <= 183) {
+    const threshold = 7.5 + (days - 90) * (2.5 / 93);
     if (pct >= threshold) return "significant";
   }
 
-  // > 10% in ≤ 180 days (catches anything in or beyond the interpolation zone)
-  if (days <= 180 && pct > 10) return "significant";
+  // > 10% in ≤ 183 days (catches anything in or beyond the interpolation zone)
+  if (days <= 183 && pct > 10) return "significant";
 
   // -- MODERATE check --
   // ≥ 5% in ≤ 30 days
@@ -69,7 +69,7 @@ export function scoreWeightLoss(pct: number, days: number): RiskLevel {
 /**
  * Derives weight loss pct from anthro store values.
  * Returns null when UBW, current weight, or UBW date is missing
- * or when the UBW date falls outside the 6-month (180-day) window.
+ * or when the UBW date falls outside the 6-month (183-day) window.
  *
  * @param wtKg         Current weight in kg (from useCalculatedMetrics)
  * @param ubwStr       UBW as entered (raw string from anthro store)
@@ -101,8 +101,8 @@ export function deriveWeightLoss(
       (1000 * 60 * 60 * 24)
   );
 
-  // Outside 6-month window → unavailable
-  if (days < 0 || days > 180) return null;
+  // Outside 6-month window (183 days) → unavailable
+  if (days < 0 || days > 183) return null;
 
   const pct = ((ubwKg - wtKg) / ubwKg) * 100;
   if (pct <= 0) return { pct: 0, days }; // no loss

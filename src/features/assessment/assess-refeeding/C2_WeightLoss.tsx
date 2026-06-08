@@ -166,9 +166,9 @@ function ThresholdTable() {
       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
         {[
           { color: "#da7f2b", text: "Moderate: ≥ 5% in ≤ 30 days" },
-          { color: "#e74c3c", text: "Significant: ≥ 7.5% in ≤ 3 months" },
-          { color: "#e74c3c", text: "Significant: > 10% in ≤ 6 months" },
-          { color: "#e74c3c", text: "Significant: Linear zone — ≥ 7.5% (day 91) scaling to > 10% (day 180)" },
+          { color: "#e74c3c", text: "Significant: ≥ 7.5% in ≤ 90 days (3 months)" },
+          { color: "#e74c3c", text: "Significant: > 10% in ≤ 183 days (6 months)" },
+          { color: "#e74c3c", text: "Significant: Linear zone — 7.5% (day 90) scaling to 10% (day 183)" },
         ].map((t, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: t.color, flexShrink: 0 }} />

@@ -55,7 +55,7 @@ export function C3_EnergyIntake({ computedRisk, eeiPctFromDietary, eeiDaysFromDi
       sourceTag="clinical_judgment"
     >
       {/* Option selector */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginBottom: "0.6rem" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: "5px", marginBottom: "0.6rem", width: "100%", minWidth: 0 }}>
         {OPTIONS.map((opt) => (
           <label
             key={opt.key}
@@ -69,6 +69,7 @@ export function C3_EnergyIntake({ computedRisk, eeiPctFromDietary, eeiDaysFromDi
               border: `1px solid ${s.c3_option === opt.key ? "#3498db" : "var(--border)"}`,
               background: s.c3_option === opt.key ? "#3498db10" : "transparent",
               transition: "all 0.15s",
+              minWidth: 0,
             }}
           >
             <input
@@ -76,9 +77,9 @@ export function C3_EnergyIntake({ computedRisk, eeiPctFromDietary, eeiDaysFromDi
               name="c3_option"
               checked={s.c3_option === opt.key}
               onChange={() => handleOptionSelect(opt.key)}
-              style={{ marginTop: "2px", flexShrink: 0 }}
+              style={{ marginTop: "2px", flexShrink: 0, width: "auto" }}
             />
-            <div>
+            <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "#2c3e50" }}>{opt.label}</div>
               <div style={{ fontSize: "0.68rem", color: "#718096" }}>{opt.desc}</div>
             </div>
