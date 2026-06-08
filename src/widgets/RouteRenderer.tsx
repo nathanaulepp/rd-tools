@@ -29,8 +29,7 @@ export default function RouteRenderer() {
   const currentView = useUIStore((s) => s.currentView);
   const { setCurrentView, theme, setTheme, zoomLevel, setZoomLevel, logout } =
     useUIStore();
-  const { activePatient, activeNote, handleOpenNote, handleExitToStart } =
-    useNoteStore();
+  const { handleOpenNote, handleExitToStart } = useNoteStore();
 
   switch (currentView) {
     case "START":
@@ -72,14 +71,9 @@ export default function RouteRenderer() {
       return wrap("CreateNotePage", <CreateNotePage />);
 
     case "VIEW_SUMMARY":
-      if (!activePatient || !activeNote) return null;
       return wrap(
         "ClinicalSummaryView",
-        <ClinicalSummaryView
-          patient={activePatient}
-          note={activeNote}
-          handleExitToStart={handleExitToStart}
-        />
+        <ClinicalSummaryView handleExitToStart={handleExitToStart} />
       );
 
     case "TOOLS":

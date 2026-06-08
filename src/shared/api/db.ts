@@ -546,7 +546,7 @@ export async function submitNote(
     clinicalNotes:            (clinicalData.clinicalNotes as string)         ?? null,
 
     // Dietary domain (from note.dietary JSON)
-    dietOrderCurrent:         (dietaryData.dietOrder as string)              ?? null,
+    dietOrder:                (dietaryData.dietOrder as string)              ?? null,
     oralCalories:             (dietaryData.oralCalories as string)           ?? null,
     oralProtein:              (dietaryData.oralProtein as string)            ?? null,
     oralWater:                (dietaryData.oralWater as string)              ?? null,

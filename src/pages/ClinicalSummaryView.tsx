@@ -1,8 +1,17 @@
 // src/pages/ClinicalSummaryView.tsx
 // Phase 6: Added export_note_pdf Tauri command button + new domain sections
+// Fixed: now reads all domain data from Zustand stores directly (zero prop drilling)
 
 import React, { CSSProperties } from "react";
-import { Patient, Note } from "../shared/api/db";
+import { useNoteStore } from "../stores/useNoteStore";
+import { useAnthroStore } from "../stores/useAnthroStore";
+import { useLabsStore } from "../stores/useLabsStore";
+import { useClinicalStore } from "../stores/useClinicalStore";
+import { useDietaryStore } from "../stores/useDietaryStore";
+import { useDiagnosisStore } from "../stores/useDiagnosisStore";
+import { useInterventionStore } from "../stores/useInterventionStore";
+import { useMonitorEvalStore } from "../stores/useMonitorEvalStore";
+import { useCalculatedMetrics } from "../stores/useCalculatedMetrics";
 import { LAB_CATEGORIES } from "../shared/constants/labCategories";
 
 // Phase 6: Tauri invoke for PDF export (falls back gracefully in browser)
@@ -17,34 +26,28 @@ async function invokePdfExport() {
 }
 
 interface ClinicalSummaryViewProps {
-  patient: Patient;
-  note: Note;
-  patientData: any;
-  anthro: any;
-  dexaScans: any[];
-  labs: any;
-  clinical: any;
-  dietary: any;
-  diagnosis?: any;
-  intervention?: any;
-  monitorEval?: any;
-  calculatedMetrics: any;
   handleExitToStart: () => void;
 }
 
-export default function ClinicalSummaryView({
-  patient,
-  note,
-  anthro,
-  labs,
-  clinical,
-  dietary,
-  diagnosis,
-  intervention,
-  monitorEval,
-  calculatedMetrics,
-  handleExitToStart,
-}: ClinicalSummaryViewProps) {
+export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSummaryViewProps) {
+  // Read everything from stores — no props for domain data
+  const { activePatient: patient, activeNote: note } = useNoteStore();
+  const { anthro } = useAnthroStore();
+  const { labs } = useLabsStore();
+  const { clinical } = useClinicalStore();
+  const { dietary } = useDietaryStore();
+  const { diagnosis } = useDiagnosisStore();
+  const { intervention } = useInterventionStore();
+  const { monitorEval } = useMonitorEvalStore();
+  const calculatedMetrics = useCalculatedMetrics();
+
+  if (!patient || !note) {
+    return (
+      <div style={{ padding: "2rem", textAlign: "center", color: "#64748b" }}>
+        No note data available.
+      </div>
+    );
+  }
 
   const renderSection = (title: string, children: React.ReactNode) => (
     <div style={styles.section}>
@@ -129,12 +132,11 @@ export default function ClinicalSummaryView({
         </ul>
       );
     } catch {
-      // Legacy plain string
       return <span style={{ fontSize: "0.88rem" }}>{raw}</span>;
     }
   };
 
-  // ── Phase 6: PES summary ──────────────────────────────────────────────────
+  // ── Phase 6: PES summary ──────────────────────────────────────────────────────
   const renderDiagnosis = () => {
     if (!diagnosis?.problem && !(diagnosis?.additionalDiagnoses?.length)) {
       return <p style={styles.emptyText}>No nutrition diagnoses recorded.</p>;
@@ -164,15 +166,11 @@ export default function ClinicalSummaryView({
       <>
         {renderRow("Intervention Goal", intervention.goalStatement)}
         <div style={{ marginBottom: "0.5rem" }} />
-        {renderRow("ND — Meals/Snacks", intervention.nd_mealsSnacks)}
-        {renderRow("ND — Supplemental Feeding", intervention.nd_supplementalFeeding)}
-        {renderRow("ND — Med Management", intervention.nd_nutritionRelatedMedMgmt)}
-        {renderRow("Education Purpose", intervention.ed_purpose)}
-        {Array.isArray(intervention.ed_content) && intervention.ed_content.length > 0 && renderRow("Education Topics", intervention.ed_content.join(", "))}
-        {renderRow("Counseling Approach", intervention.c_theory)}
-        {renderRow("Referrals", intervention.cc_referrals)}
-        {renderRow("Discharge Recs", intervention.cc_dischargeRecommendations)}
-        {renderRow("Follow-Up Plan", intervention.cc_followUpPlan)}
+        {renderRow("Education Purpose", (intervention as any).ed_purpose)}
+        {renderRow("Counseling Approach", (intervention as any).c_theory)}
+        {renderRow("Referrals", (intervention as any).cc_referrals)}
+        {renderRow("Discharge Recs", (intervention as any).cc_dischargeRecommendations)}
+        {renderRow("Follow-Up Plan", (intervention as any).cc_followUpPlan)}
       </>
     );
   };
@@ -232,17 +230,17 @@ export default function ClinicalSummaryView({
           <div style={styles.grid2}>
             <div>
               <h4 style={styles.subTitle}>Current Measurements</h4>
-              {renderRow("Height", anthro.ht, anthro.htUnit)}
-              {renderRow("Weight", anthro.wt, anthro.wtUnit)}
+              {renderRow("Height", anthro?.ht, anthro?.htUnit)}
+              {renderRow("Weight", anthro?.wt, anthro?.wtUnit)}
               {renderRow("BMI", calculatedMetrics.bmi, "kg/m²")}
-              {renderRow("UBW", anthro.ubw, anthro.wtUnit)}
+              {renderRow("UBW", anthro?.ubw, anthro?.wtUnit)}
             </div>
             <div>
               <h4 style={styles.subTitle}>Physical Exam Measures</h4>
-              {renderRow("Waist Circ", anthro.waist, anthro.circUnit)}
-              {renderRow("Mid-Arm Circ", anthro.mac, anthro.circUnit)}
-              {renderRow("Calf Circ", anthro.calf, anthro.circUnit)}
-              {renderRow("Head Circ", anthro.head, anthro.circUnit)}
+              {renderRow("Waist Circ", anthro?.waist, anthro?.circUnit)}
+              {renderRow("Mid-Arm Circ", anthro?.mac, anthro?.circUnit)}
+              {renderRow("Calf Circ", anthro?.calf, anthro?.circUnit)}
+              {renderRow("Head Circ", anthro?.head, anthro?.circUnit)}
             </div>
           </div>
         ))}
@@ -256,35 +254,35 @@ export default function ClinicalSummaryView({
             <div style={styles.grid2}>
               <div>
                 <h4 style={styles.subTitle}>Medical Context</h4>
-                {renderRow("Chief Complaint", clinical.chiefComplaint)}
-                {renderRow("Medical History", clinical.medHx)}
-                {renderRow("Family History", clinical.familyHx)}
-                {renderRow("Social History", clinical.socialHx)}
-                {renderRow("Allergies/Intolerances", clinical.allergiesIntolerances)}
-                {renderRow("Medical Devices", clinical.medicalDevices)}
-                {renderRow("Medications", clinical.medications)}
+                {renderRow("Chief Complaint", clinical?.chiefComplaint)}
+                {renderRow("Medical History", clinical?.medHx)}
+                {renderRow("Family History", clinical?.familyHx)}
+                {renderRow("Social History", clinical?.socialHx)}
+                {renderRow("Allergies/Intolerances", clinical?.allergiesIntolerances)}
+                {renderRow("Medical Devices", clinical?.medicalDevices)}
+                {renderRow("Medications", clinical?.medications)}
               </div>
               <div>
                 <h4 style={styles.subTitle}>GI & Systemic</h4>
-                {renderRow("GI Distress", clinical.giDistress)}
-                {renderRow("Oral/Chewing", clinical.chewing)}
-                {renderRow("Oral Hygiene", clinical.oralHygiene)}
-                {renderRow("Swallowing", clinical.swallowing)}
-                {renderRow("FEV1 % Predicted", clinical.fev1)}
-                {renderRow("TBSA Burned", clinical.tbsa, "%")}
+                {renderRow("GI Distress", clinical?.giDistress)}
+                {renderRow("Oral/Chewing", clinical?.chewing)}
+                {renderRow("Oral Hygiene", clinical?.oralHygiene)}
+                {renderRow("Swallowing", clinical?.swallowing)}
+                {renderRow("FEV1 % Predicted", clinical?.fev1)}
+                {renderRow("TBSA Burned", clinical?.tbsa, "%")}
               </div>
             </div>
 
             <div style={{ marginTop: "1rem" }}>
               <h4 style={styles.subTitle}>Vital Signs</h4>
               <div style={styles.grid5}>
-                {renderVital("Temp", clinical.temp, "°F")}
-                {renderVital("HR", clinical.hr, "bpm")}
-                {renderVital("SpO2", clinical.spo2, "%")}
-                {renderVital("BP", clinical.bp, "mmHg")}
-                {renderVital("RR", clinical.rr, "bpm")}
-                {renderVital("Max Temp", clinical.tempMax, "°F")}
-                {renderVital("Ve", clinical.ve, "L/min")}
+                {renderVital("Temp", clinical?.temp, "°F")}
+                {renderVital("HR", clinical?.hr, "bpm")}
+                {renderVital("SpO2", clinical?.spo2, "%")}
+                {renderVital("BP", clinical?.bp, "mmHg")}
+                {renderVital("RR", clinical?.rr, "bpm")}
+                {renderVital("Max Temp", clinical?.tempMax, "°F")}
+                {renderVital("Ve", clinical?.ve, "L/min")}
               </div>
             </div>
 
@@ -293,47 +291,47 @@ export default function ClinicalSummaryView({
               <div style={styles.grid2}>
                 <div>
                   {renderRow("Muscle Wasting", [
-                    clinical.temples && `Temples (${clinical.temples})`,
-                    clinical.clavicles && `Clavicles (${clinical.clavicles})`,
-                    clinical.shoulders && `Shoulders (${clinical.shoulders})`,
-                    clinical.scapula && `Scapula (${clinical.scapula})`,
-                    clinical.interosseous && `Interosseous (${clinical.interosseous})`,
-                    clinical.thighs && `Thighs (${clinical.thighs})`,
-                    clinical.calves && `Calves (${clinical.calves})`,
+                    clinical?.temples && `Temples (${clinical.temples})`,
+                    clinical?.clavicles && `Clavicles (${clinical.clavicles})`,
+                    clinical?.shoulders && `Shoulders (${clinical.shoulders})`,
+                    clinical?.scapula && `Scapula (${clinical.scapula})`,
+                    clinical?.interosseous && `Interosseous (${clinical.interosseous})`,
+                    clinical?.thighs && `Thighs (${clinical.thighs})`,
+                    clinical?.calves && `Calves (${clinical.calves})`,
                   ].filter(Boolean).join(", "))}
                   {renderRow("Fat Loss", [
-                    clinical.orbital && `Orbital (${clinical.orbital})`,
-                    clinical.cheek && `Cheek (${clinical.cheek})`,
-                    clinical.tricepsFat && `Triceps (${clinical.tricepsFat})`,
-                    clinical.midAxillary && `Mid-Axillary (${clinical.midAxillary})`,
+                    clinical?.orbital && `Orbital (${clinical.orbital})`,
+                    clinical?.cheek && `Cheek (${clinical.cheek})`,
+                    clinical?.tricepsFat && `Triceps (${clinical.tricepsFat})`,
+                    clinical?.midAxillary && `Mid-Axillary (${clinical.midAxillary})`,
                   ].filter(Boolean).join(", "))}
                 </div>
                 <div>
                   {renderRow("Fluid", [
-                    clinical.pittingEdema && `Edema (${clinical.pittingEdema})`,
-                    clinical.ascites && `Ascites (${clinical.ascites})`,
-                    clinical.edemaDescription
+                    clinical?.pittingEdema && `Edema (${clinical.pittingEdema})`,
+                    clinical?.ascites && `Ascites (${clinical.ascites})`,
+                    clinical?.edemaDescription
                   ].filter(Boolean).join(", "))}
-                  {renderRow("Function", clinical.gripStrength)}
+                  {renderRow("Function", clinical?.gripStrength)}
                 </div>
               </div>
-              {renderRow("Exam Notes", clinical.clinicalNotes)}
+              {renderRow("Exam Notes", clinical?.clinicalNotes)}
             </div>
 
             <div style={{ marginTop: "1rem" }}>
               <h4 style={styles.subTitle}>Radiology & Imaging</h4>
               <div style={styles.grid2}>
                 <div>
-                  {renderRow("SMI", clinical.imaging_smi, "cm²/m²")}
-                  {renderRow("L3 Muscle Area", clinical.imaging_muscleArea, "cm²")}
-                  {renderRow("Muscle Attenuation", clinical.imaging_muscleAttenuation, "HU")}
+                  {renderRow("SMI", clinical?.imaging_smi, "cm²/m²")}
+                  {renderRow("L3 Muscle Area", clinical?.imaging_muscleArea, "cm²")}
+                  {renderRow("Muscle Attenuation", clinical?.imaging_muscleAttenuation, "HU")}
                 </div>
                 <div>
-                  {renderRow("IMAT", clinical.imaging_imat)}
-                  {renderRow("VAT", clinical.imaging_vat, "cm²")}
+                  {renderRow("IMAT", clinical?.imaging_imat)}
+                  {renderRow("VAT", clinical?.imaging_vat, "cm²")}
                 </div>
               </div>
-              {renderRow("Imaging Notes", clinical.imaging_notes)}
+              {renderRow("Imaging Notes", clinical?.imaging_notes)}
             </div>
           </>
         ))}
@@ -343,15 +341,15 @@ export default function ClinicalSummaryView({
           <div style={styles.grid2}>
             <div>
               <h4 style={styles.subTitle}>Intake Summary</h4>
-              {renderRow("Diet Order", dietary.dietOrder)}
-              {renderRow("Estimated Calories", dietary.oralCalories, "kcal/d")}
-              {renderRow("Estimated Protein", dietary.oralProtein, "g/d")}
+              {renderRow("Diet Order", dietary?.dietOrder)}
+              {renderRow("Estimated Calories", dietary?.oralCalories, "kcal/d")}
+              {renderRow("Estimated Protein", dietary?.oralProtein, "g/d")}
             </div>
             <div>
               <h4 style={styles.subTitle}>Access & Context</h4>
-              {renderRow("Meal Patterns", dietary.mealPatterns)}
-              {renderRow("Fluid Intake", dietary.fluidIntake)}
-              {renderRow("Food Security", dietary.foodSecurity)}
+              {renderRow("Meal Patterns", dietary?.mealPatterns)}
+              {renderRow("Fluid Intake", dietary?.fluidIntake)}
+              {renderRow("Food Security", dietary?.foodSecurity)}
             </div>
           </div>
         ))}
