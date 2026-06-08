@@ -18,7 +18,7 @@ const DIETARY_DEBOUNCE_MS = 1200;
 
 export interface AutosaveManagerRef {
   /** Flush any pending dietary debounce immediately. */
-  flushDietary: () => void;
+  flushDietary: () => Promise<void>;
 }
 
 interface AutosaveManagerProps {

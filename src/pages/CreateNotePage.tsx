@@ -74,7 +74,7 @@ export default function CreateNotePage() {
   const isSubmitted = noteStatus === "submitted";
 
   // AutosaveManager exposes flush via ref
-  const autosaveRef = useRef<AutosaveManagerRef>({ flushDietary: () => {} });
+  const autosaveRef = useRef<AutosaveManagerRef>({ flushDietary: () => Promise.resolve() });
 
   // ── Escape shortcut ─────────────────────────────────────────────────────────
   const handleExitRequest = useCallback(() => {
@@ -95,7 +95,7 @@ export default function CreateNotePage() {
       if (prevDomainRef.current === "Dx") processNoteEtiologies(diagnosis);
 
       // AutosaveManager flushes dietary if we're leaving domain D
-      autosaveRef.current.flushDietary();
+      await autosaveRef.current.flushDietary();
 
       const ok = await saveAllDomains();
       if (ok) showToast(`${prevDomainRef.current} saved ✓`);
@@ -112,7 +112,7 @@ export default function CreateNotePage() {
     if (!noteId || !patientId) return;
     setModalState("saving");
 
-    autosaveRef.current.flushDietary();
+    await autosaveRef.current.flushDietary();
     const saved = await saveAllDomains();
     if (!saved) { setSubmitModalOpen(false); return; }
 
@@ -139,7 +139,7 @@ export default function CreateNotePage() {
   // ── Exit handlers ───────────────────────────────────────────────────────────
   const handleConfirmExit = async () => {
     setExitModalOpen(false);
-    autosaveRef.current.flushDietary();
+    await autosaveRef.current.flushDietary();
     const saved = await saveAllDomains();
     if (saved) handleExitToStart(true);
   };

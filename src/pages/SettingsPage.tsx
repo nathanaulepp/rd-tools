@@ -13,11 +13,11 @@ const MASTER_DOMAINS = [
     id: "patient",
     title: "Patient Identity",
     fields: [
-      { key: "first_name", label: "First Name" },
-      { key: "last_name",  label: "Last Name" },
-      { key: "dob",        label: "Date of Birth" },
+      { key: "first_name", label: "First Name", locked: true },
+      { key: "last_name",  label: "Last Name", locked: true },
+      { key: "dob",        label: "Date of Birth", locked: true },
       { key: "mrn",        label: "Medical Record Number (MRN)" },
-      { key: "note_date",  label: "Note Date" },
+      { key: "note_date",  label: "Note Date", locked: true },
       { key: "admission_date", label: "Admission Date" },
       { key: "sex", label: "Sex" },
       { key: "languages", label: "Preferred Languages" },
@@ -231,6 +231,7 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
               const req = requirements.find(r => r.field_key === f.key);
               const isRequired = req?.required ?? false;
               const isSaving = savingKey === f.key;
+              const isLocked = (f as any).locked === true;
 
               return (
                 <div key={f.key} style={s.fieldRow}>
@@ -239,16 +240,18 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
                     <div style={s.fieldKey}>field: {f.key}</div>
                   </div>
                   <button
-                    onClick={() => handleToggle(f.key, f.label, isRequired)}
-                    disabled={isSaving}
+                    onClick={() => !isLocked && handleToggle(f.key, f.label, isRequired)}
+                    disabled={isSaving || isLocked}
+                    title={isLocked ? "This field is always required and cannot be disabled" : undefined}
                     style={{
                       ...s.toggleBtn,
-                      background: isRequired ? "#27ae60" : "#f1f5f9",
-                      color: isRequired ? "#fff" : "#64748b",
-                      border: isRequired ? 'none' : '1px solid #cbd5e1'
+                      background: isLocked ? "#e2e8f0" : isRequired ? "#27ae60" : "#f1f5f9",
+                      color:      isLocked ? "#94a3b8" : isRequired ? "#fff" : "#64748b",
+                      border:     isLocked ? "1px solid #cbd5e1" : isRequired ? "none" : "1px solid #cbd5e1",
+                      cursor:     isLocked ? "not-allowed" : "pointer",
                     }}
                   >
-                    {isSaving ? "..." : isRequired ? "Mandatory ✓" : "Optional"}
+                    {isLocked ? "🔒 Always Required" : isSaving ? "..." : isRequired ? "Mandatory ✓" : "Optional"}
                   </button>
                 </div>
               );

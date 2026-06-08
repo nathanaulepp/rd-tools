@@ -140,11 +140,14 @@ async function initSchema(db: Database): Promise<void> {
 
   const now = new Date().toISOString();
   const defaultRequirements = [
-    { field_key: "first_name", label: "First Name" },
-    { field_key: "last_name",  label: "Last Name"  },
-    { field_key: "dob",        label: "Date of Birth" },
-    { field_key: "note_date",  label: "Note Date"  },
-    { field_key: "diagnosis",  label: "Nutrition Diagnosis (PES)" },
+    { field_key: "first_name",     label: "First Name" },
+    { field_key: "last_name",      label: "Last Name"  },
+    { field_key: "dob",            label: "Date of Birth" },
+    { field_key: "sex",            label: "Sex" },
+    { field_key: "note_date",      label: "Note Date"  },
+    { field_key: "diagnosis",      label: "Nutrition Diagnosis (PES)" },
+    { field_key: "chiefComplaint", label: "Chief Complaint" },
+    { field_key: "dietOrder",      label: "Rx Diet Order" },
   ];
 
   for (const req of defaultRequirements) {
@@ -154,6 +157,16 @@ async function initSchema(db: Database): Promise<void> {
        VALUES (?, ?, 1, ?)`,
       [req.field_key, req.label, now]
     );
+  }
+}
+
+// ─── Local Helpers ────────────────────────────────────────────────────────────
+function tryParseJSON(raw: string | null): Record<string, any> {
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
   }
 }
 
@@ -459,12 +472,115 @@ export async function submitNote(
     return { valid: false, missingFields: ["Patient or note not found"] };
   }
 
+  // Parse all domain JSON blobs
+  const clinicalData     = tryParseJSON(note.clinical);
+  const dietaryData      = tryParseJSON(note.dietary);
+  const anthroData       = tryParseJSON(note.anthro);
+  const diagnosisData    = tryParseJSON(note.diagnosis);
+  const interventionData = tryParseJSON(note.intervention);
+  const meData           = tryParseJSON(note.monitor_evaluate);
+
   const fieldValues: Record<string, string | null> = {
+    // Patient table fields
     first_name:     patient.first_name,
     last_name:      patient.last_name,
     dob:            patient.dob,
+    sex:            patient.sex,
+    mrn:            patient.mrn,
+    languages:      patient.languages,
+
+    // Note table fields
     note_date:      note.note_date,
     admission_date: note.admission_date,
+
+    // Anthro (note.anthro JSON)
+    ht:                (anthroData.ht as string)              ?? null,
+    wt:                (anthroData.wt as string)              ?? null,
+    ubw:               (anthroData.ubw as string)             ?? null,
+    ubwDate:           (anthroData.ubwDate as string)         ?? null,
+    waist:             (anthroData.waist as string)           ?? null,
+    mac:               (anthroData.mac as string)             ?? null,
+    calf:              (anthroData.calf as string)            ?? null,
+    head:              (anthroData.head as string)            ?? null,
+    triceps:           (anthroData.triceps as string)         ?? null,
+    subscapular:       (anthroData.subscapular as string)     ?? null,
+    suprailiac:        (anthroData.suprailiac as string)      ?? null,
+    thigh:             (anthroData.thigh as string)           ?? null,
+
+    // Clinical domain (from note.clinical JSON)
+    chiefComplaint:           (clinicalData.chiefComplaint as string)        ?? null,
+    medHx:                    (clinicalData.medHx as string)                 ?? null,
+    familyHx:                 (clinicalData.familyHx as string)              ?? null,
+    socialHx:                 (clinicalData.socialHx as string)              ?? null,
+    allergiesIntolerances:    (clinicalData.allergiesIntolerances as string) ?? null,
+    medicalDevices:           (clinicalData.medicalDevices as string)         ?? null,
+    medications:              (clinicalData.medications as string)           ?? null,
+    temp:                     (clinicalData.temp as string)                  ?? null,
+    hr:                       (clinicalData.hr as string)                    ?? null,
+    spo2:                     (clinicalData.spo2 as string)                  ?? null,
+    bp:                       (clinicalData.bp as string)                    ?? null,
+    rr:                       (clinicalData.rr as string)                    ?? null,
+    temples:                  (clinicalData.temples as string)               ?? null,
+    clavicles:                (clinicalData.clavicles as string)             ?? null,
+    shoulders:                (clinicalData.shoulders as string)             ?? null,
+    scapula:                  (clinicalData.scapula as string)               ?? null,
+    interosseous:             (clinicalData.interosseous as string)          ?? null,
+    thighs:                   (clinicalData.thighs as string)                ?? null,
+    calves:                   (clinicalData.calves as string)                ?? null,
+    orbital:                  (clinicalData.orbital as string)               ?? null,
+    cheek:                    (clinicalData.cheek as string)                 ?? null,
+    tricepsFat:               (clinicalData.tricepsFat as string)            ?? null,
+    midAxillary:              (clinicalData.midAxillary as string)           ?? null,
+    pittingEdema:             (clinicalData.pittingEdema as string)          ?? null,
+    pedalEdema:               (clinicalData.pedalEdema as string)            ?? null,
+    ascites:                  (clinicalData.ascites as string)               ?? null,
+    gripStrength:             (clinicalData.gripStrength as string)          ?? null,
+    giDistress:               (clinicalData.giDistress as string)            ?? null,
+    chewing:                  (clinicalData.chewing as string)               ?? null,
+    swallowing:               (clinicalData.swallowing as string)            ?? null,
+    imaging_smi:              (clinicalData.imaging_smi as string)           ?? null,
+    tempMax:                  (clinicalData.tempMax as string)               ?? null,
+    ve:                       (clinicalData.ve as string)                    ?? null,
+    fev1:                     (clinicalData.fev1 as string)                  ?? null,
+    tbsa:                     (clinicalData.tbsa as string)                  ?? null,
+    clinicalNotes:            (clinicalData.clinicalNotes as string)         ?? null,
+
+    // Dietary domain (from note.dietary JSON)
+    dietOrderCurrent:         (dietaryData.dietOrder as string)              ?? null,
+    oralCalories:             (dietaryData.oralCalories as string)           ?? null,
+    oralProtein:              (dietaryData.oralProtein as string)            ?? null,
+    oralWater:                (dietaryData.oralWater as string)              ?? null,
+    fluidIntake:              (dietaryData.fluidIntake as string)            ?? null,
+    mealPatterns:             (dietaryData.mealPatterns as string)           ?? null,
+    eeiPercent:               (dietaryData.eeiPercent as string)             ?? null,
+    eeiTimeframe:             (dietaryData.eeiTimeframe as string)           ?? null,
+    herbalCAM:                (dietaryData.herbalCAM as string)              ?? null,
+    supplements:              (dietaryData.supplements as string)            ?? null,
+    understanding:            (dietaryData.understanding as string)          ?? null,
+    readiness:                (dietaryData.readiness as string)              ?? null,
+    foodSecurity:             (dietaryData.foodSecurity as string)           ?? null,
+    physicalLevel:            (dietaryData.physicalLevel as string)          ?? null,
+    adls:                     (dietaryData.adls as string)                   ?? null,
+
+    // Diagnosis (from note.diagnosis JSON)
+    problem:                  (diagnosisData.problem as string)              ?? null,
+    etiology:                 (diagnosisData.etiology as string)             ?? null,
+    signsSymptoms:            (diagnosisData.signsSymptoms as string)        ?? null,
+    nutritionDxNarrative:     (diagnosisData.nutritionDxNarrative as string) ?? null,
+    priorityRanking:          (diagnosisData.priorityRanking as string)      ?? null,
+
+    // Intervention (from note.intervention JSON)
+    goalStatement:            (interventionData.goalStatement as string)     ?? null,
+    interventionNotes:        (interventionData.interventionNotes as string) ?? null,
+
+    // Monitor & Evaluate (from note.monitor_evaluate JSON)
+    monitorFrequency:         (meData.monitorFrequency as string)            ?? null,
+    monitoredBy:              (meData.monitoredBy as string)                 ?? null,
+    outcome_progress:         (meData.outcome_progress as string)            ?? null,
+    dischargeRecs:            (meData.dischargeRecs as string)               ?? null,
+    meNotes:                  (meData.meNotes as string)                     ?? null,
+
+    // Keep legacy diagnosis key for the special-case handler below
     diagnosis:      note.diagnosis,
   };
 

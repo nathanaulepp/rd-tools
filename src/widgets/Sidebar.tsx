@@ -44,7 +44,15 @@ export default function Sidebar({
   onSubmitClick,
   onExitRequest,
 }: SidebarProps) {
-  const { activeDomain, activeSubDomain, setActiveDomain, setActiveSubDomain, sidebarOpen, setSidebarOpen } = useUIStore();
+  const { 
+    activeDomain, 
+    activeSubDomain, 
+    setActiveDomain, 
+    setActiveSubDomain, 
+    sidebarOpen, 
+    setSidebarOpen,
+    setCurrentView 
+  } = useUIStore();
   const noteStatus = useNoteStore((s) => s.noteStatus);
   const calculatedMetrics = useCalculatedMetrics();
 
@@ -178,7 +186,7 @@ export default function Sidebar({
           />
         ))}
 
-        {/* Submit / Exit controls */}
+        {/* Submit / Exit / Settings controls */}
         <div
           style={{
             margin: "1rem 0.75rem 0.5rem",
@@ -221,23 +229,42 @@ export default function Sidebar({
             </button>
           )}
 
-          <button
-            onClick={onExitRequest}
-            style={{
-              width: "100%",
-              marginTop: "0.75rem",
-              padding: "0.6rem",
-              background: "rgba(255,255,255,0.1)",
-              color: "#fff",
-              border: "1px solid rgba(255,255,255,0.2)",
-              borderRadius: "8px",
-              fontSize: "0.8rem",
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            ⚙ App Settings
-          </button>
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.75rem" }}>
+            <button
+              onClick={() => setCurrentView("SETTINGS")}
+              title="App Settings"
+              style={{
+                flex: 1,
+                padding: "0.6rem",
+                background: "rgba(255,255,255,0.1)",
+                color: "#fff",
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: "8px",
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              ⚙ Settings
+            </button>
+            <button
+              onClick={onExitRequest}
+              title="Exit Note"
+              style={{
+                flex: 1,
+                padding: "0.6rem",
+                background: "rgba(255,255,255,0.1)",
+                color: "#fff",
+                border: "1px solid rgba(255,255,255,0.2)",
+                borderRadius: "8px",
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Exit Note
+            </button>
+          </div>
         </div>
       </div>
     </nav>

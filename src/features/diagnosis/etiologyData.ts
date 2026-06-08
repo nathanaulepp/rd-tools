@@ -101,11 +101,11 @@ export function validatePES(diagnosisData: any): string[] {
   const errors: string[] = [];
   if (!diagnosisData) return errors;
 
-  const check = (problem: string, etiology: string, label: string) => {
+  const check = (problem: string, etiology: string, signs: string, label: string) => {
     if (!problem) return; // Skip if no diagnosis entered
-    const trimmed = etiology.trim();
+    const trimmedEtiology = etiology.trim();
     
-    if (!trimmed) {
+    if (!trimmedEtiology) {
       errors.push(`${label}: Missing etiology statement`);
       return;
     }
@@ -113,7 +113,7 @@ export function validatePES(diagnosisData: any): string[] {
     // This regex captures:
     // Group 1: Everything before the last parentheses
     // Group 2: The content inside the LAST parentheses at the end of the string
-    const match = trimmed.match(/^(.*)\s*\(([^)]+)\)$/);
+    const match = trimmedEtiology.match(/^(.*)\s*\(([^)]+)\)$/);
     
     if (!match) {
       errors.push(`${label}: Etiology statement is missing a category domain in parentheses at the end.`);
@@ -124,13 +124,17 @@ export function validatePES(diagnosisData: any): string[] {
     if (!ETIOLOGY_DOMAINS.includes(category)) {
       errors.push(`${label}: "${category}" is not a recognized etiology domain.`);
     }
+
+    if (!signs.trim()) {
+      errors.push(`${label}: Missing signs & symptoms (S)`);
+    }
   };
 
-  check(diagnosisData.problem, diagnosisData.etiology || "", "Primary Diagnosis");
+  check(diagnosisData.problem, diagnosisData.etiology || "", diagnosisData.signsSymptoms || "", "Primary Diagnosis");
 
   if (Array.isArray(diagnosisData.additionalDiagnoses)) {
     diagnosisData.additionalDiagnoses.forEach((dx: any, i: number) => {
-      check(dx.problem, dx.etiology || "", `Additional Diagnosis ${i + 1}`);
+      check(dx.problem, dx.etiology || "", dx.signsSymptoms || "", `Additional Diagnosis ${i + 1}`);
     });
   }
 
