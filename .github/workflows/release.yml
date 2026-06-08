@@ -44,6 +44,6 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'RD-Tools Prototype ${{ github.ref_name }}'
-          releaseBody: 'Prototype build for colleague feedback and testing. Expect bugs!'
+          releaseBody: 'This is a prototype release of RD-Tools. It is intended for testing and feedback purposes only. Please do not use this release in production environments.'
           releaseDraft: false
           prerelease: true # Marks it explicitly as a pre-release/prototype in GitHub
