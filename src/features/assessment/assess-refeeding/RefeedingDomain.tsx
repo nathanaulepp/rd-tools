@@ -43,7 +43,11 @@ export default function RefeedingDomain() {
 
   // ── C1: BMI ──────────────────────────────────────────────────────────────
   const bmiNum     = parseFloat(metrics.bmi) || 0;
-  const c1Auto: RiskLevel = scoreBMI(bmiNum);
+  const c1Auto: RiskLevel = scoreBMI({
+    bmiNum,
+    isPediatric: metrics.isPediatric,
+    bmiZ: metrics.bmiZ
+  });
   const c1Risk: RiskLevel = screen.c1_override ? screen.c1_manualRisk : c1Auto;
 
   // ── C2: Weight Loss ───────────────────────────────────────────────────────
@@ -63,16 +67,35 @@ export default function RefeedingDomain() {
   // We pass the derived values down to C2 which reads noteDate from noteStore directly
   const c2AutoRisk: RiskLevel = (() => {
     if (screen.c2_source === "na") return "none";
+    if (metrics.isPediatric) {
+      // For pediatric auto-calculation, we currently don't have automated "expected weight gain" math
+      // derived here. If we have derivedWt from adult UBW logic, it's not applicable.
+      // So for pediatric auto, we default to none or unavailable unless we add the math.
+      return "none"; 
+    }
     if (screen.c2_source === "manual") {
       const pct  = parseFloat(screen.c2_manualPct) || 0;
       const days = parseFloat(screen.c2_manualDays) || 0;
-      return scoreWeightLoss(pct, days);
+      return scoreWeightLoss({ pct, days, isPediatric: false });
     }
     // auto
     if (!derivedWt) return "none";
-    return scoreWeightLoss(derivedWt.pct, derivedWt.days);
+    return scoreWeightLoss({ pct: derivedWt.pct, days: derivedWt.days, isPediatric: false });
   })();
-  const c2Risk: RiskLevel = screen.c2_override ? screen.c2_manualRisk : c2AutoRisk;
+
+  // Pediatric Manual Risk Calculation (if pediatric + manual)
+  const c2PediatricManualRisk: RiskLevel = metrics.isPediatric && screen.c2_source === "manual"
+    ? scoreWeightLoss({
+        isPediatric: true,
+        pediatricExpectedGainPct: parseFloat(screen.c2_manualPct) || 0
+      })
+    : "none";
+
+  const c2Risk: RiskLevel = screen.c2_override 
+    ? screen.c2_manualRisk 
+    : (metrics.isPediatric && screen.c2_source === "manual") 
+      ? c2PediatricManualRisk 
+      : c2AutoRisk;
 
   // ── C3: Energy Intake ─────────────────────────────────────────────────────
   const c3AutoRisk: RiskLevel = (() => {
@@ -110,7 +133,8 @@ export default function RefeedingDomain() {
   const c6Risk: RiskLevel = screen.c6_override ? screen.c6_manualRisk : c6Auto;
 
   // ── C7: Comorbidities ─────────────────────────────────────────────────────
-  const c7Risk: RiskLevel = scoreComorbidities(screen.c7_selected);
+  const c7Auto: RiskLevel = scoreComorbidities(screen.c7_selected);
+  const c7Risk: RiskLevel = screen.c7_override ? screen.c7_manualRisk : c7Auto;
 
   // ── Overall ───────────────────────────────────────────────────────────────
   const criteria: CriterionResult[] = [
@@ -120,7 +144,7 @@ export default function RefeedingDomain() {
     { label: "Electrolytes",    risk: c4Risk, source: "clinical_judgment" },
     { label: "Fat Loss",        risk: c5Risk, source: screen.c5_override ? "manual" : "auto" },
     { label: "Muscle Loss",     risk: c6Risk, source: screen.c6_override ? "manual" : "auto" },
-    { label: "Comorbidities",   risk: c7Risk, source: "clinical_judgment" },
+    { label: "Comorbidities",   risk: c7Risk, source: screen.c7_override ? "manual" : "clinical_judgment" },
   ];
 
   const overall = computeOverallRisk(criteria);
@@ -144,7 +168,7 @@ export default function RefeedingDomain() {
       </div>
 
       {/* Criterion cards */}
-      <C1_BMI   bmiNum={bmiNum} computedRisk={c1Risk} />
+      <C1_BMI   bmiNum={bmiNum} isPediatric={metrics.isPediatric} bmiZ={metrics.bmiZ} computedRisk={c1Risk} />
       <C2_WeightLoss computedRisk={c2Risk} />
       <C3_EnergyIntake  computedRisk={c3Risk} eeiPctFromDietary={dietary.eeiPercent} eeiDaysFromDietary={dietary.eeiTimeframe} />
       <C4_Electrolytes />
@@ -155,6 +179,19 @@ export default function RefeedingDomain() {
       {/* Summary + Recommendations */}
       <RefeedingResult overall={overall} criteria={criteria} />
       <RefeedingRecommendations overall={overall} />
+
+      {/* Citation Footnote */}
+      <footer style={{
+        marginTop: "1.5rem",
+        paddingTop: "0.75rem",
+        borderTop: "1px solid var(--border)",
+        fontSize: "0.65rem",
+        color: "#a0aec0",
+        lineHeight: "1.4",
+        fontStyle: "italic"
+      }}>
+        da Silva, J. S. V., Seres, D. S., Sabino, K., Adams, S. C., Berdahl, G. J., Citty, S. W., Cober, M. P., Evans, D. C., Greaves, J. R., Gura, K. M., Michalski, A., Plogsted, S., Sacks, G. S., Tucker, A. M., Worthington, P., Walker, R. N., Ayers, P., & Parenteral Nutrition Safety and Clinical Practice Committees, American Society for Parenteral and Enteral Nutrition (2020). ASPEN Consensus Recommendations for Refeeding Syndrome. Nutrition in clinical practice : official publication of the American Society for Parenteral and Enteral Nutrition, 35(2), 178–195. https://doi.org/10.1002/ncp.10474
+      </footer>
     </div>
   );
 }

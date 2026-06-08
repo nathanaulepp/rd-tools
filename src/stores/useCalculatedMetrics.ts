@@ -81,6 +81,8 @@ export function cToF(c: number): number {
 export interface CalculatedMetrics {
   // Derived identity
   bmi: string;
+  /** Pediatric BMI-for-age or weight-for-length z-score. Null for adults or indeterminate. */
+  bmiZ: number | null;
   ibw: number;
   adjIbw: number | null;
   ageDays: number | null;
@@ -192,6 +194,20 @@ export function useCalculatedMetrics(): CalculatedMetrics {
   const isAdult = ageDays !== null && ageDays >= 6570; // 18 * 365.25 ≈ 6570
   const isPediatric = !isAdult;
 
+  // ── Pediatric Weight Status / BMI Z-score ──────────────────────────────────
+  let bmiZ: number | null = null;
+  if (isPediatric && ageDays !== null && ageDays > 0) {
+    const bmiNum = parseFloat(bmi) || 0;
+    if (bmiNum > 0) {
+      const weightStatus = classifyPediatricWeightStatus({
+        ageDays,
+        bmi: bmiNum,
+        sex,
+      });
+      bmiZ = weightStatus.zScore;
+    }
+  }
+
   const standards = useStandardsStore((s) => s.standards);
   const condition = standards.condition;
   const variant = standards.variant;
@@ -288,6 +304,7 @@ export function useCalculatedMetrics(): CalculatedMetrics {
 
   return {
     bmi,
+    bmiZ,
     ibw: ibwKg,
     adjIbw,
     ageDays,

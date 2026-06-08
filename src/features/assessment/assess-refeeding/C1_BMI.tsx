@@ -6,15 +6,17 @@ import { CriterionCard } from "./CriterionCard";
 
 interface Props {
   bmiNum: number;
-  autoRisk: RiskLevel;   // ← add this back
+  isPediatric: boolean;
+  bmiZ: number | null;
   computedRisk: RiskLevel;
 }
 
-export function C1_BMI({ bmiNum, computedRisk }: Props) {
+export function C1_BMI({ bmiNum, isPediatric, bmiZ, computedRisk }: Props) {
   const { refeedingScreen: s, setRefeedingScreen } = useRefeedingStore();
 
   const hasBMI = bmiNum > 0;
   const displayBMI = hasBMI ? bmiNum.toFixed(1) : "—";
+  const displayZ = bmiZ !== null ? bmiZ.toFixed(2) : "—";
 
   return (
     <CriterionCard
@@ -35,9 +37,28 @@ export function C1_BMI({ bmiNum, computedRisk }: Props) {
             {displayBMI} <span style={{ fontSize: "0.7rem", fontWeight: 400 }}>kg/m²</span>
           </span>
         </div>
+
+        {isPediatric && (
+          <div style={statBox}>
+            <span style={statLabel}>BMI Z-Score</span>
+            <span style={{ ...statValue, color: bmiZ !== null ? "#9b59b6" : "#a0aec0" }}>
+              {displayZ}
+            </span>
+          </div>
+        )}
+
         <div style={thresholdBox}>
-          <span style={threshLine}><span style={{ color: "#e74c3c", fontWeight: 700 }}>Significant:</span> &lt;16 kg/m²</span>
-          <span style={threshLine}><span style={{ color: "#da7f2b", fontWeight: 700 }}>Moderate:</span> 16–18.5 kg/m²</span>
+          {isPediatric ? (
+            <>
+              <span style={threshLine}><span style={{ color: "#e74c3c", fontWeight: 700 }}>Significant:</span> z-score &lt; -3</span>
+              <span style={threshLine}><span style={{ color: "#da7f2b", fontWeight: 700 }}>Moderate:</span> z-score -2 to -3</span>
+            </>
+          ) : (
+            <>
+              <span style={threshLine}><span style={{ color: "#e74c3c", fontWeight: 700 }}>Significant:</span> &lt;16 kg/m²</span>
+              <span style={threshLine}><span style={{ color: "#da7f2b", fontWeight: 700 }}>Moderate:</span> 16–18.5 kg/m²</span>
+            </>
+          )}
         </div>
       </div>
 

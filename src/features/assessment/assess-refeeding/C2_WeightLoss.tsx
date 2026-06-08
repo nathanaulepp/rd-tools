@@ -45,7 +45,12 @@ export function C2_WeightLoss({ computedRisk }: Props) {
   const manualDays = parseFloat(s.c2_manualDays) || 0;
   const manualCalc: RiskLevel =
     s.c2_source === "manual"
-      ? scoreWeightLoss(manualPct, manualDays)
+      ? scoreWeightLoss({ 
+          pct: manualPct, 
+          days: manualDays, 
+          isPediatric: metrics.isPediatric,
+          pediatricExpectedGainPct: manualPct 
+        })
       : "none";
 
   const setSource = (v: WtLossSource) => setRefeedingScreen({ c2_source: v });
@@ -63,28 +68,32 @@ export function C2_WeightLoss({ computedRisk }: Props) {
     >
       {/* Source selector */}
       <div style={{ display: "flex", gap: "5px", marginBottom: "0.6rem", flexWrap: "wrap" }}>
-        {(["auto", "manual", "na"] as WtLossSource[]).map((src) => (
-          <button
-            key={src}
-            onClick={() => setSource(src)}
-            style={{
-              fontSize: "0.68rem",
-              fontWeight: 700,
-              padding: "2px 10px",
-              borderRadius: "10px",
-              border: "1.5px solid #3498db",
-              background: s.c2_source === src ? "#3498db" : "transparent",
-              color: s.c2_source === src ? "#fff" : "#3498db",
-              cursor: "pointer",
-            }}
-          >
-            {src === "auto" ? "Auto (from UBW)" : src === "manual" ? "Manual entry" : "No UBW available"}
-          </button>
-        ))}
+        {(["auto", "manual", "na"] as WtLossSource[]).map((src) => {
+          // Hide "auto" for pediatric since we don't have automated expected gain math yet
+          if (src === "auto" && metrics.isPediatric) return null;
+          return (
+            <button
+              key={src}
+              onClick={() => setSource(src)}
+              style={{
+                fontSize: "0.68rem",
+                fontWeight: 700,
+                padding: "2px 10px",
+                borderRadius: "10px",
+                border: "1.5px solid #3498db",
+                background: s.c2_source === src ? "#3498db" : "transparent",
+                color: s.c2_source === src ? "#fff" : "#3498db",
+                cursor: "pointer",
+              }}
+            >
+              {src === "auto" ? "Auto (from UBW)" : src === "manual" ? "Manual entry" : "No UBW available"}
+            </button>
+          );
+        })}
       </div>
 
-      {/* Auto mode */}
-      {s.c2_source === "auto" && (
+      {/* Auto mode (Adult only for now) */}
+      {s.c2_source === "auto" && !metrics.isPediatric && (
         <div>
           {derived ? (
             <div style={{ display: "flex", gap: "1.25rem", flexWrap: "wrap", alignItems: "flex-start" }}>
@@ -104,7 +113,7 @@ export function C2_WeightLoss({ computedRisk }: Props) {
                 : "Unable to calculate weight loss."}
             </InfoBox>
           )}
-          <ThresholdTable />
+          <ThresholdTable isPediatric={false} />
         </div>
       )}
 
@@ -112,31 +121,50 @@ export function C2_WeightLoss({ computedRisk }: Props) {
       {s.c2_source === "manual" && (
         <div>
           <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap", marginBottom: "0.5rem" }}>
-            <div style={fieldWrap}>
-              <label style={fieldLabel}>% Weight Lost</label>
-              <input
-                type="number"
-                min="0"
-                step="0.1"
-                value={s.c2_manualPct}
-                onChange={(e) => setRefeedingScreen({ c2_manualPct: e.target.value })}
-                placeholder="e.g. 6.5"
-                style={numInput}
-              />
-            </div>
-            <div style={fieldWrap}>
-              <label style={fieldLabel}>Days</label>
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={s.c2_manualDays}
-                onChange={(e) => setRefeedingScreen({ c2_manualDays: e.target.value })}
-                placeholder="e.g. 45"
-                style={numInput}
-              />
-            </div>
-            {manualPct > 0 && manualDays > 0 && (
+            {metrics.isPediatric ? (
+              <div style={fieldWrap}>
+                <label style={fieldLabel}>% Expected Weight Gain Achieved</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="500"
+                  step="1"
+                  value={s.c2_manualPct}
+                  onChange={(e) => setRefeedingScreen({ c2_manualPct: e.target.value })}
+                  placeholder="e.g. 40"
+                  style={{ ...numInput, width: "180px" }}
+                />
+              </div>
+            ) : (
+              <>
+                <div style={fieldWrap}>
+                  <label style={fieldLabel}>% Weight Lost</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.1"
+                    value={s.c2_manualPct}
+                    onChange={(e) => setRefeedingScreen({ c2_manualPct: e.target.value })}
+                    placeholder="e.g. 6.5"
+                    style={numInput}
+                  />
+                </div>
+                <div style={fieldWrap}>
+                  <label style={fieldLabel}>Days</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={s.c2_manualDays}
+                    onChange={(e) => setRefeedingScreen({ c2_manualDays: e.target.value })}
+                    placeholder="e.g. 45"
+                    style={numInput}
+                  />
+                </div>
+              </>
+            )}
+            
+            {manualPct > 0 && (metrics.isPediatric || manualDays > 0) && (
               <StatChip
                 label="Auto Score"
                 value={manualCalc === "none" ? "Not Met" : manualCalc === "moderate" ? "Moderate" : "Significant"}
@@ -144,14 +172,16 @@ export function C2_WeightLoss({ computedRisk }: Props) {
               />
             )}
           </div>
-          <ThresholdTable />
+          <ThresholdTable isPediatric={metrics.isPediatric} />
         </div>
       )}
 
-      {/* NA mode */}
-      {s.c2_source === "na" && (
+      {/* NA mode or fallback */}
+      {(s.c2_source === "na" || (s.c2_source === "auto" && metrics.isPediatric)) && (
         <InfoBox color="#9b59b6">
-          No UBW available within 6 months. Criterion cannot be automatically assessed — use clinical judgment.
+          {metrics.isPediatric 
+            ? "Pediatric weight gain thresholds require manual entry of '% of expected weight gain achieved'."
+            : "No UBW available within 6 months. Criterion cannot be automatically assessed — use clinical judgment."}
         </InfoBox>
       )}
     </CriterionCard>
@@ -159,17 +189,25 @@ export function C2_WeightLoss({ computedRisk }: Props) {
 }
 
 // ── Threshold reference table ─────────────────────────────────────────────────
-function ThresholdTable() {
+function ThresholdTable({ isPediatric }: { isPediatric: boolean }) {
+  const lines = isPediatric 
+    ? [
+        { color: "#3498db", text: "Mild: < 75% of normal for expected weight gain" },
+        { color: "#da7f2b", text: "Moderate: < 50% of normal for expected weight gain" },
+        { color: "#e74c3c", text: "Significant: < 25% of normal for expected weight gain" },
+      ]
+    : [
+        { color: "#da7f2b", text: "Moderate: ≥ 5% in ≤ 30 days" },
+        { color: "#e74c3c", text: "Significant: ≥ 7.5% in ≤ 90 days (3 months)" },
+        { color: "#e74c3c", text: "Significant: > 10% in ≤ 183 days (6 months)" },
+        { color: "#e74c3c", text: "Significant: Linear zone — 7.5% (day 90) scaling to 10% (day 183)" },
+      ];
+
   return (
     <div style={{ marginTop: "0.5rem" }}>
       <div style={{ fontSize: "0.68rem", fontWeight: 700, color: "#718096", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.04em" }}>Threshold Reference</div>
       <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-        {[
-          { color: "#da7f2b", text: "Moderate: ≥ 5% in ≤ 30 days" },
-          { color: "#e74c3c", text: "Significant: ≥ 7.5% in ≤ 90 days (3 months)" },
-          { color: "#e74c3c", text: "Significant: > 10% in ≤ 183 days (6 months)" },
-          { color: "#e74c3c", text: "Significant: Linear zone — 7.5% (day 90) scaling to 10% (day 183)" },
-        ].map((t, i) => (
+        {lines.map((t, i) => (
           <div key={i} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <span style={{ width: "8px", height: "8px", borderRadius: "50%", background: t.color, flexShrink: 0 }} />
             <span style={{ fontSize: "0.71rem", color: "#4a5568" }}>{t.text}</span>

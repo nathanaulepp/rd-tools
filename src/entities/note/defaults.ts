@@ -192,6 +192,8 @@ export const defaultRefeedingScreen: RefeedingScreen = {
  
   // C7 — Comorbidities
   c7_selected: [],
+  c7_override: false,
+  c7_manualRisk: "none",
  
   // Meta
   screenNotes: "",

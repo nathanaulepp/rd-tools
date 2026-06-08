@@ -67,6 +67,8 @@ export interface RefeedingScreen {
 
   // Criterion 7: Comorbidities (always clinical judgment)
   c7_selected: string[]; // selected comorbidity labels
+  c7_override: boolean;
+  c7_manualRisk: RiskLevel;
 
   // Clinician notes
   screenNotes: string;

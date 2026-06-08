@@ -10,12 +10,29 @@ import type { RiskLevel, ElectrolyteCriterion } from "../../types/refeedingScree
 
 /**
  * BMI criterion:
- *   16–18.5 kg/m²  → moderate
- *   < 16 kg/m²     → significant
- *   otherwise       → none
+ *   Adult:
+ *     16–18.5 kg/m²  → moderate
+ *     < 16 kg/m²     → significant
+ *   Pediatric:
+ *     z-score -2 to -3 → moderate
+ *     z-score < -3     → significant
  */
-export function scoreBMI(bmiNum: number): RiskLevel {
+export function scoreBMI(opts: {
+  bmiNum: number;
+  isPediatric: boolean;
+  bmiZ: number | null;
+}): RiskLevel {
+  const { bmiNum, isPediatric, bmiZ } = opts;
   if (bmiNum <= 0 || isNaN(bmiNum)) return "none";
+
+  if (isPediatric) {
+    if (bmiZ === null) return "none";
+    if (bmiZ < -3) return "significant";
+    if (bmiZ <= -2) return "moderate";
+    return "none";
+  }
+
+  // Adult
   if (bmiNum < 16) return "significant";
   if (bmiNum <= 18.5) return "moderate";
   return "none";
@@ -26,23 +43,32 @@ export function scoreBMI(bmiNum: number): RiskLevel {
 /**
  * Weight loss piecewise criterion:
  *
- *   Moderate (2 criteria needed for moderate overall risk):
- *     ≥ 5% in ≤ 30 days
- *
- *   Significant (1 criterion needed for significant overall risk):
- *     ≥ 7.5% in ≤ 90 days  (≤ 3 months)
- *     OR > 10% in ≤ 183 days (≤ 6 months)
- *     OR on the linear interpolation line: f(day) from (90, 7.5%) to (183, 10%)
- *        → slope = (10 - 7.5) / (183 - 90) = 2.5 / 93
- *        → f(d) = 7.5 + (d - 90) * (2.5 / 93)
- *        For days 91–183: ≥ f(d) → significant
- *
- * @param pct     Percent weight lost (positive number, e.g. 8.2 for 8.2%)
- * @param days    Days over which the loss occurred
- * @returns       RiskLevel
+ *   Adult:
+ *     Moderate: ≥ 5% in ≤ 30 days
+ *     Significant: ≥ 7.5% in ≤ 90 days, > 10% in ≤ 183 days, or linear scaling
+ * 
+ *   Pediatric:
+ *     Moderate: < 50% of normal for expected weight gain
+ *     Significant: < 25% of normal for expected weight gain
  */
-export function scoreWeightLoss(pct: number, days: number): RiskLevel {
-  if (pct <= 0 || days <= 0 || isNaN(pct) || isNaN(days)) return "none";
+export function scoreWeightLoss(opts: {
+  pct?: number; // Adult: % lost
+  days?: number; // Adult: days
+  isPediatric: boolean;
+  pediatricExpectedGainPct?: number; // Pediatric: % achieved
+}): RiskLevel {
+  const { pct, days, isPediatric, pediatricExpectedGainPct } = opts;
+
+  if (isPediatric) {
+    if (pediatricExpectedGainPct === undefined || isNaN(pediatricExpectedGainPct)) return "none";
+    if (pediatricExpectedGainPct < 25) return "significant";
+    if (pediatricExpectedGainPct < 50) return "moderate";
+    // Mild (< 75%) is not met for moderate/significant system
+    return "none";
+  }
+
+  // Adult logic
+  if (!pct || !days || isNaN(pct) || isNaN(days)) return "none";
 
   // -- SIGNIFICANT checks --
 
@@ -50,17 +76,15 @@ export function scoreWeightLoss(pct: number, days: number): RiskLevel {
   if (days <= 90 && pct >= 7.5) return "significant";
 
   // Linear interpolation zone: days 91–183
-  // f(d) = 7.5 + (d - 90) * (2.5 / 93)  
   if (days > 90 && days <= 183) {
     const threshold = 7.5 + (days - 90) * (2.5 / 93);
     if (pct >= threshold) return "significant";
   }
 
-  // > 10% in ≤ 183 days (catches anything in or beyond the interpolation zone)
+  // > 10% in ≤ 183 days
   if (days <= 183 && pct > 10) return "significant";
 
   // -- MODERATE check --
-  // ≥ 5% in ≤ 30 days
   if (days <= 30 && pct >= 5) return "moderate";
 
   return "none";

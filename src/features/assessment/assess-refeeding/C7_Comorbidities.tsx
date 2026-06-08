@@ -24,7 +24,10 @@ const COMORBIDITIES = [
 
 export function C7_Comorbidities() {
   const { refeedingScreen: s, setRefeedingScreen } = useRefeedingStore();
-  const computedRisk = scoreComorbidities(s.c7_selected);
+  
+  // Compute risk taking the manual override into account
+  const autoRisk = scoreComorbidities(s.c7_selected);
+  const computedRisk = s.c7_override ? s.c7_manualRisk : autoRisk;
 
   const toggle = (label: string) => {
     const already = s.c7_selected.includes(label);
@@ -40,10 +43,14 @@ export function C7_Comorbidities() {
       number={7}
       label="Comorbidities"
       computedRisk={computedRisk}
+      override={s.c7_override}
+      manualRisk={s.c7_manualRisk}
+      onToggleOverride={(v) => setRefeedingScreen({ c7_override: v })}
+      onManualRiskChange={(v) => setRefeedingScreen({ c7_manualRisk: v })}
       sourceTag="clinical_judgment"
     >
       <div style={{ fontSize: "0.72rem", color: "#718096", marginBottom: "0.5rem" }}>
-        Select all applicable comorbidities. All listed conditions appear in both the Moderate Disease and Severe Disease columns of the ASPEN table. Presence of any condition scores as <b>Significant Risk</b>.
+        Select all applicable comorbidities. All listed conditions appear in both the Moderate Disease and Severe Disease columns of the ASPEN table. By default, this scores as <b>Significant Risk</b>, but you can override this to Moderate based on clinical judgment.
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: "3px", width: "100%", minWidth: 0 }}>
@@ -86,8 +93,13 @@ export function C7_Comorbidities() {
       </div>
 
       {s.c7_selected.length > 0 && (
-        <div style={{ marginTop: "0.5rem", fontSize: "0.72rem", color: "#e74c3c", fontWeight: 600 }}>
-          {s.c7_selected.length} comorbiditi{s.c7_selected.length > 1 ? "es" : "y"} selected → Significant Risk
+        <div style={{ 
+          marginTop: "0.5rem", 
+          fontSize: "0.72rem", 
+          color: computedRisk === "significant" ? "#e74c3c" : computedRisk === "moderate" ? "#da7f2b" : "#27ae60", 
+          fontWeight: 600 
+        }}>
+          {s.c7_selected.length} comorbiditi{s.c7_selected.length > 1 ? "es" : "y"} selected → {computedRisk === "none" ? "Not Met" : computedRisk === "moderate" ? "Moderate Risk" : "Significant Risk"}
         </div>
       )}
     </CriterionCard>
