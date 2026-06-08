@@ -719,7 +719,7 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
         parent_note_id, anthro, labs, clinical, dietary, dexa_scans,
         diagnosis, intervention, monitor_evaluate, standards,
         refeeding_screen, created_at, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       revision.id, revision.patient_id, revision.encounter_id, revision.note_date, revision.admission_date,
       revision.status, revision.version, revision.parent_note_id,
