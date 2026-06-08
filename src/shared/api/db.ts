@@ -72,6 +72,7 @@ async function initSchema(db: Database): Promise<void> {
     { name: "intervention",     type: "TEXT" },
     { name: "monitor_evaluate", type: "TEXT" },
     { name: "standards",        type: "TEXT" },
+    { name: "refeeding_screen", type: "TEXT" },
   ];
 
   for (const col of newColumns) {
@@ -205,6 +206,7 @@ export interface Note {
   intervention: string | null;
   monitor_evaluate: string | null;
   standards: string | null;
+  refeeding_screen: string | null;
   created_at: string;
   submitted_at: string | null;
 }
@@ -337,6 +339,7 @@ export async function createNote(payload: {
     intervention:     null,
     monitor_evaluate: null,
     standards:        null,
+    refeeding_screen: null,
     created_at:       new Date().toISOString(),
     submitted_at:     null,
   };
@@ -369,7 +372,7 @@ export async function autosaveNote(
   domain:
     | "anthro" | "labs" | "clinical" | "dietary" | "dexa_scans"
     | "diagnosis" | "intervention" | "monitor_evaluate" | "standards"
-    | "note_date" | "admission_date",
+    | "refeeding_screen" | "note_date" | "admission_date",
   data: object | string
 ): Promise<void> {
   const db = await getDb();
@@ -377,6 +380,7 @@ export async function autosaveNote(
   const jsonDomains = [
     "anthro", "labs", "clinical", "dietary", "dexa_scans",
     "diagnosis", "intervention", "monitor_evaluate", "standards",
+    "refeeding_screen"
   ];
   const value = jsonDomains.includes(domain)
     ? JSON.stringify(data)
@@ -588,6 +592,7 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
     intervention:     original.intervention,
     monitor_evaluate: original.monitor_evaluate,
     standards:        original.standards,
+    refeeding_screen: original.refeeding_screen,
     created_at:       new Date().toISOString(),
     submitted_at:     null,
   };
@@ -597,14 +602,14 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
        (id, patient_id, encounter_id, note_date, admission_date, status, version,
         parent_note_id, anthro, labs, clinical, dietary, dexa_scans,
         diagnosis, intervention, monitor_evaluate, standards,
-        created_at, submitted_at)
+        refeeding_screen, created_at, submitted_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       revision.id, revision.patient_id, revision.encounter_id, revision.note_date, revision.admission_date,
       revision.status, revision.version, revision.parent_note_id,
       revision.anthro, revision.labs, revision.clinical, revision.dietary, revision.dexa_scans,
       revision.diagnosis, revision.intervention, revision.monitor_evaluate, revision.standards,
-      revision.created_at, revision.submitted_at,
+      revision.refeeding_screen, revision.created_at, revision.submitted_at,
     ]
   );
 

@@ -12,9 +12,10 @@ import {
   ASSESSMENT_CATEGORIES,
   BIOCHEMICAL_CATEGORIES,
   CLINICAL_CATEGORIES,
+  REFEEDING_CATEGORIES
 } from "../shared/constants/adimeSideBarCategories";
 
-export type DomainKey = "A" | "B" | "C" | "D" | "S" | "Dx" | "I" | "ME";
+export type DomainKey = "A" | "B" | "C" | "D" | "S" | "Dx" | "I" | "ME" | "RF";
 
 const DOMAIN_LABELS: Record<DomainKey, string> = {
   A:  "Anthropometrics",
@@ -22,6 +23,7 @@ const DOMAIN_LABELS: Record<DomainKey, string> = {
   C:  "Clinical",
   D:  "Dietary",
   S:  "Nutrition Standards",
+  RF: "Refeeding Screen",
   Dx: "Nutrition Diagnosis",
   I:  "Intervention",
   ME: "Monitor & Evaluate",
@@ -155,6 +157,13 @@ export default function Sidebar({
           label="Comparative Standards"
           active={activeDomain === "S"}
           onClick={() => handleDomainClick("S")}
+        />
+
+        {/* RF — Refeeding Screen */}
+        <NavItem
+          label="RF. Refeeding Screen"
+          active={activeDomain === "RF"}
+          onClick={() => handleDomainClick("RF")}
         />
 
         {/* Diagnosis & Planning section label */}

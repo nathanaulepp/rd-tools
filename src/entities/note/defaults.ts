@@ -1,5 +1,7 @@
 // src/entities/note/defaults.ts
 import { getLocalIsoDate } from "../../shared/utils/date";
+import type { RefeedingScreen } from "../../types/refeedingScreen";
+
 import type {
   PatientData,
   Anthro,
@@ -150,4 +152,48 @@ export const defaultStandards: Standards = {
   icKcal: "", icCaf: "1.0",
   extraInputs: {},
   snapshot: null,
+};
+
+// ── refeeding defaults ────────────────────────────────────────────────────
+
+export const defaultRefeedingScreen: RefeedingScreen = {
+  // C1 — BMI (auto-populated)
+  c1_override: false,
+  c1_manualRisk: "none",
+ 
+  // C2 — Weight Loss
+  c2_source: "auto",
+  c2_manualPct: "",
+  c2_manualDays: "",
+  c2_override: false,
+  c2_manualRisk: "none",
+ 
+  // C3 — Energy Intake
+  c3_option: "",
+  c3_intakePct: "",
+  c3_intakeDays: "",
+  c3_override: false,
+  c3_manualRisk: "none",
+ 
+  // C4 — Electrolytes
+  c4_electrolytes: {
+    potassium: "none",
+    phosphorus: "none",
+    magnesium: "none",
+  },
+ 
+  // C5 — Fat Loss (auto from NFPE)
+  c5_override: false,
+  c5_manualRisk: "none",
+ 
+  // C6 — Muscle Loss (auto from NFPE)
+  c6_override: false,
+  c6_manualRisk: "none",
+ 
+  // C7 — Comorbidities
+  c7_selected: [],
+ 
+  // Meta
+  screenNotes: "",
+  screenedAt: "",
 };

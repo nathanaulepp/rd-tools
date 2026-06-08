@@ -30,3 +30,7 @@ export const DIETARY_CATEGORIES = [
   { id: "D3-D9", title: "D3–D9: Behavioral, Social & Patient Factors" },
   { id: "D8", title: "D8: Supplements & DNI" },
 ];
+
+export const REFEEDING_CATEGORIES = [
+  { id: "RF", title: "Refeeding Risk Screen" },
+];

@@ -34,6 +34,7 @@ export type AutosaveKey =
   | "dietary"
   | "dexa_scans"
   | "diagnosis"
+  | "refeeding_screen"
   | "intervention"
   | "monitor_evaluate"
   | "standards"

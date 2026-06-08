@@ -35,6 +35,7 @@ import ClinicalDomain        from "../features/assessment/assess-clinical/Clinic
 import DietaryDomain         from "../features/assessment/assess-dietary/DietaryDomain";
 import DiagnosisDomain       from "../features/diagnosis/DiagnosisDomain";
 import { processNoteEtiologies } from "../features/diagnosis/etiologyData";
+import RefeedingDomain from "../features/assessment/assess-refeeding/RefeedingDomain";
 import InterventionDomain    from "../features/intervention/InterventionDomain";
 import MonitorEvalDomain     from "../features/monitor-evalue/MonitorEvalDomain";
 import NutritionStandardsDomain from "../features/assessment/assess-standards/NutritionStandardsDomain";
@@ -184,6 +185,7 @@ export default function CreateNotePage() {
           {activeDomain === "C" && <ClinicalDomain />}
           {activeDomain === "D" && <DietaryDomain />}
           {activeDomain === "S" && <NutritionStandardsDomain />}
+          {activeDomain === "RF" && <RefeedingDomain />}
           {activeDomain === "Dx" && <DiagnosisDomain />}
           {activeDomain === "I" && <InterventionDomain />}
           {activeDomain === "ME" && <MonitorEvalDomain />}
