@@ -2,7 +2,7 @@
 // Container for the RD2B Refeeding Risk Screen.
 // Reads from multiple stores; passes no props down to children.
 
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { useRefeedingStore } from "../../../stores/useRefeedingStore";
 import { useAnthroStore } from "../../../stores/useAnthroStore";
 import { useClinicalStore } from "../../../stores/useClinicalStore";
@@ -21,7 +21,6 @@ import {
   scoreComorbidities,
   computeOverallRisk,
   riskColor,
-  riskLabel,
 } from "../../../shared/utils/refeedingScreenLogic";
 import type { CriterionResult, RiskLevel } from "../../../types/refeedingScreen";
 
@@ -145,12 +144,12 @@ export default function RefeedingDomain() {
       </div>
 
       {/* Criterion cards */}
-      <C1_BMI   bmiNum={bmiNum} autoRisk={c1Auto} computedRisk={c1Risk} />
-      <C2_WeightLoss autoRisk={c2AutoRisk} computedRisk={c2Risk} />
+      <C1_BMI   bmiNum={bmiNum} computedRisk={c1Risk} />
+      <C2_WeightLoss computedRisk={c2Risk} />
       <C3_EnergyIntake  computedRisk={c3Risk} eeiPctFromDietary={dietary.eeiPercent} eeiDaysFromDietary={dietary.eeiTimeframe} />
       <C4_Electrolytes />
-      <C5_FatLoss autoRisk={c5Auto} computedRisk={c5Risk} orbital={clinical.orbital} cheek={clinical.cheek} tricepsFat={clinical.tricepsFat} midAxillary={clinical.midAxillary} />
-      <C6_MuscleLoss autoRisk={c6Auto} computedRisk={c6Risk} temples={clinical.temples} clavicles={clinical.clavicles} shoulders={clinical.shoulders} scapula={clinical.scapula} interosseous={clinical.interosseous} thighs={clinical.thighs} calves={clinical.calves} />
+      <C5_FatLoss computedRisk={c5Risk} orbital={clinical.orbital} cheek={clinical.cheek} tricepsFat={clinical.tricepsFat} midAxillary={clinical.midAxillary} />
+      <C6_MuscleLoss computedRisk={c6Risk} temples={clinical.temples} clavicles={clinical.clavicles} shoulders={clinical.shoulders} scapula={clinical.scapula} interosseous={clinical.interosseous} thighs={clinical.thighs} calves={clinical.calves} />
       <C7_Comorbidities />
 
       {/* Summary + Recommendations */}

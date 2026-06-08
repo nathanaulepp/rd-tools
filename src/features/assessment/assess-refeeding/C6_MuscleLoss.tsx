@@ -1,5 +1,4 @@
 // src/features/assessment/assess-refeeding/C6_MuscleLoss.tsx
-import React from "react";
 import { useRefeedingStore } from "../../../stores/useRefeedingStore";
 import type { RiskLevel } from "../../../types/refeedingScreen";
 import { CriterionCard } from "./CriterionCard";
@@ -26,7 +25,7 @@ const MUSCLE_LABELS: Record<string, string> = {
   calves: "Calves",
 };
 
-export function C6_MuscleLoss({ autoRisk, computedRisk, ...sites }: Props) {
+export function C6_MuscleLoss({ computedRisk, ...sites }: Props) {
   const { refeedingScreen: s, setRefeedingScreen } = useRefeedingStore();
 
   const siteMap = {

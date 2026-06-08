@@ -1,5 +1,4 @@
 // src/features/assessment/assess-refeeding/RefeedingResult.tsx
-import React from "react";
 import type { OverallRisk, CriterionResult } from "../../../types/refeedingScreen";
 import { riskColor, riskLabel } from "../../../shared/utils/refeedingScreenLogic";
 

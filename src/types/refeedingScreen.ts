@@ -74,3 +74,6 @@ export interface RefeedingScreen {
   // Timestamp of last screen run (ISO string)
   screenedAt: string;
 }
+
+// Re-export computed result types so consumers import from one place
+export type { CriterionResult, OverallRisk } from "../shared/utils/refeedingScreenLogic";

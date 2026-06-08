@@ -1,16 +1,16 @@
 // src/features/assessment/assess-refeeding/C1_BMI.tsx
-import React from "react";
+import { CSSProperties } from "react";
 import { useRefeedingStore } from "../../../stores/useRefeedingStore";
 import type { RiskLevel } from "../../../types/refeedingScreen";
 import { CriterionCard } from "./CriterionCard";
 
 interface Props {
   bmiNum: number;
-  autoRisk: RiskLevel;
+  autoRisk: RiskLevel;   // ← add this back
   computedRisk: RiskLevel;
 }
 
-export function C1_BMI({ bmiNum, autoRisk, computedRisk }: Props) {
+export function C1_BMI({ bmiNum, computedRisk }: Props) {
   const { refeedingScreen: s, setRefeedingScreen } = useRefeedingStore();
 
   const hasBMI = bmiNum > 0;
@@ -50,19 +50,19 @@ export function C1_BMI({ bmiNum, autoRisk, computedRisk }: Props) {
   );
 }
 
-const statBox: React.CSSProperties = {
+const statBox: CSSProperties = {
   display: "flex", flexDirection: "column",
 };
-const statLabel: React.CSSProperties = {
+const statLabel: CSSProperties = {
   fontSize: "0.68rem", color: "#718096", fontWeight: 600,
   textTransform: "uppercase", letterSpacing: "0.04em",
 };
-const statValue: React.CSSProperties = {
+const statValue: CSSProperties = {
   fontSize: "1.35rem", fontWeight: 700,
 };
-const thresholdBox: React.CSSProperties = {
+const thresholdBox: CSSProperties = {
   display: "flex", flexDirection: "column", gap: "2px",
 };
-const threshLine: React.CSSProperties = {
+const threshLine: CSSProperties = {
   fontSize: "0.72rem", color: "#4a5568",
 };

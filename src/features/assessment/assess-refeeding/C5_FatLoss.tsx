@@ -1,5 +1,4 @@
 // src/features/assessment/assess-refeeding/C5_FatLoss.tsx
-import React from "react";
 import { useRefeedingStore } from "../../../stores/useRefeedingStore";
 import type { RiskLevel } from "../../../types/refeedingScreen";
 import { CriterionCard } from "./CriterionCard";
@@ -20,7 +19,7 @@ const SITE_LABELS: Record<string, string> = {
   midAxillary: "Mid-Axillary",
 };
 
-export function C5_FatLoss({ autoRisk, computedRisk, orbital, cheek, tricepsFat, midAxillary }: Props) {
+export function C5_FatLoss({ computedRisk, orbital, cheek, tricepsFat, midAxillary }: Props) {
   const { refeedingScreen: s, setRefeedingScreen } = useRefeedingStore();
 
   const sites = { orbital, cheek, tricepsFat, midAxillary };

@@ -5,7 +5,7 @@
 import { create } from "zustand";
 import type { Patient, Note } from "../shared/api/db";
 import type { PatientData } from "../types";
-import { autosaveNote, createNote, deleteNote } from "../shared/api/db";
+import { autosaveNote } from "../shared/api/db";
 import { getLocalIsoDate } from "../shared/utils/date";
 
 // ── Domain store registration ─────────────────────────────────────────────────
@@ -129,7 +129,7 @@ export const useNoteStore = create<NoteState>((set, get) => ({
     });
 
     // Reset every registered domain store with its raw JSON from the note
-    const noteRecord = note as Record<string, string | null>;
+    const noteRecord = note as unknown as Record<string, string | null>;
     _domainResets.forEach((resetFn, key) => {
       resetFn(noteRecord[key] ?? null);
     });

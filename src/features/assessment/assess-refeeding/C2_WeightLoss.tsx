@@ -1,5 +1,5 @@
 // src/features/assessment/assess-refeeding/C2_WeightLoss.tsx
-import React, { useMemo } from "react";
+import { useMemo, CSSProperties, ReactNode } from "react";
 import { useRefeedingStore } from "../../../stores/useRefeedingStore";
 import { useAnthroStore }    from "../../../stores/useAnthroStore";
 import { useNoteStore }      from "../../../stores/useNoteStore";
@@ -13,7 +13,7 @@ interface Props {
   computedRisk: RiskLevel;
 }
 
-export function C2_WeightLoss({ autoRisk, computedRisk }: Props) {
+export function C2_WeightLoss({ computedRisk }: Props) {
   const { refeedingScreen: s, setRefeedingScreen } = useRefeedingStore();
   const anthro    = useAnthroStore((s) => s.anthro);
   const noteDate  = useNoteStore((s) => s.patientData.noteDate);
@@ -189,7 +189,7 @@ function StatChip({ label, value, color = "#3498db" }: { label: string; value: s
     </div>
   );
 }
-function InfoBox({ children, color }: { children: React.ReactNode; color: string }) {
+function InfoBox({ children, color }: { children: ReactNode; color: string }) {
   return (
     <div style={{ background: `${color}10`, border: `1px solid ${color}40`, borderRadius: "5px", padding: "6px 10px", fontSize: "0.73rem", color: "#4a5568" }}>
       {children}
@@ -197,6 +197,6 @@ function InfoBox({ children, color }: { children: React.ReactNode; color: string
   );
 }
 
-const fieldWrap: React.CSSProperties = { display: "flex", flexDirection: "column", gap: "3px" };
-const fieldLabel: React.CSSProperties = { fontSize: "0.68rem", fontWeight: 700, color: "#718096", textTransform: "uppercase" };
-const numInput: React.CSSProperties = { width: "90px", padding: "4px 8px", border: "1px solid var(--border)", borderRadius: "4px", fontSize: "0.85rem" };
+const fieldWrap: CSSProperties = { display: "flex", flexDirection: "column", gap: "3px" };
+const fieldLabel: CSSProperties = { fontSize: "0.68rem", fontWeight: 700, color: "#718096", textTransform: "uppercase" };
+const numInput: CSSProperties = { width: "90px", padding: "4px 8px", border: "1px solid var(--border)", borderRadius: "4px", fontSize: "0.85rem" };

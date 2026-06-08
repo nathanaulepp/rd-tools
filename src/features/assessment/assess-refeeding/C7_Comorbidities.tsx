@@ -1,7 +1,6 @@
 // src/features/assessment/assess-refeeding/C7_Comorbidities.tsx
-import React from "react";
 import { useRefeedingStore } from "../../../stores/useRefeedingStore";
-import { scoreComorbidities, riskColor } from "../../../shared/utils/refeedingScreenLogic";
+import { scoreComorbidities } from "../../../shared/utils/refeedingScreenLogic";
 import { CriterionCard } from "./CriterionCard";
 
 const COMORBIDITIES = [

@@ -1,5 +1,4 @@
 // src/features/assessment/assess-refeeding/C4_Electrolytes.tsx
-import React from "react";
 import { useRefeedingStore } from "../../../stores/useRefeedingStore";
 import type { RiskLevel, ElectrolyteCriterion } from "../../../types/refeedingScreen";
 import { scoreElectrolytes, riskColor } from "../../../shared/utils/refeedingScreenLogic";

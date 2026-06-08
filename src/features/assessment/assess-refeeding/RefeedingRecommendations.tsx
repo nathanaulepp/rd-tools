@@ -2,7 +2,7 @@
 // Displays ASPEN consensus recommendations based on overall risk level.
 // Content sourced directly from the RD2B Tools CSV.
 
-import React, { useState } from "react";
+import { useState } from "react";
 import type { OverallRisk } from "../../../types/refeedingScreen";
 import { riskColor } from "../../../shared/utils/refeedingScreenLogic";
 
