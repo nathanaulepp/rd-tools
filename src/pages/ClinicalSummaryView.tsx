@@ -11,8 +11,17 @@ import { useDietaryStore } from "../stores/useDietaryStore";
 import { useDiagnosisStore } from "../stores/useDiagnosisStore";
 import { useInterventionStore } from "../stores/useInterventionStore";
 import { useMonitorEvalStore } from "../stores/useMonitorEvalStore";
+import { useStandardsStore } from "../stores/useStandardsStore";
+import { useRefeedingStore } from "../stores/useRefeedingStore";
 import { useCalculatedMetrics } from "../stores/useCalculatedMetrics";
-import { LAB_CATEGORIES } from "../shared/constants/labCategories";
+import { GLOBAL_LAB_CATALOG } from "../shared/data/biochemicalCatalog";
+import { 
+  scoreBMI, scoreWeightLoss, deriveWeightLoss, scoreEnergyOption1, 
+  scoreEnergyOption2, scoreEnergyOption3,
+  scoreElectrolytes, scoreFatLoss, scoreMuscLoss,
+  scoreComorbidities, computeOverallRisk 
+} from "../shared/utils/refeedingScreenLogic";
+import { CriterionResult } from "../types/refeedingScreen";
 
 // Phase 6: Tauri invoke for PDF export (falls back gracefully in browser)
 async function invokePdfExport() {
@@ -32,13 +41,15 @@ interface ClinicalSummaryViewProps {
 export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSummaryViewProps) {
   // Read everything from stores — no props for domain data
   const { activePatient: patient, activeNote: note } = useNoteStore();
-  const { anthro } = useAnthroStore();
-  const { labs } = useLabsStore();
+  const { anthro, dexaScans } = useAnthroStore();
+  const { labs, activeLabKeys } = useLabsStore();
   const { clinical } = useClinicalStore();
   const { dietary } = useDietaryStore();
   const { diagnosis } = useDiagnosisStore();
   const { intervention } = useInterventionStore();
   const { monitorEval } = useMonitorEvalStore();
+  const { standards } = useStandardsStore();
+  const { refeedingScreen } = useRefeedingStore();
   const calculatedMetrics = useCalculatedMetrics();
 
   if (!patient || !note) {
@@ -77,30 +88,47 @@ export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSumma
   };
 
   const renderLabTable = () => {
-    const activeLabs = LAB_CATEGORIES.filter(cat =>
-      cat.fields.some(f => labs[f]?.current || labs[f]?.historical)
-    );
-    if (activeLabs.length === 0) return <p style={styles.emptyText}>No biochemical data recorded.</p>;
+    if (!activeLabKeys || activeLabKeys.length === 0) {
+      return <p style={styles.emptyText}>No biochemical data recorded.</p>;
+    }
 
-    return activeLabs.map(cat => (
-      <div key={cat.title} style={{ marginBottom: "1rem" }}>
-        <h4 style={styles.subTitle}>{cat.title}</h4>
+    // Group by panel
+    const groups: Record<string, string[]> = {};
+    activeLabKeys.forEach(key => {
+      const entry = GLOBAL_LAB_CATALOG[key];
+      if (!entry) return;
+      if (!labs[key]?.current && !labs[key]?.historical) return;
+
+      if (!groups[entry.panel]) groups[entry.panel] = [];
+      groups[entry.panel].push(key);
+    });
+
+    const panels = Object.keys(groups);
+    if (panels.length === 0) {
+      return <p style={styles.emptyText}>No biochemical data recorded.</p>;
+    }
+
+    return panels.map(panelName => (
+      <div key={panelName} style={{ marginBottom: "1rem" }}>
+        <h4 style={styles.subTitle}>{panelName}</h4>
         <table style={styles.table}>
           <thead>
             <tr>
               <th style={styles.th}>Test</th>
-              <th style={styles.th}>Current</th>
+              <th style={styles.th}>Unit</th>
               <th style={styles.th}>Historical</th>
+              <th style={styles.th}>Current</th>
             </tr>
           </thead>
           <tbody>
-            {cat.fields.map(field => {
-              if (!labs[field]?.current && !labs[field]?.historical) return null;
+            {groups[panelName].map(key => {
+              const entry = GLOBAL_LAB_CATALOG[key];
               return (
-                <tr key={field}>
-                  <td style={styles.td}><strong>{field}</strong></td>
-                  <td style={styles.td}>{labs[field]?.current || "---"}</td>
-                  <td style={styles.td}>{labs[field]?.historical || "---"}</td>
+                <tr key={key}>
+                  <td style={styles.td}><strong>{entry?.name || key}</strong></td>
+                  <td style={styles.td}>{entry?.defaultUnit || "---"}</td>
+                  <td style={styles.td}>{labs[key]?.historical || "---"}</td>
+                  <td style={styles.td}>{labs[key]?.current || "---"}</td>
                 </tr>
               );
             })}
@@ -155,6 +183,7 @@ export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSumma
             {dx.signsSymptoms && <> <span style={{ color: "#64748b" }}> as evidenced by</span> <span>{dx.signsSymptoms}</span></>}
           </div>
         ))}
+        {diagnosis?.priorityRanking && renderRow("First Priority Diagnosis", diagnosis.priorityRanking)}
         {diagnosis?.nutritionDxNarrative && renderRow("Narrative", diagnosis.nutritionDxNarrative)}
       </>
     );
@@ -162,6 +191,8 @@ export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSumma
 
   const renderIntervention = () => {
     if (!intervention) return <p style={styles.emptyText}>No intervention data recorded.</p>;
+    const npActiveModes = intervention.npActiveModes || [];
+
     return (
       <>
         {renderRow("Intervention Goal", intervention.goalStatement)}
@@ -171,6 +202,73 @@ export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSumma
         {renderRow("Referrals", (intervention as any).cc_referrals)}
         {renderRow("Discharge Recs", (intervention as any).cc_dischargeRecommendations)}
         {renderRow("Follow-Up Plan", (intervention as any).cc_followUpPlan)}
+
+        {npActiveModes.length > 0 && (
+          <div style={{ marginTop: "1rem" }}>
+            {renderRow("Active Support Modes", npActiveModes.join(", "))}
+          </div>
+        )}
+
+        {npActiveModes.includes("oral") && (
+          <div style={{ marginTop: "1rem" }}>
+            <h4 style={styles.subTitle}>Oral Nutrition</h4>
+            <div style={styles.grid2}>
+              <div>
+                {renderRow("Oral Energy Target", intervention?.npOral?.energyKcal, "kcal")}
+                {renderRow("Texture Modification", intervention?.npOral?.textureModification)}
+                {renderRow("Oral Supplements", intervention?.npOral?.oralSupplements)}
+              </div>
+              <div>
+                {renderRow("NPO Status", intervention?.npOral?.isNpo ? "Yes" : null)}
+                {renderRow("Foods & Patterns", intervention?.npOral?.foodsAndPatterns?.join(", "))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {npActiveModes.includes("enteral") && (
+          <div style={{ marginTop: "1rem" }}>
+            <h4 style={styles.subTitle}>Enteral Nutrition</h4>
+            <div style={styles.grid2}>
+              <div>
+                {renderRow("EN Formula", intervention?.npEnteral?.formulaName)}
+                {renderRow("EN Energy Target",
+                  intervention?.npEnteral?.kcalLow && intervention?.npEnteral?.kcalHigh
+                    ? `${intervention.npEnteral.kcalLow}–${intervention.npEnteral.kcalHigh}`
+                    : null, "kcal")}
+                {renderRow("EN Admin Method", intervention?.npEnteral?.adminMethod)}
+              </div>
+              <div>
+                {renderRow("EN Daily Volume", intervention?.npEnteral?.dailyVolumeMl, "mL")}
+                {renderRow("EN Infusion Rate", intervention?.npEnteral?.infusionRateMlHr, "mL/hr")}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {npActiveModes.includes("parenteral") && (
+          <div style={{ marginTop: "1rem" }}>
+            <h4 style={styles.subTitle}>Parenteral Nutrition</h4>
+            <div style={styles.grid2}>
+              <div>
+                {renderRow("PN Energy", intervention?.npParenteral?.energyKcal, "kcal")}
+                {renderRow("PN Amino Acids", intervention?.npParenteral?.aminoAcidsG, "g")}
+                {renderRow("PN Dextrose", intervention?.npParenteral?.dextroseG, "g")}
+              </div>
+              <div>
+                {renderRow("PN Lipids", intervention?.npParenteral?.lipidsG, "g")}
+                {renderRow("PN Solution Type", intervention?.npParenteral?.solutionType)}
+                {renderRow("PN Total Volume", intervention?.npParenteral?.totalFluidVolumeMl, "mL")}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {intervention?.ndImplementation?.selected && intervention.ndImplementation.selected.length > 0 && (
+          <div style={{ marginTop: "1rem" }}>
+            {renderRow("Interventions Selected", intervention.ndImplementation.selected.join("; "))}
+          </div>
+        )}
       </>
     );
   };
@@ -183,19 +281,122 @@ export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSumma
     };
     return (
       <>
-        {Array.isArray(monitorEval.monitoredIndicators) && monitorEval.monitoredIndicators.length > 0 && renderRow("Monitored Indicators", monitorEval.monitoredIndicators.join(", "))}
+        {Array.isArray(monitorEval.monitoredIndicators) && monitorEval.monitoredIndicators.length > 0 && (
+          renderRow("Monitored Indicators", monitorEval.monitoredIndicators.join(", "))
+        )}
         {renderRow("Monitoring Frequency", monitorEval.monitorFrequency)}
-        {renderRow("Anthropometric Targets", monitorEval.criteria_anthropo)}
-        {renderRow("Biochemical Targets", monitorEval.criteria_labs)}
-        {renderRow("Dietary Targets", monitorEval.criteria_dietary)}
+        {renderRow("Anthropometric Targets",   monitorEval.criteria_anthropo)}
+        {renderRow("Biochemical Targets",      monitorEval.criteria_labs)}
+        {renderRow("Dietary Targets",          monitorEval.criteria_dietary)}
+        {renderRow("Clinical Targets",         monitorEval.criteria_clinical)}
+        {renderRow("Functional Targets",       monitorEval.criteria_functional)}
+        
         {monitorEval.outcome_progress && renderRow("Progress", progressLabel[monitorEval.outcome_progress] || monitorEval.outcome_progress)}
         {renderRow("Outcome Narrative", monitorEval.outcome_narrative)}
-        {renderRow("Next Steps", monitorEval.outcome_nextSteps)}
+        {renderRow("Next Steps",               monitorEval.outcome_nextSteps)}
         {renderRow("Discharge Recommendations", monitorEval.dischargeRecs)}
-        {renderRow("Transition Plan", monitorEval.transitionPlan)}
+        {renderRow("Transition Plan",          monitorEval.transitionPlan)}
       </>
     );
   };
+
+  const refeedingRiskLabel = (() => {
+    if (!refeedingScreen?.screenedAt) return null;
+
+    // 1. BMI
+    const bmiNum = parseFloat(calculatedMetrics.bmi) || 0;
+    const c1Auto = scoreBMI({
+      bmiNum,
+      isPediatric: calculatedMetrics.isPediatric,
+      bmiZ: calculatedMetrics.bmiZ
+    });
+    const c1Risk = refeedingScreen.c1_override ? refeedingScreen.c1_manualRisk : c1Auto;
+
+    // 2. Weight Loss
+    const derivedWt = deriveWeightLoss(
+      calculatedMetrics.wtKg,
+      anthro.ubw,
+      anthro.wtUnit,
+      anthro.ubwDate,
+      note.note_date || ""
+    );
+    const c2AutoRisk = (() => {
+      if (refeedingScreen.c2_source === "na") return "none";
+      if (calculatedMetrics.isPediatric) return "none";
+      if (refeedingScreen.c2_source === "manual") {
+        const pct = parseFloat(refeedingScreen.c2_manualPct) || 0;
+        const days = parseFloat(refeedingScreen.c2_manualDays) || 0;
+        return scoreWeightLoss({ pct, days, isPediatric: false });
+      }
+      if (!derivedWt) return "none";
+      return scoreWeightLoss({ pct: derivedWt.pct, days: derivedWt.days, isPediatric: false });
+    })();
+    const c2PediatricManualRisk = calculatedMetrics.isPediatric && refeedingScreen.c2_source === "manual"
+      ? scoreWeightLoss({
+          isPediatric: true,
+          pediatricExpectedGainPct: parseFloat(refeedingScreen.c2_manualPct) || 0
+        })
+      : "none";
+    const c2Risk = refeedingScreen.c2_override 
+      ? refeedingScreen.c2_manualRisk 
+      : (calculatedMetrics.isPediatric && refeedingScreen.c2_source === "manual") 
+        ? c2PediatricManualRisk 
+        : c2AutoRisk;
+
+    // 3. Energy Intake
+    const c3AutoRisk = (() => {
+      const pct = parseFloat(refeedingScreen.c3_intakePct) || 0;
+      const days = parseFloat(refeedingScreen.c3_intakeDays) || 0;
+      if (refeedingScreen.c3_option === "option1") return scoreEnergyOption1(days);
+      if (refeedingScreen.c3_option === "option2") return scoreEnergyOption2(pct, days);
+      if (refeedingScreen.c3_option === "option3") return scoreEnergyOption3(pct, days);
+      return "none";
+    })();
+    const c3Risk = refeedingScreen.c3_override ? refeedingScreen.c3_manualRisk : c3AutoRisk;
+
+    // 4. Electrolytes
+    const c4Risk = scoreElectrolytes(refeedingScreen.c4_electrolytes);
+
+    // 5. Fat Loss
+    const c5Auto = scoreFatLoss(
+      clinical.orbital,
+      clinical.cheek,
+      clinical.tricepsFat,
+      clinical.midAxillary
+    );
+    const c5Risk = refeedingScreen.c5_override ? refeedingScreen.c5_manualRisk : c5Auto;
+
+    // 6. Muscle Loss
+    const c6Auto = scoreMuscLoss(
+      clinical.temples,
+      clinical.clavicles,
+      clinical.shoulders,
+      clinical.scapula,
+      clinical.interosseous,
+      clinical.thighs,
+      clinical.calves
+    );
+    const c6Risk = refeedingScreen.c6_override ? refeedingScreen.c6_manualRisk : c6Auto;
+
+    // 7. Comorbidities
+    const c7Auto = scoreComorbidities(refeedingScreen.c7_selected);
+    const c7Risk = refeedingScreen.c7_override ? refeedingScreen.c7_manualRisk : c7Auto;
+
+    const criteria: CriterionResult[] = [
+      { label: "BMI", risk: c1Risk, source: "auto" },
+      { label: "Weight Loss", risk: c2Risk, source: "auto" },
+      { label: "Energy Intake", risk: c3Risk, source: "auto" },
+      { label: "Electrolytes", risk: c4Risk, source: "auto" },
+      { label: "Fat Loss", risk: c5Risk, source: "auto" },
+      { label: "Muscle Loss", risk: c6Risk, source: "auto" },
+      { label: "Comorbidities", risk: c7Risk, source: "auto" },
+    ];
+
+    const overall = computeOverallRisk(criteria);
+    if (overall.level === "significant") return "Significant Risk";
+    if (overall.level === "moderate") return "Moderate Risk";
+    return "Low / Not at Risk";
+  })();
 
   return (
     <div style={styles.container} className="print-safe-container">
@@ -227,9 +428,10 @@ export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSumma
 
         {/* A. Anthropometrics */}
         {renderSection("A. Anthropometrics & Body Composition", (
-          <div style={styles.grid2}>
-            <div>
-              <h4 style={styles.subTitle}>Current Measurements</h4>
+          <>
+            <div style={styles.grid2}>
+              <div>
+                <h4 style={styles.subTitle}>Current Measurements</h4>
               {renderRow("Height", anthro?.ht, anthro?.htUnit)}
               {renderRow("Weight", anthro?.wt, anthro?.wtUnit)}
               {renderRow("BMI", calculatedMetrics.bmi, "kg/m²")}
@@ -243,7 +445,77 @@ export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSumma
               {renderRow("Head Circ", anthro?.head, anthro?.circUnit)}
             </div>
           </div>
-        ))}
+          {(anthro?.triceps || anthro?.subscapular || anthro?.suprailiac || anthro?.thigh) && (
+            <div style={{ marginTop: "1rem" }}>
+              <h4 style={styles.subTitle}>Skinfolds</h4>
+              <div style={styles.grid2}>
+                <div>
+                  {renderRow("Triceps Skinfold", anthro?.triceps, anthro?.skinfoldUnit)}
+                  {renderRow("Subscapular Skinfold", anthro?.subscapular, anthro?.skinfoldUnit)}
+                </div>
+                <div>
+                  {renderRow("Suprailiac Skinfold", anthro?.suprailiac, anthro?.skinfoldUnit)}
+                  {renderRow("Thigh Skinfold", anthro?.thigh, anthro?.skinfoldUnit)}
+                </div>
+              </div>
+            </div>
+          )}
+          {anthro?.isFluidShift && (
+            <div style={{ marginTop: "1rem" }}>
+              <h4 style={styles.subTitle}>Fluid Shift</h4>
+              {renderRow("Estimated Dry Weight", anthro?.edw, anthro?.edwUnit)}
+            </div>
+          )}
+          {anthro?.amputations && anthro.amputations.length > 0 && (
+            <div style={{ marginTop: "1rem" }}>
+              {renderRow("Amputations", anthro.amputations.join(", "))}
+            </div>
+          )}
+          {(anthro?.past_ht || anthro?.past_wt || anthro?.past_head || anthro?.past_htDate || anthro?.past_wtDate) && (
+            <div style={{ marginTop: "1rem" }}>
+              <h4 style={styles.subTitle}>Past Measurements</h4>
+              <div style={styles.grid2}>
+                <div>
+                  {renderRow("Past Height", anthro?.past_ht, anthro?.past_htUnit)}
+                  {renderRow("Past Weight", anthro?.past_wt, anthro?.past_wtUnit)}
+                  {renderRow("Past Head Circ", anthro?.past_head, anthro?.past_headUnit)}
+                </div>
+                <div>
+                  {renderRow("Past Height Date", anthro?.past_htDate)}
+                  {renderRow("Past Weight Date", anthro?.past_wtDate)}
+                </div>
+              </div>
+            </div>
+          )}
+          {dexaScans && dexaScans.length > 0 && (
+            <div style={{ marginTop: "1rem" }}>
+              <h4 style={styles.subTitle}>DEXA Scans</h4>
+              <table style={styles.table}>
+                <thead>
+                  <tr>
+                    <th style={styles.th}>Date</th>
+                    <th style={styles.th}>BMD</th>
+                    <th style={styles.th}>Fat Mass</th>
+                    <th style={styles.th}>Lean Mass</th>
+                    <th style={styles.th}>Body Fat %</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dexaScans.map((s, i) => (
+                    <tr key={i}>
+                      <td style={styles.td}>{s.date}</td>
+                      <td style={styles.td}>{s.bmd}</td>
+                      <td style={styles.td}>{s.fatMass}</td>
+                      <td style={styles.td}>{s.leanMass}</td>
+                      <td style={styles.td}>{s.bodyFatPct}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      ))}
 
         {/* B. Biochemical */}
         {renderSection("B. Biochemical Data", renderLabTable())}
@@ -261,6 +533,8 @@ export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSumma
                 {renderRow("Allergies/Intolerances", clinical?.allergiesIntolerances)}
                 {renderRow("Medical Devices", clinical?.medicalDevices)}
                 {renderRow("Medications", clinical?.medications)}
+                {renderRow("Screenings", clinical?.screenings)}
+                {renderRow("Oral Hygiene", clinical?.oralHygiene)}
               </div>
               <div>
                 <h4 style={styles.subTitle}>GI & Systemic</h4>
@@ -312,9 +586,31 @@ export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSumma
                     clinical?.ascites && `Ascites (${clinical.ascites})`,
                     clinical?.edemaDescription
                   ].filter(Boolean).join(", "))}
+                  {renderRow("Edema Description", clinical?.edemaDescription)}
                   {renderRow("Function", clinical?.gripStrength)}
                 </div>
               </div>
+
+              {(clinical?.hair?.length || clinical?.eyes?.length || clinical?.mouthLips?.length || clinical?.tongue?.length || clinical?.teethGums?.length || clinical?.headNeck?.length || clinical?.nails?.length || clinical?.skin?.length) ? (
+                <div style={{ marginTop: "1rem" }}>
+                  <h4 style={styles.subTitle}>Micronutrient Signs</h4>
+                  <div style={styles.grid2}>
+                    <div>
+                      {renderRow("Hair Signs", clinical?.hair?.join(", "))}
+                      {renderRow("Eye Signs", clinical?.eyes?.join(", "))}
+                      {renderRow("Mouth/Lip Signs", clinical?.mouthLips?.join(", "))}
+                      {renderRow("Tongue Signs", clinical?.tongue?.join(", "))}
+                    </div>
+                    <div>
+                      {renderRow("Teeth/Gum Signs", clinical?.teethGums?.join(", "))}
+                      {renderRow("Head/Neck Signs", clinical?.headNeck?.join(", "))}
+                      {renderRow("Nail Signs", clinical?.nails?.join(", "))}
+                      {renderRow("Skin Signs", clinical?.skin?.join(", "))}
+                    </div>
+                  </div>
+                </div>
+              ) : null}
+
               {renderRow("Exam Notes", clinical?.clinicalNotes)}
             </div>
 
@@ -338,26 +634,130 @@ export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSumma
 
         {/* D. Dietary */}
         {renderSection("D. Dietary Data & Nutrition Support", (
-          <div style={styles.grid2}>
-            <div>
-              <h4 style={styles.subTitle}>Intake Summary</h4>
-              {renderRow("Diet Order", dietary?.dietOrder)}
-              {renderRow("Estimated Calories", dietary?.oralCalories, "kcal/d")}
-              {renderRow("Estimated Protein", dietary?.oralProtein, "g/d")}
+          <>
+            {dietary?.recall && dietary.recall.length > 0 && (
+              <div style={{ marginBottom: "1rem" }}>
+                <h4 style={styles.subTitle}>24-Hour Dietary Recall</h4>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Meal</th>
+                      <th style={styles.th}>Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dietary.recall.map((r, i) => (
+                      <tr key={i}>
+                        <td style={styles.td}><strong>{r.label}</strong></td>
+                        <td style={styles.td}>{r.value}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div style={styles.grid2}>
+              <div>
+                <h4 style={styles.subTitle}>Intake Summary</h4>
+                {renderRow("Diet Order", dietary?.dietOrder)}
+                {renderRow("Estimated Calories", dietary?.oralCalories, "kcal/d")}
+                {renderRow("Estimated Protein", dietary?.oralProtein, "g/d")}
+              </div>
+              <div>
+                <h4 style={styles.subTitle}>Behavioral & Access</h4>
+                {renderRow("Meal Patterns",        dietary?.mealPatterns)}
+                {renderRow("Fluid Intake",         dietary?.fluidIntake)}
+                {renderRow("Estimated Intake",     dietary?.eeiPercent, "%")}
+                {renderRow("Intake Timeframe",     dietary?.eeiTimeframe, "days")}
+                {renderRow("Physical Activity",    dietary?.physicalLevel)}
+                {renderRow("ADLs",                 dietary?.adls)}
+                {renderRow("Food Security",        dietary?.foodSecurity)}
+                {renderRow("Cultural/Religious",   dietary?.culturalReligious)}
+                {renderRow("Social Dynamics",      dietary?.socialDynamics)}
+                {renderRow("Eating Environment",   dietary?.eatingEnv)}
+                {renderRow("Supplements",          dietary?.supplements)}
+                {renderRow("Herbal/CAM",           dietary?.herbalCAM)}
+                {renderRow("Patient Perception",   dietary?.perception)}
+                {renderRow("QoL Goals",            dietary?.qolGoals)}
+                {renderRow("Readiness to Change",  dietary?.readiness, "/ 10")}
+              </div>
             </div>
-            <div>
-              <h4 style={styles.subTitle}>Access & Context</h4>
-              {renderRow("Meal Patterns", dietary?.mealPatterns)}
-              {renderRow("Fluid Intake", dietary?.fluidIntake)}
-              {renderRow("Food Security", dietary?.foodSecurity)}
-            </div>
-          </div>
+
+            {dietary?.ivOrders && dietary.ivOrders.length > 0 && (
+              <div style={{ marginTop: "1rem" }}>
+                <h4 style={styles.subTitle}>IV Orders</h4>
+                <table style={styles.table}>
+                  <thead>
+                    <tr>
+                      <th style={styles.th}>Solution</th>
+                      <th style={styles.th}>Volume (mL)</th>
+                      <th style={styles.th}>Rate (mL/hr)</th>
+                      <th style={styles.th}>Hrs/Day</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dietary.ivOrders.map((iv, i) => (
+                      <tr key={i}>
+                        <td style={styles.td}>{iv.type}</td>
+                        <td style={styles.td}>{iv.totalVolumeMl}</td>
+                        <td style={styles.td}>{iv.rateMlHr}</td>
+                        <td style={styles.td}>{iv.hrsPerDay}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         ))}
 
         {/* Phase 6 new domains */}
         {renderSection("Dx. Nutrition Diagnosis", renderDiagnosis())}
         {renderSection("I. Nutrition Intervention", renderIntervention())}
         {renderSection("ME. Monitor & Evaluate", renderMonitorEval())}
+
+        {standards?.condition && renderSection(
+          "S. Comparative Standards",
+          <>
+            {renderRow("Condition",           standards.condition)}
+            {renderRow("Sub-type / Variant",  standards.variant)}
+            {renderRow("Current Energy Rx",   standards.currentKcal, "kcal/day")}
+            {renderRow("Current Protein Rx",  standards.currentProtein, "g/day")}
+            {renderRow("Current Fluid Rx",    standards.currentFluid, "mL/day")}
+            {standards.icKcal && 
+              renderRow("IC Measured REE",    standards.icKcal, "kcal/day")}
+            {standards.snapshot && <>
+              {renderRow("EE Source",         standards.snapshot.eeSource)}
+              {renderRow("Weight Used",       
+                `${standards.snapshot.weightUsedKg}kg (${standards.snapshot.weightLabel})`)}
+              {standards.snapshot.flags && standards.snapshot.flags.length > 0 &&
+                renderRow("Clinical Flags",   standards.snapshot.flags.join("; "))}
+              {renderRow("Evaluated At",      
+                new Date(standards.snapshot.evaluatedAt).toLocaleString())}
+            </>}
+          </>
+        )}
+
+        {refeedingScreen?.screenedAt && renderSection(
+          "RF. Refeeding Syndrome Risk Screen",
+          <>
+            {renderRow("Overall Risk",          refeedingRiskLabel)}
+            {renderRow("Screened At",           
+              new Date(refeedingScreen.screenedAt).toLocaleString())}
+            {renderRow("C1: BMI Risk",          refeedingScreen.c1_manualRisk)}
+            {renderRow("C2: Weight Loss Risk",  refeedingScreen.c2_manualRisk)}
+            {renderRow("C3: Energy Intake Risk", refeedingScreen.c3_manualRisk)}
+            {renderRow("C4: Potassium",         refeedingScreen.c4_electrolytes?.potassium)}
+            {renderRow("C4: Phosphorus",        refeedingScreen.c4_electrolytes?.phosphorus)}
+            {renderRow("C4: Magnesium",         refeedingScreen.c4_electrolytes?.magnesium)}
+            {renderRow("C5: Fat Loss Risk",     refeedingScreen.c5_manualRisk)}
+            {renderRow("C6: Muscle Loss Risk",  refeedingScreen.c6_manualRisk)}
+            {renderRow("C7: Comorbidities",     refeedingScreen.c7_selected?.join(", "))}
+            {refeedingScreen.screenNotes && 
+              renderRow("Screen Notes",         refeedingScreen.screenNotes)}
+          </>
+        )}
 
         <div style={styles.footer}>
           <div style={styles.divider} />

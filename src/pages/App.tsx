@@ -18,6 +18,7 @@ import { useLabsStore }   from "../stores/useLabsStore";
 import RouteRenderer      from "../widgets/RouteRenderer";
 import LoginPage          from "./LoginPage";
 import { DevErrorPanel }  from "../shared/ui/ErrorBoundary";
+import { checkRegistryDrift } from "../shared/utils/devDriftGuard";
 
 // Import all domain stores so their registerDomainReset/registerDomainGetter
 // side-effects fire at startup (before any note is opened).
@@ -36,6 +37,7 @@ export default function App() {
 
   // ── One-time bootstrap side-effects ──────────────────────────────────────
   useEffect(() => {
+    checkRegistryDrift();
     // Apply persisted theme + zoom immediately on mount to avoid a flash.
     document.body.className = theme === "dark" ? "dark-theme" : "";
     document.documentElement.style.fontSize = `${17.6 * zoomLevel}px`;

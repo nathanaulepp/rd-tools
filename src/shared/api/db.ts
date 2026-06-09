@@ -480,7 +480,7 @@ export async function submitNote(
   const interventionData = tryParseJSON(note.intervention);
   const meData           = tryParseJSON(note.monitor_evaluate);
 
-  const fieldValues: Record<string, string | null> = {
+  const fieldValues: Record<string, any> = {
     // Patient table fields
     first_name:     patient.first_name,
     last_name:      patient.last_name,
@@ -506,6 +506,16 @@ export async function submitNote(
     subscapular:       (anthroData.subscapular as string)     ?? null,
     suprailiac:        (anthroData.suprailiac as string)      ?? null,
     thigh:             (anthroData.thigh as string)           ?? null,
+    edw:               (anthroData.edw as string)             ?? null,
+    circUnit:          (anthroData.circUnit as string)        ?? null,
+    past_ht:           (anthroData.past_ht as string)         ?? null,
+    past_wt:           (anthroData.past_wt as string)         ?? null,
+    past_head:         (anthroData.past_head as string)       ?? null,
+    past_htDate:       (anthroData.past_htDate as string)     ?? null,
+    past_wtDate:       (anthroData.past_wtDate as string)     ?? null,
+    past_headDate:     (anthroData.past_headDate as string)   ?? null,
+    amputations:       anthroData.amputations                 ?? null,
+    dexaScans:         anthroData.dexaScans                   ?? null,
 
     // Clinical domain (from note.clinical JSON)
     chiefComplaint:           (clinicalData.chiefComplaint as string)        ?? null,
@@ -544,6 +554,21 @@ export async function submitNote(
     fev1:                     (clinicalData.fev1 as string)                  ?? null,
     tbsa:                     (clinicalData.tbsa as string)                  ?? null,
     clinicalNotes:            (clinicalData.clinicalNotes as string)         ?? null,
+    screenings:               (clinicalData.screenings as string)            ?? null,
+    oralHygiene:              (clinicalData.oralHygiene as string)           ?? null,
+    edemaDescription:         (clinicalData.edemaDescription as string)      ?? null,
+    imaging_muscleAttenuation: (clinicalData.imaging_muscleAttenuation as string) ?? null,
+    imaging_imat:              (clinicalData.imaging_imat as string)          ?? null,
+    imaging_vat:               (clinicalData.imaging_vat as string)           ?? null,
+    imaging_notes:             (clinicalData.imaging_notes as string)         ?? null,
+    hair:                     clinicalData.hair                              ?? null,
+    eyes:                     clinicalData.eyes                              ?? null,
+    mouthLips:                clinicalData.mouthLips                         ?? null,
+    tongue:                   clinicalData.tongue                            ?? null,
+    teethGums:                clinicalData.teethGums                         ?? null,
+    headNeck:                 clinicalData.headNeck                          ?? null,
+    nails:                    clinicalData.nails                             ?? null,
+    skin:                     clinicalData.skin                              ?? null,
 
     // Dietary domain (from note.dietary JSON)
     dietOrder:                (dietaryData.dietOrder as string)              ?? null,
@@ -561,6 +586,23 @@ export async function submitNote(
     foodSecurity:             (dietaryData.foodSecurity as string)           ?? null,
     physicalLevel:            (dietaryData.physicalLevel as string)          ?? null,
     adls:                     (dietaryData.adls as string)                   ?? null,
+    currentDiets:             (dietaryData.currentDiets as string)           ?? null,
+    feedingTasks:             (dietaryData.feedingTasks as string)           ?? null,
+    psychTies:                (dietaryData.psychTies as string)              ?? null,
+    mealPrep:                 (dietaryData.mealPrep as string)               ?? null,
+    eatingOut:                (dietaryData.eatingOut as string)              ?? null,
+    bingePurge:               (dietaryData.bingePurge as string)             ?? null,
+    foodSupplies:             (dietaryData.foodSupplies as string)           ?? null,
+    transport:                (dietaryData.transport as string)              ?? null,
+    culturalReligious:        (dietaryData.culturalReligious as string)      ?? null,
+    socialDynamics:           (dietaryData.socialDynamics as string)         ?? null,
+    eatingEnv:                (dietaryData.eatingEnv as string)              ?? null,
+    perception:               (dietaryData.perception as string)             ?? null,
+    qolGoals:                 (dietaryData.qolGoals as string)               ?? null,
+    enState:                  dietaryData.enState                            ?? null,
+    pnState:                  dietaryData.pnState                            ?? null,
+    recall:                   dietaryData.recall                             ?? null,
+    ivOrders:                 dietaryData.ivOrders                           ?? null,
 
     // Diagnosis (from note.diagnosis JSON)
     problem:                  (diagnosisData.problem as string)              ?? null,
@@ -568,10 +610,31 @@ export async function submitNote(
     signsSymptoms:            (diagnosisData.signsSymptoms as string)        ?? null,
     nutritionDxNarrative:     (diagnosisData.nutritionDxNarrative as string) ?? null,
     priorityRanking:          (diagnosisData.priorityRanking as string)      ?? null,
+    additionalDiagnoses:      diagnosisData.additionalDiagnoses              ?? null,
 
     // Intervention (from note.intervention JSON)
     goalStatement:            (interventionData.goalStatement as string)     ?? null,
     interventionNotes:        (interventionData.interventionNotes as string) ?? null,
+    nd_mealsSnacks:           (interventionData.nd_mealsSnacks as string)    ?? null,
+    nd_supplementalFeeding:    (interventionData.nd_supplementalFeeding as string) ?? null,
+    ed_purpose:               (interventionData.ed_purpose as string)        ?? null,
+    c_theory:                 (interventionData.c_theory as string)          ?? null,
+    cc_followUpPlan:          (interventionData.cc_followUpPlan as string)   ?? null,
+    npOral_energyKcal:        (interventionData.npOral_energyKcal as string) ?? null,
+    npOral_textureModification: (interventionData.npOral_textureModification as string) ?? null,
+    npOral_oralSupplements:   (interventionData.npOral_oralSupplements as string) ?? null,
+    npOral_isNpo:             (interventionData.npOral_isNpo as string)      ?? null,
+    npEnteral_formulaName:    (interventionData.npEnteral_formulaName as string) ?? null,
+    npEnteral_adminMethod:    (interventionData.npEnteral_adminMethod as string) ?? null,
+    npEnteral_kcalLow:        (interventionData.npEnteral_kcalLow as string) ?? null,
+    npEnteral_kcalHigh:       (interventionData.npEnteral_kcalHigh as string) ?? null,
+    npParenteral_energyKcal:  (interventionData.npParenteral_energyKcal as string) ?? null,
+    npParenteral_solutionType: (interventionData.npParenteral_solutionType as string) ?? null,
+    npIvFluid_solution:       (interventionData.npIvFluid_solution as string) ?? null,
+    goalTimeframe:            (interventionData.goalTimeframe as string)     ?? null,
+    goalMeasurable:           (interventionData.goalMeasurable as string)    ?? null,
+    npActiveModes:            interventionData.npActiveModes                 ?? null,
+    ndImplementation:         interventionData.ndImplementation              ?? null,
 
     // Monitor & Evaluate (from note.monitor_evaluate JSON)
     monitorFrequency:         (meData.monitorFrequency as string)            ?? null,
@@ -579,6 +642,14 @@ export async function submitNote(
     outcome_progress:         (meData.outcome_progress as string)            ?? null,
     dischargeRecs:            (meData.dischargeRecs as string)               ?? null,
     meNotes:                  (meData.meNotes as string)                     ?? null,
+    criteria_anthropo:        (meData.criteria_anthropo as string)           ?? null,
+    criteria_labs:            (meData.criteria_labs as string)               ?? null,
+    criteria_dietary:         (meData.criteria_dietary as string)            ?? null,
+    criteria_clinical:        (meData.criteria_clinical as string)           ?? null,
+    criteria_functional:      (meData.criteria_functional as string)         ?? null,
+    outcome_nextSteps:        (meData.outcome_nextSteps as string)           ?? null,
+    transitionPlan:           (meData.transitionPlan as string)              ?? null,
+    monitoredIndicators:      meData.monitoredIndicators                     ?? null,
 
     // Keep legacy diagnosis key for the special-case handler below
     diagnosis:      note.diagnosis,
@@ -602,8 +673,42 @@ export async function submitNote(
         missingFields.push(req.label);
         continue;
       }
-    } else if (!val || val.trim() === "") {
-      missingFields.push(req.label);
+    } else {
+      // General validation for strings, numbers, and arrays
+      let isEmpty = false;
+      if (val === null || val === undefined) {
+        isEmpty = true;
+      } else if (typeof val === "string") {
+        isEmpty = val.trim() === "";
+      } else if (Array.isArray(val)) {
+        // Array validation: missing if empty or all items are meaningless
+        if (val.length === 0) {
+          isEmpty = true;
+        } else {
+          // Check if at least one item has content
+          isEmpty = val.every(item => {
+            if (!item) return true;
+            if (typeof item === "string") return item.trim() === "";
+            if (typeof item === "object") {
+              // For objects like RecallMeal or IVOrder, check all string values
+              return Object.values(item).every(v => typeof v === "string" ? v.trim() === "" : !v);
+            }
+            return false;
+          });
+        }
+      } else if (typeof val === "object") {
+        // For structured objects like ndImplementation
+        const values = Object.values(val);
+        isEmpty = values.length === 0 || values.every(v => {
+          if (Array.isArray(v)) return v.length === 0;
+          if (typeof v === "string") return v.trim() === "";
+          return !v;
+        });
+      }
+
+      if (isEmpty) {
+        missingFields.push(req.label);
+      }
     }
   }
 

@@ -867,4 +867,50 @@ input[type=range]::-webkit-slider-runnable-track {
     overflow: visible !important;
     display: block !important;
   }
+
+  /* ── Section page break control ── */
+  .printable-note > div {
+    page-break-inside: avoid;
+  }
+
+  /* ── Table print safety ── */
+  .printable-note table {
+    page-break-inside: avoid;
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+  }
+
+  .printable-note th,
+  .printable-note td {
+    border: 1px solid #e2e8f0 !important;
+    padding: 4px 8px !important;
+  }
+
+  /* ── Override any fixed heights that would clip content ── */
+  .printable-note * {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  /* ── Remove box shadows and backgrounds for clean print ── */
+  .printable-note .card,
+  .printable-note [style*="background"] {
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  /* ── Ensure new Standards and Refeeding sections break cleanly ── */
+  .printable-note section {
+    page-break-before: auto;
+    page-break-after: auto;
+    page-break-inside: avoid;
+  }
+
+  /* ── Force readable font size throughout ── */
+  .printable-note {
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    color: #000 !important;
+  }
 }
