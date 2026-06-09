@@ -21,65 +21,39 @@ By reducing time spent on charting, clinicians can expand their scope:
 ## Roadmap & To-Do List
 
 ### RD Workstation
-- [x] **add** restructuring informatics, grouping data by unique patient and admission --> encounter/admissionDate/noteDate 
-- [x] *patch* legacy FSD violations
-- [x] *patch* problem with deletion of patients from records
-- [x] *patch* problem: Rendered more hooks than during the previous render
-- [x] *patch* problem: note submission required fields doesn't read fields as entered
 - [ ] **add** dedicated settings pane on the homepage, and integrate a comparative standards condition editor into it
 - [ ] **add** Add keyboard shortcuts (root call is "ctrl + 0")
 - [ ] **add** Split panes function
 
 ### Assessment
 #### Anthro
-- [x] pediatric growth chart automated calc for Zscores and %s
-- [x] pediatric growth velocity automated calc based on past measures w/ current
-- [x] calendar mapping safeguards
 - [ ] **add** DEXA scan functionality mapped and coded
 
 #### Biochemical
-- [x] **add** LOINC test lookups and user-designed, hospital-derived template saver. capability to enter lab tests regardless of facility
+- [ ] *no changes at this time*
 
 #### Clinical
-- [x] **add** import drug database
-- [x] **add** add drug lookup
-- [x] **add** Automated refeeding risk chart
 - [ ] **add** Automated drug-nutrient interactions
 
 #### Dietary
-- [x] **add** current nutrition rx
-- [x] **add** PN macro conc. (unit/vol)
-- [x] *patch* formula name submissions for EN
-- [x] **add** create functionality for EN modulars (mL/bolus isn't enough)
-- [x] *patch* broken autosave for D12 and D13
 - [ ] **add** D2.1 automated estimated oral intake, integrating Multiple Pass Dietary Recall
 - [ ] **add** Build a modifiable EN formulary database into ./src/shared/api
-- [x] **add** GIR check
 
 #### Standards
-- [x] **add** automate comparative standards
-- [x] **add** automate comparison to current nutrition rx: (kcal, pro, fluid --> low|WNL|high?)
-- [x] **add** Improve user flow of UI
-- [x] **add** Automate linking patient BMI to comparative standards' clinical context options
-- [x] **add** more conditions to consider (now 26)
-- [x] **add** bronchopulmonary dysplasia for pediatrics
+- [ ] *no changes at this time*
 
 ### Diagnosis
-- [x] **add** PES statement builder
-- [x] **add** allow for creation of new etiology blocks through saved ADIMEs
-- [x] **add** Automated malnutrition chart
-- [x] **add** automated pediatric malnutrition chart
-- [x] **add** Build skeleton for contextual suggestions for signs & symptoms (s/s) --> use assessment data
-- [x] *patch* PES s/s contextual suggestions missing chip selection and dropdowns
-- [x] *patch* error of UBW displaying as criterion for pediatric malnutrition for <2 yrs age
 - [ ] **add** Differentials to guide continued/ordered assessment
 
 ### Intervention
 - [ ] **add** Oral/EN/PN calculations
 - [ ] **add** Basic renal adjustments
 
+### Monitor-Evaluate
+- [ ] **add** redesign/reorder interface
+
 ### Dietitian Tools
-- [x] **add** Mercury safety calculator 
+- [ ] *no changes at this time*
 
 ---
 

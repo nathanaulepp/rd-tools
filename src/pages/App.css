@@ -909,8 +909,40 @@ input[type=range]::-webkit-slider-runnable-track {
 
   /* ── Force readable font size throughout ── */
   .printable-note {
-    font-size: 11pt !important;
-    line-height: 1.4 !important;
+    font-size: 9pt !important;
+    line-height: 1.35 !important;
     color: #000 !important;
+  }
+
+  .printable-note .summary-value {
+    font-size: 0.82rem !important;
+  }
+
+  /* FIX 1: Suppress browser print headers/footers */
+  @page {
+    margin: 0.25in;
+  }
+
+  /* FIX 3: Card-level page break control */
+  .summary-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    margin-bottom: 0.4rem !important;
+  }
+
+  /* FIX 4: Reduce card padding for compactness */
+  .summary-card-content {
+    padding: 0.35rem 0.5rem !important;
+  }
+
+  /* FIX 5: Status chips must retain color in print */
+  .status-chip {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* FIX 6: Hide on-screen-only elements */
+  .screen-only {
+    display: none !important;
   }
 }

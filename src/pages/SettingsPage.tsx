@@ -136,7 +136,7 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
 
         {/* 2. DATABASE SCHEMA INFO */}
         <section style={s.section}>
-          <h3 style={s.sectionTitle}>Database Schema (Phase 6)</h3>
+          <h3 style={s.sectionTitle}>Database Schema</h3>
           <p style={s.sectionDesc}>
             The following columns are stored as JSON blobs in the <code style={s.code}>notes</code> table. 
             This structure allows for rapid field expansion without changing the database core.
