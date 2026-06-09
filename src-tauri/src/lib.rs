@@ -1,5 +1,4 @@
 // src-tauri/src/lib.rs
-// Phase 6: Added export_note_pdf command — triggers the system print dialog
 // via eval() on the WebviewWindow.
 
 #[tauri::command]
