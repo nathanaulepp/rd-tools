@@ -21,6 +21,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 ## Roadmap & To-Do List
 
 ### RD Workstation
+- [ ] **add** properly wire refeeding risk screen into clinical note view
 - [ ] **add** dedicated settings pane on the homepage, and integrate a comparative standards condition editor into it
 - [ ] **add** Add keyboard shortcuts (root call is "ctrl + 0")
 - [ ] **add** Split panes function
