@@ -256,10 +256,10 @@ export default function AnthroA1A7() {
         </div>
       </div>
 
-      <div className="card">
-        <h4 className="mb-1 flex-between">
-          A6: Growth Velocity (Pediatrics)
-          {showGrowthTables && (
+      {showGrowthTables && (
+        <div className="card">
+          <h4 className="mb-1 flex-between">
+            A6: Growth Velocity (Pediatrics)
             <div style={{ display: "flex", gap: "4px", background: "#f1f5f9", borderRadius: "6px", padding: "2px" }}>
               {(["metric", "imperial"] as const).map((u) => (
                 <button
@@ -282,56 +282,52 @@ export default function AnthroA1A7() {
                 </button>
               ))}
             </div>
-          )}
-        </h4>
-        <div className="grid-3-col">
-          <MeasurementInput
-            label="Past Height/Length"
-            value={anthro.past_ht}
-            onChange={(v) => handleUpdate("past_ht", v)}
-            unit={anthro.past_htUnit}
-            onUnitChange={(u) => handleUpdate("past_htUnit", u)}
-            unitOptions={["cm", "in"]}
-            date={anthro.past_htDate}
-            onDateChange={(d) => handleUpdate("past_htDate", d)}
-            dateLabel="Date Measured"
-          />
-          <MeasurementInput
-            label="Past Weight"
-            value={anthro.past_wt}
-            onChange={(v) => handleUpdate("past_wt", v)}
-            unit={anthro.past_wtUnit}
-            onUnitChange={(u) => handleUpdate("past_wtUnit", u)}
-            unitOptions={["g", "oz", "kg", "lbs"]}
-            date={anthro.past_wtDate}
-            onDateChange={(d) => handleUpdate("past_wtDate", d)}
-            dateLabel="Date Measured"
-          />
-          <MeasurementInput
-            label="Past Head Circ."
-            value={anthro.past_head}
-            onChange={(v) => handleUpdate("past_head", v)}
-            unit={anthro.past_headUnit}
-            onUnitChange={(u) => handleUpdate("past_headUnit", u)}
-            unitOptions={["cm", "in"]}
-            date={anthro.past_headDate}
-            onDateChange={(d) => handleUpdate("past_headDate", d)}
-            dateLabel="Date Measured"
-          />
-        </div>
-
-        {showGrowthTables && (
-          <>
-            <GrowthVelocityTable
-              anthro={anthro}
-              patientData={patientData}
-              calculatedMetrics={calculatedMetrics}
-              units={growthUnits}
+          </h4>
+          <div className="grid-3-col">
+            <MeasurementInput
+              label="Past Height/Length"
+              value={anthro.past_ht}
+              onChange={(v) => handleUpdate("past_ht", v)}
+              unit={anthro.past_htUnit}
+              onUnitChange={(u) => handleUpdate("past_htUnit", u)}
+              unitOptions={["cm", "in"]}
+              date={anthro.past_htDate}
+              onDateChange={(d) => handleUpdate("past_htDate", d)}
+              dateLabel="Date Measured"
             />
-            <ZScoreVelocityTable units={growthUnits} />
-          </>
-        )}
-      </div>
+            <MeasurementInput
+              label="Past Weight"
+              value={anthro.past_wt}
+              onChange={(v) => handleUpdate("past_wt", v)}
+              unit={anthro.past_wtUnit}
+              onUnitChange={(u) => handleUpdate("past_wtUnit", u)}
+              unitOptions={["g", "oz", "kg", "lbs"]}
+              date={anthro.past_wtDate}
+              onDateChange={(d) => handleUpdate("past_wtDate", d)}
+              dateLabel="Date Measured"
+            />
+            <MeasurementInput
+              label="Past Head Circ."
+              value={anthro.past_head}
+              onChange={(v) => handleUpdate("past_head", v)}
+              unit={anthro.past_headUnit}
+              onUnitChange={(u) => handleUpdate("past_headUnit", u)}
+              unitOptions={["cm", "in"]}
+              date={anthro.past_headDate}
+              onDateChange={(d) => handleUpdate("past_headDate", d)}
+              dateLabel="Date Measured"
+            />
+          </div>
+
+          <GrowthVelocityTable
+            anthro={anthro}
+            patientData={patientData}
+            calculatedMetrics={calculatedMetrics}
+            units={growthUnits}
+          />
+          <ZScoreVelocityTable units={growthUnits} />
+        </div>
+      )}
 
       {/* A7: Growth Standards — reads stores directly, no props needed */}
       {showGrowthTables && (
