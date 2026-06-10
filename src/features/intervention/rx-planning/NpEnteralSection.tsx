@@ -12,6 +12,8 @@ import { PullFromStandardsButton } from "../../../shared/ui/PullFromStandardsBut
 import { NP_EN_ADMIN_OPTIONS } from "../../../shared/constants/interventionNpConstants";
 import type { NpEnteralNutrition } from "../../../types/intervention";
 import type { ParsedTargets } from "../../../shared/utils/parseStandardsTargets";
+import FormulaLookupInput, { type FormulaPatch } from "./FormulaLookupInput";
+
 
 // ── Internal sub-component: labeled low/high range input pair ─────────────────
 
@@ -144,12 +146,11 @@ export default function NpEnteralSection() {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "0.65rem" }}>
           <Field label="NP-1.2.3.1 — Formula Name / Type">
-            <input
-              type="text"
+            <FormulaLookupInput
               value={en.formulaName}
-              onChange={(e) => update({ formulaName: e.target.value })}
-              placeholder="e.g. Osmolite 1.5, Peptamen, Nepro…"
-              style={{ width: "100%", boxSizing: "border-box" }}
+              onChange={(patch: FormulaPatch) => {
+                update({ formulaName: patch.formulaName });
+              }}
             />
           </Field>
           <Field label="NP-1.2.3.2 — Total Daily Volume (mL)">

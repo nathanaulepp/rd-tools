@@ -187,8 +187,6 @@ export default function NpOralSection() {
     });
   }
 
-  const disabled = oral.isNpo;
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
 
@@ -214,98 +212,93 @@ export default function NpOralSection() {
         )}
       </div>
 
-      {/* NP-1.1.1: Energy — with pull button */}
-      <Field label="NP-1.1.1 — Energy (kcal/day)">
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-          <div style={{ flex: 1 }}>
-            <NumInput
-              value={oral.energyKcal}
-              onChange={(v) => update({ energyKcal: v })}
-              placeholder="e.g. 2000"
-              disabled={disabled}
+      {!oral.isNpo && (
+        <>
+          {/* NP-1.1.1: Energy — with pull button */}
+          <Field label="NP-1.1.1 — Energy (kcal/day)">
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <div style={{ flex: 1 }}>
+                <NumInput
+                  value={oral.energyKcal}
+                  onChange={(v) => update({ energyKcal: v })}
+                  placeholder="e.g. 2000"
+                />
+              </div>
+              <PullFromStandardsButton
+                onPull={handlePull}
+                include={["energy", "protein"]}
+              />
+            </div>
+          </Field>
+
+          {/* NP-1.1.2: Nutrient modifiers */}
+          <Field label="NP-1.1.2 — Nutrient Modifications">
+            {oral.nutrientModifiers.map((row) => (
+              <NutrientRow
+                key={row.id}
+                row={row}
+                onChange={(updated) => updateNutrientRow(row.id, updated)}
+                onRemove={() => removeNutrientRow(row.id)}
+              />
+            ))}
+            <button
+              onClick={addNutrientRow}
+              style={{
+                marginTop: "0.25rem",
+                background: "transparent",
+                border: "1px solid #3498db",
+                color: "#3498db",
+                borderRadius: "4px",
+                padding: "3px 10px",
+                fontSize: "0.75rem",
+                cursor: "pointer",
+              }}
+            >
+               Add nutrient
+            </button>
+          </Field>
+
+          {/* NP-1.1.3: Foods and eating patterns */}
+          <Field label="NP-1.1.3 — Foods and Eating Patterns">
+            <ChipGroup
+              options={FOODS_AND_PATTERNS_OPTIONS}
+              value={oral.foodsAndPatterns}
+              onChange={(v) => update({ foodsAndPatterns: v as string[] })}
+              multiSelect={true}
             />
-          </div>
-          {!disabled && (
-            <PullFromStandardsButton
-              onPull={handlePull}
-              include={["energy", "protein"]}
+          </Field>
+
+          {/* NP-1.1.4: Texture modification */}
+          <Field label="NP-1.1.4 — Texture Modification">
+            <SelectInput
+              value={oral.textureModification}
+              onChange={(v) => update({ textureModification: v })}
+              options={NP_TEXTURE_OPTIONS}
+              placeholder="Select IDDSI level…"
             />
-          )}
-        </div>
-      </Field>
+          </Field>
 
-      {/* NP-1.1.2: Nutrient modifiers */}
-      <Field label="NP-1.1.2 — Nutrient Modifications">
-        {oral.nutrientModifiers.map((row) => (
-          <NutrientRow
-            key={row.id}
-            row={row}
-            onChange={(updated) => updateNutrientRow(row.id, updated)}
-            onRemove={() => removeNutrientRow(row.id)}
-          />
-        ))}
-        <button
-          onClick={addNutrientRow}
-          disabled={disabled}
-          style={{
-            marginTop: "0.25rem",
-            background: "transparent",
-            border: "1px solid #3498db",
-            color: "#3498db",
-            borderRadius: "4px",
-            padding: "3px 10px",
-            fontSize: "0.75rem",
-            cursor: disabled ? "not-allowed" : "pointer",
-            opacity: disabled ? 0.5 : 1,
-          }}
-        >
-           Add nutrient
-        </button>
-      </Field>
+          {/* NP-1.1.5: Oral supplements */}
+          <Field label="NP-1.1.5 — Oral Nutrition Supplements">
+            <textarea
+              value={oral.oralSupplements}
+              onChange={(e) => update({ oralSupplements: e.target.value })}
+              placeholder="e.g. Standard 1.5 kcal/mL supplement, twice daily"
+              style={{ minHeight: "60px", width: "100%", boxSizing: "border-box" }}
+            />
+          </Field>
 
-      {/* NP-1.1.3: Foods and eating patterns */}
-      <Field label="NP-1.1.3 — Foods and Eating Patterns">
-        <ChipGroup
-          options={FOODS_AND_PATTERNS_OPTIONS}
-          value={oral.foodsAndPatterns}
-          onChange={(v) => update({ foodsAndPatterns: v as string[] })}
-          multiSelect={true}
-        />
-      </Field>
-
-      {/* NP-1.1.4: Texture modification */}
-      <Field label="NP-1.1.4 — Texture Modification">
-        <SelectInput
-          value={oral.textureModification}
-          onChange={(v) => update({ textureModification: v })}
-          options={NP_TEXTURE_OPTIONS}
-          placeholder="Select IDDSI level…"
-          disabled={disabled}
-        />
-      </Field>
-
-      {/* NP-1.1.5: Oral supplements */}
-      <Field label="NP-1.1.5 — Oral Nutrition Supplements">
-        <textarea
-          value={oral.oralSupplements}
-          onChange={(e) => update({ oralSupplements: e.target.value })}
-          placeholder="e.g. Standard 1.5 kcal/mL supplement, twice daily"
-          disabled={disabled}
-          style={{ minHeight: "60px", width: "100%", boxSizing: "border-box" }}
-        />
-      </Field>
-
-      {/* NP-1.1.7: Values inclusion */}
-      <Field label="NP-1.1.7 — Values Inclusion">
-        <textarea
-          value={oral.valuesInclusion}
-          onChange={(e) => update({ valuesInclusion: e.target.value })}
-          placeholder="Any cultural, religious, or personal values to incorporate…"
-          disabled={disabled}
-          style={{ minHeight: "50px", width: "100%", boxSizing: "border-box" }}
-        />
-      </Field>
-
+          {/* NP-1.1.7: Values inclusion */}
+          <Field label="NP-1.1.7 — Values Inclusion">
+            <textarea
+              value={oral.valuesInclusion}
+              onChange={(e) => update({ valuesInclusion: e.target.value })}
+              placeholder="Any cultural, religious, or personal values to incorporate…"
+              style={{ minHeight: "50px", width: "100%", boxSizing: "border-box" }}
+            />
+          </Field>
+        </>
+      )}
     </div>
   );
 }
