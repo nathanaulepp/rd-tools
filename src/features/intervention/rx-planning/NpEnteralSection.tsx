@@ -8,11 +8,12 @@ import { useInterventionStore } from "../../../stores/useInterventionStore";
 import { Field }       from "../../../shared/ui/Field";
 import { NumInput }    from "../../../shared/ui/NumInput";
 import { SelectInput } from "../../../shared/ui/SelectInput";
+import { PullFromStandardsButton } from "../../../shared/ui/PullFromStandardsButton";
 import { NP_EN_ADMIN_OPTIONS } from "../../../shared/constants/interventionNpConstants";
 import type { NpEnteralNutrition } from "../../../types/intervention";
+import type { ParsedTargets } from "../../../shared/utils/parseStandardsTargets";
 
 // ── Internal sub-component: labeled low/high range input pair ─────────────────
-// Used for NP-1.2.2 nutrient target ranges (kcal, protein, fluid).
 
 interface RangeRowProps {
   label: string;
@@ -65,9 +66,19 @@ export default function NpEnteralSection() {
     setIntervention({ npEnteral: { ...en, ...patch } });
   }
 
+  // ── Pull from Standards handler ───────────────────────────────────────────
+  function handlePull(targets: ParsedTargets) {
+    update({
+      ...(targets.kcalLow    && { kcalLow:    targets.kcalLow    }),
+      ...(targets.kcalHigh   && { kcalHigh:   targets.kcalHigh   }),
+      ...(targets.proteinLow  && { proteinLow:  targets.proteinLow  }),
+      ...(targets.proteinHigh && { proteinHigh: targets.proteinHigh }),
+      ...(targets.fluidLow   && { fluidLow:   targets.fluidLow   }),
+      ...(targets.fluidHigh  && { fluidHigh:  targets.fluidHigh  }),
+    });
+  }
+
   // ── Admin method preset chip handler ──────────────────────────────────────
-  // Clicking a preset appends it to the textarea rather than replacing it,
-  // since clinicians often combine route  method descriptions.
   function applyAdminPreset(preset: string) {
     const current = en.adminMethod.trim();
     update({ adminMethod: current ? `${current}\n${preset}` : preset });
@@ -78,13 +89,22 @@ export default function NpEnteralSection() {
 
       {/* ── NP-1.2.2: Nutrient Targets ──────────────────────────────────────── */}
       <div>
+        {/* Sub-header row: label + pull button */}
         <div style={{
-          fontSize: "0.72rem", fontWeight: 700, color: "#4a5568",
-          textTransform: "uppercase", letterSpacing: "0.04em",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
           marginBottom: "0.5rem",
         }}>
-          NP-1.2.2 — Nutrient Targets (Low / High)
+          <span style={{
+            fontSize: "0.72rem", fontWeight: 700, color: "#4a5568",
+            textTransform: "uppercase", letterSpacing: "0.04em",
+          }}>
+            NP-1.2.2 — Nutrient Targets (Low / High)
+          </span>
+          <PullFromStandardsButton onPull={handlePull} />
         </div>
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.65rem" }}>
           <RangeRow
             label="Calories"

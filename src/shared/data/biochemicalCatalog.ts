@@ -22,7 +22,7 @@ export const GLOBAL_LAB_CATALOG: Record<string, CatalogEntry> = {
 
   // ── 1. Endocrine & Metabolic ───────────────────────────────────────────────
   "hba1c":              { name: "HbA1c",              loinc: "4548-4",  defaultUnit: "%",       panel: "Endocrine & Metabolic" },
-  "glucose-fasting":    { name: "Fasting Glucose",    loinc: "1558-6",  defaultUnit: "mg/dL",   panel: "Endocrine & Metabolic" },
+  "glucose":            { name: "Glucose",            loinc: "2345-7",  defaultUnit: "mg/dL",   panel: "Endocrine & Metabolic" },
   "insulin-fasting":    { name: "Fasting Insulin",    loinc: "20448-7", defaultUnit: "µIU/mL",  panel: "Endocrine & Metabolic" },
   "c-peptide":          { name: "C-Peptide",          loinc: "1986-9",  defaultUnit: "ng/mL",   panel: "Endocrine & Metabolic" },
   "fructosamine":       { name: "Fructosamine",       loinc: "1604-8",  defaultUnit: "µmol/L",  panel: "Endocrine & Metabolic" },
@@ -143,7 +143,7 @@ export const GLOBAL_LAB_CATALOG: Record<string, CatalogEntry> = {
 // Keys match the panel string in CatalogEntry above.
 
 export const DEFAULT_PANEL_KEYS: Record<string, string[]> = {
-  "Endocrine & Metabolic":      ["hba1c","glucose-fasting","total-cholesterol","ldl-c","hdl-c","triglycerides","hs-crp","tsh"],
+  "Endocrine & Metabolic":      ["hba1c","glucose","total-cholesterol","ldl-c","hdl-c","triglycerides","hs-crp","tsh"],
   "Renal & Urinary":            ["bun","creatinine","egfr","uun","urine-sodium","uric-acid","cystatin-c"],
   "Chemistry & Electrolytes":   ["sodium","potassium","chloride","bicarb","calcium-total","magnesium","phosphorus","anion-gap"],
   "Hematology & Iron":          ["hgb","hct","wbc","platelets","serum-iron","ferritin","tibc","transferrin-sat"],

@@ -1,7 +1,7 @@
 export const LAB_CATEGORIES = [
   { 
     title: "1. Endocrine & Metabolic", 
-    fields: ["HbA1c", "Fasting Glucose", "Fasting Insulin", "C-Peptide", "Fructosamine", "Total Cholesterol", "LDL-C", "HDL-C", "Triglycerides", "VLDL-C", "hs-CRP", "TSH", "Free T4"] 
+    fields: ["HbA1c", "Glucose", "Fasting Insulin", "C-Peptide", "Fructosamine", "Total Cholesterol", "LDL-C", "HDL-C", "Triglycerides", "VLDL-C", "hs-CRP", "TSH", "Free T4"] 
   },
   { 
     title: "2. Renal & Urinary Assessment", 

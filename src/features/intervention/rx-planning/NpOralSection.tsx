@@ -9,12 +9,14 @@ import { Field }       from "../../../shared/ui/Field";
 import { NumInput }    from "../../../shared/ui/NumInput";
 import { SelectInput } from "../../../shared/ui/SelectInput";
 import { ChipGroup }   from "../../../shared/ui/ChipGroup";
+import { PullFromStandardsButton } from "../../../shared/ui/PullFromStandardsButton";
 import {
   NP_NUTRIENT_OPTIONS,
   NP_NUTRIENT_UNITS,
   NP_TEXTURE_OPTIONS,
 } from "../../../shared/constants/interventionNpConstants";
 import type { NpOralNutrition, NutrientModifier } from "../../../types/intervention";
+import type { ParsedTargets } from "../../../shared/utils/parseStandardsTargets";
 
 // ── Internal sub-component: one dynamic nutrient modifier row ─────────────────
 
@@ -37,7 +39,6 @@ function NutrientRow({ row, onChange, onRemove }: NutrientRowProps) {
         marginBottom: "0.35rem",
       }}
     >
-      {/* Nutrient select */}
       <SelectInput
         value={row.nutrient}
         onChange={(val) => {
@@ -47,22 +48,16 @@ function NutrientRow({ row, onChange, onRemove }: NutrientRowProps) {
         options={NP_NUTRIENT_OPTIONS}
         placeholder="Select nutrient…"
       />
-
-      {/* Amount */}
       <NumInput
         value={row.amount}
         onChange={(val) => onChange({ ...row, amount: val })}
         placeholder="Amount"
       />
-
-      {/* Unit */}
       <SelectInput
         value={row.unit}
         onChange={(val) => onChange({ ...row, unit: val })}
         options={unitOptions}
       />
-
-      {/* Direction */}
       <SelectInput
         value={row.direction}
         onChange={(val) =>
@@ -71,8 +66,6 @@ function NutrientRow({ row, onChange, onRemove }: NutrientRowProps) {
         options={["increased", "decreased", "consistent"]}
         placeholder="Direction…"
       />
-
-      {/* Remove */}
       <button
         onClick={onRemove}
         style={{
@@ -92,7 +85,7 @@ function NutrientRow({ row, onChange, onRemove }: NutrientRowProps) {
   );
 }
 
-// ── Main component ────────────────────────────────────────────────────────────
+// ── Foods and eating patterns ─────────────────────────────────────────────────
 
 const FOODS_AND_PATTERNS_OPTIONS: string[] = [
   "General healthful diet",
@@ -113,12 +106,58 @@ const FOODS_AND_PATTERNS_OPTIONS: string[] = [
   "Lactose free",
 ];
 
+// ── Main component ────────────────────────────────────────────────────────────
+
 export default function NpOralSection() {
   const { intervention, setIntervention } = useInterventionStore();
   const oral = intervention.npOral;
 
   function update(patch: Partial<NpOralNutrition>) {
     setIntervention({ npOral: { ...oral, ...patch } });
+  }
+
+  // ── Pull from Standards handler ───────────────────────────────────────────
+  // Oral has a single energyKcal field — use the midpoint of the range.
+  // Protein and fluid targets are not editable single-fields in NP-1.1, so
+  // we only apply energy here and rely on the nutrient modifiers for protein.
+  function handlePull(targets: ParsedTargets) {
+    const updates: Partial<NpOralNutrition> = {};
+
+    if (targets.kcalLow && targets.kcalHigh) {
+      const low  = parseFloat(targets.kcalLow);
+      const high = parseFloat(targets.kcalHigh);
+      if (!isNaN(low) && !isNaN(high)) {
+        // Use midpoint; if low === high use that value directly
+        updates.energyKcal = String(Math.round((low + high) / 2));
+      }
+    }
+
+    // Auto-add a protein modifier row if protein target was returned and
+    // no "Protein" row already exists
+    if (targets.proteinLow && targets.proteinHigh) {
+      const protLow  = parseFloat(targets.proteinLow);
+      const protHigh = parseFloat(targets.proteinHigh);
+      if (!isNaN(protLow) && !isNaN(protHigh)) {
+        const alreadyHasProtein = oral.nutrientModifiers.some(
+          (r) => r.nutrient === "Protein"
+        );
+        if (!alreadyHasProtein) {
+          const midProt = Math.round((protLow + protHigh) / 2);
+          const newRow: NutrientModifier = {
+            id: Date.now(),
+            nutrient: "Protein",
+            amount: String(midProt),
+            unit: "g",
+            direction: "increased",
+          };
+          updates.nutrientModifiers = [...oral.nutrientModifiers, newRow];
+        }
+      }
+    }
+
+    if (Object.keys(updates).length > 0) {
+      update(updates);
+    }
   }
 
   // ── Nutrient modifier list helpers ────────────────────────────────────────
@@ -148,13 +187,12 @@ export default function NpOralSection() {
     });
   }
 
-  // ── NPO guard — when NPO is active, disable all other inputs ─────────────
   const disabled = oral.isNpo;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
 
-      {/* NPO toggle — always enabled regardless of isNpo */}
+      {/* NPO toggle */}
       <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
         <input
           type="checkbox"
@@ -176,9 +214,24 @@ export default function NpOralSection() {
         )}
       </div>
 
-      {/* NP-1.1.1: Energy */}
+      {/* NP-1.1.1: Energy — with pull button */}
       <Field label="NP-1.1.1 — Energy (kcal/day)">
-        <NumInput value={oral.energyKcal} onChange={(v) => update({ energyKcal: v })} placeholder="e.g. 2000" disabled={disabled} />
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div style={{ flex: 1 }}>
+            <NumInput
+              value={oral.energyKcal}
+              onChange={(v) => update({ energyKcal: v })}
+              placeholder="e.g. 2000"
+              disabled={disabled}
+            />
+          </div>
+          {!disabled && (
+            <PullFromStandardsButton
+              onPull={handlePull}
+              include={["energy", "protein"]}
+            />
+          )}
+        </div>
       </Field>
 
       {/* NP-1.1.2: Nutrient modifiers */}
