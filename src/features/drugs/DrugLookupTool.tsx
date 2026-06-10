@@ -732,6 +732,23 @@ export default function DrugLookupTool({
         />
       ))}
 
+      {/* Footer "Add" button for better UX on long lists */}
+      {multiEntry && (
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "4px" }}>
+          <button
+            onClick={addEntry}
+            style={{
+              background: "#3498db", color: "#fff", border: "none",
+              borderRadius: "5px", padding: "6px 14px",
+              fontSize: "0.75rem", fontWeight: 700, cursor: "pointer",
+              boxShadow: "0 2px 4px rgba(52, 152, 219, 0.2)",
+            }}
+          >
+            + Add Medication
+          </button>
+        </div>
+      )}
+
       {/* Summary chips (when showDoseFields) */}
       {showDoseFields && filledCount > 0 && (
         <div style={{
