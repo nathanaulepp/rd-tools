@@ -7,6 +7,7 @@ import {
 } from "../shared/api/db";
 import { useEscapeBackout } from "../shared/utils/ShortcutContext";
 import { MASTER_DOMAINS } from "../shared/constants/masterFieldRegistry";
+import EnteralFormulaManager from "../features/formulary/EnteralFormulaManager";
 
 // ─── Components ───────────────────────────────────────────────────────────────
 
@@ -21,6 +22,7 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [activeDomainId, setActiveDomainId] = useState<string>("patient");
+  const [activeTab, setActiveTab] = useState<"requirements" | "formulary">("requirements");
   const [toastMsg, setToastMsg] = useState("");
 
   useEffect(() => {
@@ -66,116 +68,155 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
         <div style={s.headerInner}>
           <button style={s.backBtn} onClick={handleExitToStart}>← Back to Home</button>
           <h2 style={s.title}>Configuration & Logic</h2>
-          <p style={s.subtitle}>Master Menu: Manage mandatory fields across all ADIME modules</p>
+          <p style={s.subtitle}>Manage submission requirements and your hospital formulary</p>
+
+          {/* Tab strip */}
+          <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
+            {[
+              { id: "requirements", label: "⚙ Submission Requirements" },
+              { id: "formulary",    label: "🥤 Enteral Formulary" },
+            ].map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as "requirements" | "formulary")}
+                style={{
+                  padding: "6px 16px",
+                  borderRadius: "8px",
+                  border: activeTab === tab.id ? "none" : "1px solid #e2e8f0",
+                  background: activeTab === tab.id ? "#3498db" : "#fff",
+                  color: activeTab === tab.id ? "#fff" : "#64748b",
+                  fontWeight: 700,
+                  fontSize: "0.82rem",
+                  cursor: "pointer",
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
 
       <div style={s.content}>
-        {/* 1. MASTER MENU CARD */}
-        <section style={s.section}>
-          <div style={{ ...s.masterMenuHeader, borderBottom: '1px solid #e2e8f0', marginBottom: '0' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Step 1: Select Domain to Configure
-            </span>
-            <select 
-              value={activeDomainId} 
-              onChange={(e) => setActiveDomainId(e.target.value)}
-              style={s.domainSelect}
-            >
-              {MASTER_DOMAINS.map(d => (
-                <option key={d.id} value={d.id}>{d.title}</option>
-              ))}
-            </select>
-          </div>
+        {activeTab === "requirements" ? (
+          <>
+            {/* 1. MASTER MENU CARD */}
+            <section style={s.section}>
+              <div style={{ ...s.masterMenuHeader, borderBottom: '1px solid #e2e8f0', marginBottom: '0' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Step 1: Select Domain to Configure
+                </span>
+                <select 
+                  value={activeDomainId} 
+                  onChange={(e) => setActiveDomainId(e.target.value)}
+                  style={s.domainSelect}
+                >
+                  {MASTER_DOMAINS.map(d => (
+                    <option key={d.id} value={d.id}>{d.title}</option>
+                  ))}
+                </select>
+              </div>
 
-          <div style={s.fieldsList}>
-            <div style={{ padding: '1rem 1.5rem 0.5rem', fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>
-              Step 2: Toggle Mandatory Inputs
-            </div>
-            {loading ? (
-              <div style={{ padding: '2rem', textAlign: 'center' }}>Loading logic...</div>
-            ) : currentDomain?.fields.map(f => {
-              const req = requirements.find(r => r.field_key === f.key);
-              const isRequired = req?.required ?? false;
-              const isSaving = savingKey === f.key;
-              const isLocked = (f as any).locked === true;
+              <div style={s.fieldsList}>
+                <div style={{ padding: '1rem 1.5rem 0.5rem', fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>
+                  Step 2: Toggle Mandatory Inputs
+                </div>
+                {loading ? (
+                  <div style={{ padding: '2rem', textAlign: 'center' }}>Loading logic...</div>
+                ) : currentDomain?.fields.map(f => {
+                  const req = requirements.find(r => r.field_key === f.key);
+                  const isRequired = req?.required ?? false;
+                  const isSaving = savingKey === f.key;
+                  const isLocked = (f as any).locked === true;
 
-              return (
-                <div key={f.key} style={s.fieldRow}>
-                  <div>
-                    <div style={s.fieldName}>{f.label}</div>
-                    <div style={s.fieldKey}>field: {f.key}</div>
+                  return (
+                    <div key={f.key} style={s.fieldRow}>
+                      <div>
+                        <div style={s.fieldName}>{f.label}</div>
+                        <div style={s.fieldKey}>field: {f.key}</div>
+                      </div>
+                      <button
+                        onClick={() => !isLocked && handleToggle(f.key, f.label, isRequired)}
+                        disabled={isSaving || isLocked}
+                        title={isLocked ? "This field is always required and cannot be disabled" : undefined}
+                        style={{
+                          ...s.toggleBtn,
+                          background: isLocked ? "#e2e8f0" : isRequired ? "#27ae60" : "#f1f5f9",
+                          color:      isLocked ? "#94a3b8" : isRequired ? "#fff" : "#64748b",
+                          border:     isLocked ? "1px solid #cbd5e1" : isRequired ? "none" : "1px solid #cbd5e1",
+                          cursor:     isLocked ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        {isLocked ? "🔒 Always Required" : isSaving ? "..." : isRequired ? "Mandatory ✓" : "Optional"}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div style={s.infoBox}>
+                <span style={{ fontSize: '1rem' }}>💡</span>
+                <p>
+                  Fields marked as <strong>Mandatory</strong> will be checked during note submission. 
+                  If left blank, the clinician will be prompted to fix them before the record can be finalized.
+                </p>
+              </div>
+            </section>
+
+            {/* 2. DATABASE SCHEMA INFO */}
+            <section style={s.section}>
+              <h3 style={s.sectionTitle}>Database Schema</h3>
+              <p style={s.sectionDesc}>
+                The following columns are stored as JSON blobs in the <code style={s.code}>notes</code> table. 
+                This structure allows for rapid field expansion without changing the database core.
+              </p>
+              <div style={s.schemaTable}>
+                {[
+                  { col: "diagnosis",        type: "TEXT (JSON)", desc: "PES statements, priority ranking, narrative" },
+                  { col: "intervention",     type: "TEXT (JSON)", desc: "ND / Education / Counseling / Coordination of Care" },
+                  { col: "monitor_evaluate", type: "TEXT (JSON)", desc: "Indicators, criteria, outcome evaluation, discharge plan" },
+                  { col: "standards",        type: "TEXT (JSON)", desc: "Condition-based evaluation targets and PAL factors" },
+                ].map(row => (
+                  <div key={row.col} style={s.schemaRow}>
+                    <code style={{ ...s.code, fontSize: "0.85rem", color: "#2980b9" }}>{row.col}</code>
+                    <span style={{ fontSize: "0.75rem", color: "#94a3b8", marginLeft: "0.5rem" }}>{row.type}</span>
+                    <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginLeft: "auto" }}>{row.desc}</span>
                   </div>
-                  <button
-                    onClick={() => !isLocked && handleToggle(f.key, f.label, isRequired)}
-                    disabled={isSaving || isLocked}
-                    title={isLocked ? "This field is always required and cannot be disabled" : undefined}
-                    style={{
-                      ...s.toggleBtn,
-                      background: isLocked ? "#e2e8f0" : isRequired ? "#27ae60" : "#f1f5f9",
-                      color:      isLocked ? "#94a3b8" : isRequired ? "#fff" : "#64748b",
-                      border:     isLocked ? "1px solid #cbd5e1" : isRequired ? "none" : "1px solid #cbd5e1",
-                      cursor:     isLocked ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    {isLocked ? "🔒 Always Required" : isSaving ? "..." : isRequired ? "Mandatory ✓" : "Optional"}
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+            </section>
 
-          <div style={s.infoBox}>
-            <span style={{ fontSize: '1rem' }}>💡</span>
-            <p>
-              Fields marked as <strong>Mandatory</strong> will be checked during note submission. 
-              If left blank, the clinician will be prompted to fix them before the record can be finalized.
+            {/* 3. PLANNED EXTENSIONS */}
+            <section style={s.section}>
+              <h3 style={s.sectionTitle}>Planned Extensions (Phase 6 hooks)</h3>
+              <div style={s.hooksList}>
+                {[
+                  { icon: "🔒", title: "Role-Based Requirements", desc: "Logic to enforce different mandatory fields for inpatient vs. outpatient RDs." },
+                  { icon: "📊", title: "Analytics Domain", desc: "Proposed module for tracking GFR trends, EER/Protein targets, and weight history analytics." },
+                ].map(h => (
+                  <div key={h.title} style={s.hookCard}>
+                    <span style={{ fontSize: "1.5rem" }}>{h.icon}</span>
+                    <div>
+                      <div style={s.hookTitle}>{h.title}</div>
+                      <div style={s.hookDesc}>{h.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          </>
+        ) : (
+          <section style={s.section}>
+            <h3 style={s.sectionTitle}>Hospital Enteral Formulary</h3>
+            <p style={s.sectionDesc}>
+              Add and manage the EN formulas available at your facility. This data persists
+              globally — not per note — so you only need to set it up once.
             </p>
-          </div>
-        </section>
-
-        {/* 2. DATABASE SCHEMA INFO */}
-        <section style={s.section}>
-          <h3 style={s.sectionTitle}>Database Schema</h3>
-          <p style={s.sectionDesc}>
-            The following columns are stored as JSON blobs in the <code style={s.code}>notes</code> table. 
-            This structure allows for rapid field expansion without changing the database core.
-          </p>
-          <div style={s.schemaTable}>
-            {[
-              { col: "diagnosis",        type: "TEXT (JSON)", desc: "PES statements, priority ranking, narrative" },
-              { col: "intervention",     type: "TEXT (JSON)", desc: "ND / Education / Counseling / Coordination of Care" },
-              { col: "monitor_evaluate", type: "TEXT (JSON)", desc: "Indicators, criteria, outcome evaluation, discharge plan" },
-              { col: "standards",        type: "TEXT (JSON)", desc: "Condition-based evaluation targets and PAL factors" },
-            ].map(row => (
-              <div key={row.col} style={s.schemaRow}>
-                <code style={{ ...s.code, fontSize: "0.85rem", color: "#2980b9" }}>{row.col}</code>
-                <span style={{ fontSize: "0.75rem", color: "#94a3b8", marginLeft: "0.5rem" }}>{row.type}</span>
-                <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginLeft: "auto" }}>{row.desc}</span>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* 3. PLANNED EXTENSIONS */}
-        <section style={s.section}>
-          <h3 style={s.sectionTitle}>Planned Extensions (Phase 6 hooks)</h3>
-          <div style={s.hooksList}>
-            {[
-              { icon: "🔒", title: "Role-Based Requirements", desc: "Logic to enforce different mandatory fields for inpatient vs. outpatient RDs." },
-              { icon: "📊", title: "Analytics Domain", desc: "Proposed module for tracking GFR trends, EER/Protein targets, and weight history analytics." },
-            ].map(h => (
-              <div key={h.title} style={s.hookCard}>
-                <span style={{ fontSize: "1.5rem" }}>{h.icon}</span>
-                <div>
-                  <div style={s.hookTitle}>{h.title}</div>
-                  <div style={s.hookDesc}>{h.desc}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
+            <EnteralFormulaManager />
+          </section>
+        )}
       </div>
+
 
       {/* Toast */}
       <div style={{

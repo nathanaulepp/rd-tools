@@ -138,7 +138,66 @@ async function initSchema(db: Database): Promise<void> {
     )
   `);
 
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS enteral_formulas (
+      id                    TEXT PRIMARY KEY,
+      name                  TEXT NOT NULL,
+      manufacturer          TEXT NOT NULL DEFAULT '',
+      kcal_per_ml           REAL,
+      protein_g_per_l       REAL,
+      fat_g_per_l           REAL,
+      cho_g_per_l           REAL,
+      fiber_total_g_per_l   REAL,
+      fiber_soluble_g_per_l REAL,
+      fiber_insoluble_g_per_l REAL,
+      free_water_pct        REAL,
+      osmolality            REAL,
+      na_mg_per_l           REAL,
+      k_mg_per_l            REAL,
+      phos_mg_per_l         REAL,
+      mg_mg_per_l           REAL,
+      route                 TEXT NOT NULL DEFAULT '',
+      notes                 TEXT NOT NULL DEFAULT '',
+      is_seeded             INTEGER NOT NULL DEFAULT 0,
+      created_at            TEXT NOT NULL
+    )
+  `);
+
+  // Seed common hospital formulas (INSERT OR IGNORE = never overwrites user edits)
+  const seedFormulas = [
+    // name, manufacturer, kcal/mL, prot g/L, fat g/L, cho g/L, fiber_tot, fiber_sol, fiber_ins, fwpct, osm, na, k, phos, mg, route, notes
+    ["Osmolite 1.0", "Abbott", 1.0, 37.0, 34.7, 143.5, 0, 0, 0, 84, 300, 930, 1570, 760, 270, "gastric", "Standard isotonic, fiber-free"],
+    ["Osmolite 1.2", "Abbott", 1.2, 55.5, 39.3, 157.7, 0, 0, 0, 81, 390, 1310, 2030, 1060, 330, "gastric", "Higher calorie isotonic, fiber-free"],
+    ["Osmolite 1.5", "Abbott", 1.5, 63.4, 49.2, 200.0, 0, 0, 0, 77, 525, 1470, 1910, 1260, 360, "gastric", "High-cal isotonic, fiber-free"],
+    ["Jevity 1.0", "Abbott", 1.0, 44.3, 34.7, 154.7, 14.4, 9.0, 5.4, 82, 300, 930, 1570, 760, 270, "gastric", "Standard with fiber blend"],
+    ["Jevity 1.2", "Abbott", 1.2, 55.5, 39.3, 169.0, 20.0, 11.5, 8.5, 80, 430, 1310, 2030, 1060, 330, "gastric", "Higher calorie with fiber"],
+    ["Jevity 1.5", "Abbott", 1.5, 63.8, 49.2, 215.7, 22.0, 12.5, 9.5, 76, 525, 1470, 1910, 1260, 360, "gastric", "High-cal with fiber blend"],
+    ["Peptamen 1.0", "Nestlé", 1.0, 40.0, 39.0, 127.0, 0, 0, 0, 84, 260, 550, 1250, 670, 200, "post-pyloric", "Peptide-based for malabsorption"],
+    ["Peptamen 1.5", "Nestlé", 1.5, 68.0, 68.0, 170.0, 0, 0, 0, 78, 430, 880, 1880, 970, 310, "post-pyloric", "High-cal peptide-based"],
+    ["Peptamen AF", "Nestlé", 1.2, 75.0, 49.0, 106.0, 0, 0, 0, 81, 350, 1000, 1500, 750, 240, "post-pyloric", "Anti-inflammatory omega-3 enriched"],
+    ["Glucerna 1.0", "Abbott", 1.0, 41.8, 54.4, 96.3, 14.3, 7.0, 7.3, 84, 355, 930, 1570, 760, 270, "gastric", "Low-glycemic index, diabetes"],
+    ["Glucerna 1.2", "Abbott", 1.2, 60.0, 68.4, 105.0, 12.0, 7.0, 5.0, 80, 450, 1150, 1800, 900, 300, "gastric", "High-cal low-GI, diabetes"],
+    ["Nepro", "Abbott", 1.8, 81.0, 95.6, 167.0, 0, 0, 0, 72, 600, 840, 1060, 670, 160, "gastric", "Renal, low K/Phos, dialysis patients"],
+    ["Novasource Renal", "Nestlé", 2.0, 74.0, 100.0, 200.0, 0, 0, 0, 71, 700, 960, 1060, 660, 130, "gastric", "High-cal renal, HD/PD patients"],
+    ["Pulmocare", "Abbott", 1.5, 62.6, 93.0, 105.7, 0, 0, 0, 78, 475, 1310, 1870, 1060, 390, "gastric", "High-fat low-carb, COPD/vent weaning"],
+    ["Pivot 1.5", "Abbott", 1.5, 94.0, 50.0, 157.0, 0, 0, 0, 77, 400, 1420, 2100, 1200, 400, "both", "High-protein critical care formula"],
+  ];
+
+  for (const f of seedFormulas) {
+    await db.execute(
+      `INSERT OR IGNORE INTO enteral_formulas
+        (id, name, manufacturer, kcal_per_ml, protein_g_per_l, fat_g_per_l,
+         cho_g_per_l, fiber_total_g_per_l, fiber_soluble_g_per_l,
+         fiber_insoluble_g_per_l, free_water_pct, osmolality,
+         na_mg_per_l, k_mg_per_l, phos_mg_per_l, mg_mg_per_l,
+         route, notes, is_seeded, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+      [uuid(), ...f, new Date().toISOString()]
+    );
+  }
+
   const now = new Date().toISOString();
+
   const defaultRequirements = [
     { field_key: "first_name",     label: "First Name" },
     { field_key: "last_name",      label: "Last Name"  },
@@ -943,4 +1002,93 @@ export async function addSubmissionRequirement(
     `UPDATE user_presets SET name = ? WHERE id = ?`,
     [newName, presetId]
   );
+  }
+
+  // ─── Enteral Formula commands ────────────────────────────────────────────────
+
+  import type { EnteralFormula, EnteralFormulaInput } from "../../types";
+
+  export async function getAllFormulas(): Promise<EnteralFormula[]> {
+  const db = await getDb();
+  const rows = await db.select<any[]>(
+    `SELECT * FROM enteral_formulas ORDER BY name ASC`
+  );
+  return rows.map(dbRowToFormula);
+  }
+
+  export async function createFormula(input: EnteralFormulaInput): Promise<EnteralFormula> {
+  const db = await getDb();
+  const id = uuid();
+  const now = new Date().toISOString();
+  await db.execute(
+    `INSERT INTO enteral_formulas
+      (id, name, manufacturer, kcal_per_ml, protein_g_per_l, fat_g_per_l,
+       cho_g_per_l, fiber_total_g_per_l, fiber_soluble_g_per_l,
+       fiber_insoluble_g_per_l, free_water_pct, osmolality,
+       na_mg_per_l, k_mg_per_l, phos_mg_per_l, mg_mg_per_l,
+       route, notes, is_seeded, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+    [id, input.name, input.manufacturer ?? "",
+     n(input.kcal_per_ml), n(input.protein_g_per_l), n(input.fat_g_per_l),
+     n(input.cho_g_per_l), n(input.fiber_total_g_per_l), n(input.fiber_soluble_g_per_l),
+     n(input.fiber_insoluble_g_per_l), n(input.free_water_pct), n(input.osmolality),
+     n(input.na_mg_per_l), n(input.k_mg_per_l), n(input.phos_mg_per_l), n(input.mg_mg_per_l),
+     input.route ?? "", input.notes ?? "", now]
+  );
+  return { id, ...input, is_seeded: false, created_at: now } as EnteralFormula;
+  }
+
+  export async function updateFormula(
+  id: string,
+  input: Partial<EnteralFormulaInput>
+  ): Promise<void> {
+  const db = await getDb();
+  const fields = Object.keys(input) as (keyof EnteralFormulaInput)[];
+  if (fields.length === 0) return;
+  const setClauses = fields.map((f) => `${f} = ?`).join(", ");
+  const values = fields.map((f) => {
+    const v = input[f];
+    return v === undefined ? null : v;
+  });
+  await db.execute(
+    `UPDATE enteral_formulas SET ${setClauses} WHERE id = ?`,
+    [...values, id]
+  );
+  }
+
+  export async function deleteFormula(id: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(`DELETE FROM enteral_formulas WHERE id = ?`, [id]);
+  }
+
+  // Helper: null-safe number coercion
+  function n(v: number | null | undefined): number | null {
+  if (v === null || v === undefined || isNaN(Number(v))) return null;
+  return Number(v);
+  }
+
+  // Helper: map DB row → typed EnteralFormula
+  function dbRowToFormula(row: any): EnteralFormula {
+  return {
+    id:                     row.id,
+    name:                   row.name,
+    manufacturer:           row.manufacturer ?? "",
+    kcal_per_ml:            row.kcal_per_ml ?? null,
+    protein_g_per_l:        row.protein_g_per_l ?? null,
+    fat_g_per_l:            row.fat_g_per_l ?? null,
+    cho_g_per_l:            row.cho_g_per_l ?? null,
+    fiber_total_g_per_l:    row.fiber_total_g_per_l ?? null,
+    fiber_soluble_g_per_l:  row.fiber_soluble_g_per_l ?? null,
+    fiber_insoluble_g_per_l: row.fiber_insoluble_g_per_l ?? null,
+    free_water_pct:         row.free_water_pct ?? null,
+    osmolality:             row.osmolality ?? null,
+    na_mg_per_l:            row.na_mg_per_l ?? null,
+    k_mg_per_l:             row.k_mg_per_l ?? null,
+    phos_mg_per_l:          row.phos_mg_per_l ?? null,
+    mg_mg_per_l:            row.mg_mg_per_l ?? null,
+    route:                  (row.route ?? "") as EnteralFormula["route"],
+    notes:                  row.notes ?? "",
+    is_seeded:              row.is_seeded === 1,
+    created_at:             row.created_at,
+  };
   }
