@@ -183,17 +183,39 @@ async function initSchema(db: Database): Promise<void> {
     ["Pivot 1.5", "Abbott", 1.5, 94.0, 50.0, 157.0, 0, 0, 0, 77, 400, 1420, 2100, 1200, 400, "both", "High-protein critical care formula"],
   ];
 
+  try {
+    await db.execute(`
+      DELETE FROM enteral_formulas
+      WHERE is_seeded = 1
+      AND id NOT IN (
+        SELECT MIN(id) FROM enteral_formulas WHERE is_seeded = 1 GROUP BY name
+      )
+    `);
+  } catch (e) {
+    console.warn("Cleanup of duplicate seeded formulas failed", e);
+  }
   for (const f of seedFormulas) {
-    await db.execute(
-      `INSERT OR IGNORE INTO enteral_formulas
-        (id, name, manufacturer, kcal_per_ml, protein_g_per_l, fat_g_per_l,
-         cho_g_per_l, fiber_total_g_per_l, fiber_soluble_g_per_l,
-         fiber_insoluble_g_per_l, free_water_pct, osmolality,
-         na_mg_per_l, k_mg_per_l, phos_mg_per_l, mg_mg_per_l,
-         route, notes, is_seeded, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
-      [uuid(), ...f, new Date().toISOString()]
+    const formulaName = f[0]; // The name is the first item in the array
+    
+    // Check if a seeded formula with this name already exists
+    const existing = await db.select<any[]>(
+      `SELECT id FROM enteral_formulas WHERE name = ? AND is_seeded = 1`,
+      [formulaName]
     );
+
+    // Only insert if it's missing
+    if (existing.length === 0) {
+      await db.execute(
+        `INSERT INTO enteral_formulas
+          (id, name, manufacturer, kcal_per_ml, protein_g_per_l, fat_g_per_l,
+           cho_g_per_l, fiber_total_g_per_l, fiber_soluble_g_per_l,
+           fiber_insoluble_g_per_l, free_water_pct, osmolality,
+           na_mg_per_l, k_mg_per_l, phos_mg_per_l, mg_mg_per_l,
+           route, notes, is_seeded, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?)`,
+        [uuid(), ...f, new Date().toISOString()]
+      );
+    }
   }
 
   const now = new Date().toISOString();
