@@ -13,6 +13,7 @@ import { NP_EN_ADMIN_OPTIONS } from "../../../shared/constants/interventionNpCon
 import type { NpEnteralNutrition } from "../../../types/intervention";
 import type { ParsedTargets } from "../../../shared/utils/parseStandardsTargets";
 import FormulaLookupInput, { type FormulaPatch } from "./FormulaLookupInput";
+import FormulaViabilityPanel from "./FormulaViabilityPanel";
 
 
 // ── Internal sub-component: labeled low/high range input pair ─────────────────
@@ -86,6 +87,21 @@ export default function NpEnteralSection() {
     update({ adminMethod: current ? `${current}\n${preset}` : preset });
   }
 
+  // ── Formula viability apply handler ───────────────────────────────────────
+  // When the clinician selects a formula from the viability panel, auto-fill
+  // the formula name, daily volume, and infusion rate fields.
+  function handleViabilityApply(
+    formulaName: string,
+    rateMlHr: number,
+    volMlDay: number
+  ) {
+    update({
+      formulaName,
+      infusionRateMlHr: String(rateMlHr),
+      dailyVolumeMl: String(volMlDay),
+    });
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.85rem" }}>
 
@@ -133,6 +149,20 @@ export default function NpEnteralSection() {
             onHighChange={(v) => update({ fluidHigh: v })}
           />
         </div>
+
+        {/* ── Formula Viability Panel ────────────────────────────────────────
+            Appears automatically once kcal targets are populated.
+            Ranks the formulary against current targets and lets the
+            clinician apply a formula directly to the prescription fields. */}
+        <FormulaViabilityPanel
+          kcalLow={en.kcalLow}
+          kcalHigh={en.kcalHigh}
+          proteinLow={en.proteinLow}
+          proteinHigh={en.proteinHigh}
+          fluidLow={en.fluidLow}
+          fluidHigh={en.fluidHigh}
+          onApply={handleViabilityApply}
+        />
       </div>
 
       {/* ── NP-1.2.3: Formula Composition and Volume ─────────────────────────── */}
