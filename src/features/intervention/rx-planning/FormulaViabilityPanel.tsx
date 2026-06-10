@@ -1,294 +1,659 @@
 // src/features/intervention/rx-planning/FormulaViabilityPanel.tsx
-// Unchanged externally — same props, same onApply signature.
-// Internally updated to use v2 FormulaViabilityResult field names.
+//
+// Shown inside NpEnteralSection once kcal targets are populated.
+//
+// Two complementary views in one panel:
+//
+//   Tab 1 — "Ranked Formulas"
+//     Uses rankFormulas() from formulaViability.ts (variational scorer).
+//     Shows every formula in the formulary ranked by viability score so the
+//     clinician can quickly see which formulas fit single-formula prescriptions.
+//
+//   Tab 2 — "Suggest Blend"
+//     Uses optimizeEnteralPrescription() from formulaOptimizer.ts (grid search).
+//     Runs once on demand and returns the globally optimal single or 50/50-blend
+//     prescription including the ideal flush volume.
+//
+// onApply(formulaName, rateMlHr, volMlDay) is called when the clinician
+// accepts a result from either tab — it back-fills the NP-1.2.3 fields.
 
 import React, { useMemo, useState } from "react";
 import { useEnteralFormulaStore } from "../../../stores/useEnteralFormulaStore";
-import { rankFormulas } from "../../../shared/utils/formulaViability";
-import type { FormulaViabilityResult } from "../../../shared/utils/formulaViability";
+import {
+  rankFormulas,
+  type FormulaViabilityResult,
+  type ViabilityTargets,
+} from "../../../shared/utils/formulaViability";
+import {
+  optimizeEnteralPrescription,
+  MODULAR_KCAL_PER_G,
+  type OptimizationResult,
+  type OptimizationTargets,
+} from "../../../shared/utils/formulaOptimizer";
+
+// ── Props ─────────────────────────────────────────────────────────────────────
 
 interface FormulaViabilityPanelProps {
-  kcalLow: string;
-  kcalHigh: string;
+  kcalLow:    string;
+  kcalHigh:   string;
   proteinLow: string;
   proteinHigh: string;
-  fluidLow: string;
-  fluidHigh: string;
+  fluidLow:   string;
+  fluidHigh:  string;
+  /** Back-fills formula name + infusion rate + daily volume in NP-1.2.3 */
   onApply: (formulaName: string, rateMlHr: number, volMlDay: number) => void;
 }
 
-const TIER_CONFIG = {
-  great:    { label: "Great fit",  bg: "#f0fdf4", border: "#86efac", text: "#15803d", dot: "#22c55e" },
-  good:     { label: "Good fit",   bg: "#eff6ff", border: "#93c5fd", text: "#1d4ed8", dot: "#3b82f6" },
-  marginal: { label: "Marginal",   bg: "#fffbeb", border: "#fcd34d", text: "#92400e", dot: "#f59e0b" },
-  poor:     { label: "Poor fit",   bg: "#fef2f2", border: "#fca5a5", text: "#991b1b", dot: "#ef4444" },
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+const TIER_META: Record<
+  FormulaViabilityResult["tier"],
+  { color: string; bg: string; label: string }
+> = {
+  great:    { color: "#166534", bg: "#dcfce7", label: "Great"    },
+  good:     { color: "#1a6fa8", bg: "#e6f4ff", label: "Good"     },
+  marginal: { color: "#92400e", bg: "#fef3c7", label: "Marginal" },
+  poor:     { color: "#991b1b", bg: "#fee2e2", label: "Poor"     },
 };
 
-// Penalty bar — inverted: 0 penalty = full green bar, 100 = empty
-function PenaltyBar({ label, penalty, color }: { label: string; penalty: number; color: string }) {
-  const fillPct = Math.max(0, 100 - penalty);
+function ScoreBar({ score }: { score: number }) {
+  const color =
+    score >= 85 ? "#22c55e" :
+    score >= 65 ? "#3498db" :
+    score >= 40 ? "#f59e0b" :
+    "#ef4444";
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
-      <span style={{
-        fontSize: "0.6rem", color: "#94a3b8", textTransform: "uppercase",
-        letterSpacing: "0.04em", flexShrink: 0, width: 42,
-      }}>
-        {label}
-      </span>
-      <div style={{ flex: 1, height: 4, background: "#e2e8f0", borderRadius: 2, overflow: "hidden" }}>
-        <div style={{
-          width: `${fillPct}%`, height: "100%", background: color,
-          borderRadius: 2, transition: "width 0.4s ease",
-        }} />
+    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+      <div
+        style={{
+          flex: 1,
+          height: 6,
+          borderRadius: 3,
+          background: "#e2e8f0",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            width: `${score}%`,
+            height: "100%",
+            background: color,
+            transition: "width 0.3s ease",
+            borderRadius: 3,
+          }}
+        />
       </div>
-      <span style={{ fontSize: "0.62rem", color: "#64748b", flexShrink: 0, width: 26 }}>
-        {fillPct}%
+      <span style={{ fontSize: "0.72rem", fontWeight: 700, color, minWidth: 28 }}>
+        {score}
       </span>
     </div>
   );
 }
 
-function ResultRow({ result, onApply, rank }: {
-  result: FormulaViabilityResult;
-  onApply: (r: FormulaViabilityResult) => void;
-  rank: number;
-}) {
-  const [expanded, setExpanded] = useState(false);
-  const cfg = TIER_CONFIG[result.tier];
+// ── Ranked Formulas tab ───────────────────────────────────────────────────────
+
+interface RankedTabProps {
+  ranked: FormulaViabilityResult[];
+  onApply: FormulaViabilityPanelProps["onApply"];
+}
+
+function RankedTab({ ranked, onApply }: RankedTabProps) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+
+  if (ranked.length === 0) {
+    return (
+      <div style={emptyState}>
+        No formulas in the formulary have sufficient data to score.
+      </div>
+    );
+  }
 
   return (
-    <div style={{ border: `1px solid ${cfg.border}`, borderRadius: 8, overflow: "hidden", background: cfg.bg }}>
-      <div
-        onClick={() => setExpanded(e => !e)}
-        style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 10px", cursor: "pointer", userSelect: "none" }}
-      >
-        <span style={{
-          flexShrink: 0, width: 20, height: 20, borderRadius: "50%",
-          background: rank <= 3 ? cfg.dot : "#e2e8f0",
-          color: rank <= 3 ? "#fff" : "#94a3b8",
-          fontSize: "0.62rem", fontWeight: 800,
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          {rank}
-        </span>
+    <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+      {ranked.map((r) => {
+        const meta = TIER_META[r.tier];
+        const isOpen = expanded === r.formula.id;
 
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: "0.82rem", fontWeight: 700, color: "#1e293b", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-            {result.formula.name}
-          </div>
-          {result.formula.manufacturer && (
-            <div style={{ fontSize: "0.68rem", color: "#94a3b8" }}>{result.formula.manufacturer}</div>
-          )}
-        </div>
-
-        <div style={{ display: "flex", gap: 8, alignItems: "center", flexShrink: 0 }}>
-          <StatPill label="Vol" value={`${result.optimalVolMl} mL`} />
-          <StatPill label="Rate" value={`${result.optimalRateMlHr} mL/hr`} />
-          <StatPill label="Prot" value={`${result.actualProteinG}g`} />
-          <StatPill label="Kcal" value={`${result.actualKcal}`} />
-        </div>
-
-        <div style={{
-          flexShrink: 0, textAlign: "center",
-          background: cfg.dot, color: "#fff", borderRadius: 6,
-          padding: "2px 8px", fontSize: "0.72rem", fontWeight: 800, minWidth: 40,
-        }}>
-          {result.score}
-        </div>
-
-        <span style={{ flexShrink: 0, fontSize: "0.65rem", fontWeight: 700, color: cfg.text, minWidth: 54 }}>
-          {cfg.label}
-        </span>
-
-        <span style={{ flexShrink: 0, color: "#94a3b8", fontSize: "0.65rem" }}>
-          {expanded ? "▲" : "▼"}
-        </span>
-      </div>
-
-      {expanded && (
-        <div style={{ borderTop: `1px solid ${cfg.border}`, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-
-          {/* Fit bars — inverted penalty display */}
-          <div>
-            <div style={{ fontSize: "0.62rem", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 5 }}>
-              Fit quality per nutrient (higher = closer to target)
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <PenaltyBar label="Kcal"    penalty={result.kcalPenalty}    color="#3b82f6" />
-              <PenaltyBar label="Protein" penalty={result.proteinPenalty} color="#8b5cf6" />
-              <PenaltyBar label="Fluid"   penalty={result.fluidPenalty}   color="#06b6d4" />
-            </div>
-          </div>
-
-          {/* Detail grid */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6 }}>
-            <DetailCell label="Optimal Volume"  value={`${result.optimalVolMl} mL/day`} />
-            <DetailCell label="Continuous Rate" value={`${result.optimalRateMlHr} mL/hr`} />
-            <DetailCell label="Kcal Delivered"  value={`${result.actualKcal} kcal/day`} />
-            <DetailCell label="Protein"         value={`${result.actualProteinG} g/day`} />
-            <DetailCell label="Free Water"      value={result.actualFreeWaterMl > 0 ? `${result.actualFreeWaterMl} mL/day` : "—"} />
-            <DetailCell label="kcal/mL"         value={result.formula.kcal_per_ml !== null ? `${result.formula.kcal_per_ml}` : "—"} />
-          </div>
-
-          {result.flags.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-              {result.flags.map(f => (
-                <span key={f} style={{
-                  fontSize: "0.65rem", background: "#fef9c3", color: "#92400e",
-                  border: "1px solid #fde68a", borderRadius: 4, padding: "1px 6px",
-                }}>
-                  ⚠ {f}
-                </span>
-              ))}
-            </div>
-          )}
-
-          <button
-            onClick={() => onApply(result)}
+        return (
+          <div
+            key={r.formula.id}
             style={{
-              alignSelf: "flex-end", background: "#3498db", color: "#fff",
-              border: "none", borderRadius: 6, padding: "5px 14px",
-              fontSize: "0.75rem", fontWeight: 700, cursor: "pointer",
+              border: "1px solid #e2e8f0",
+              borderRadius: "7px",
+              overflow: "hidden",
+              background: "#fff",
             }}
           >
-            Apply to prescription →
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function StatPill({ label, value }: { label: string; value: string }) {
-  return (
-    <div style={{ textAlign: "center" }}>
-      <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "#1e293b" }}>{value}</div>
-      <div style={{ fontSize: "0.58rem", color: "#94a3b8", textTransform: "uppercase" }}>{label}</div>
-    </div>
-  );
-}
-
-function DetailCell({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div style={{ fontSize: "0.6rem", color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 1 }}>
-        {label}
-      </div>
-      <div style={{ fontSize: "0.78rem", fontWeight: 600, color: "#1e293b" }}>{value}</div>
-    </div>
-  );
-}
-
-export default function FormulaViabilityPanel({
-  kcalLow, kcalHigh, proteinLow, proteinHigh, fluidLow, fluidHigh, onApply,
-}: FormulaViabilityPanelProps) {
-  const { formulas } = useEnteralFormulaStore();
-  const [showAll, setShowAll] = useState(false);
-  const [filterTier, setFilterTier] = useState<string>("all");
-
-  const kLow = parseFloat(kcalLow) || 0;
-  const kHigh = parseFloat(kcalHigh) || 0;
-  const pLow = parseFloat(proteinLow) || 0;
-  const pHigh = parseFloat(proteinHigh) || 0;
-  const fLow = parseFloat(fluidLow) || 0;
-  const fHigh = parseFloat(fluidHigh) || 0;
-
-  const hasTargets = kLow > 0 && kHigh > 0;
-
-  const ranked = useMemo(() => {
-    if (!hasTargets) return [];
-    return rankFormulas(formulas, {
-      kcalLow: kLow, kcalHigh: kHigh,
-      proteinLow: pLow, proteinHigh: pHigh,
-      fluidLow: fLow > 0 ? fLow : undefined,
-      fluidHigh: fHigh > 0 ? fHigh : undefined,
-    });
-  }, [formulas, kLow, kHigh, pLow, pHigh, fLow, fHigh, hasTargets]);
-
-  if (!hasTargets || formulas.length === 0) return null;
-
-  const filtered = filterTier === "all" ? ranked : ranked.filter(r => r.tier === filterTier);
-  const displayed = showAll ? filtered : filtered.slice(0, 4);
-
-  const tierCounts = {
-    great:    ranked.filter(r => r.tier === "great").length,
-    good:     ranked.filter(r => r.tier === "good").length,
-    marginal: ranked.filter(r => r.tier === "marginal").length,
-    poor:     ranked.filter(r => r.tier === "poor").length,
-  };
-
-  return (
-    <div style={{ marginTop: "1rem", border: "1px solid #e2e8f0", borderRadius: 10, overflow: "hidden", background: "#fafbfc" }}>
-      <div style={{
-        padding: "10px 14px", borderBottom: "1px solid #e2e8f0", background: "#fff",
-        display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8,
-      }}>
-        <div>
-          <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e293b" }}>
-            Formula Viability
-          </div>
-          <div style={{ fontSize: "0.68rem", color: "#94a3b8", marginTop: 1 }}>
-            {ranked.length} formula{ranked.length !== 1 ? "s" : ""} optimised against your targets
-            {pLow > 0 ? ` · protein ${pLow}–${pHigh}g` : ""}
-            {fLow > 0 ? ` · fluid ${fLow}–${fHigh} mL` : ""}
-          </div>
-        </div>
-
-        <div style={{ display: "flex", gap: 4 }}>
-          {([
-            { id: "all",      label: `All (${ranked.length})`,          color: "#64748b" },
-            { id: "great",    label: `Great (${tierCounts.great})`,     color: "#22c55e" },
-            { id: "good",     label: `Good (${tierCounts.good})`,       color: "#3b82f6" },
-            { id: "marginal", label: `Marginal (${tierCounts.marginal})`, color: "#f59e0b" },
-          ] as const).map(({ id, label, color }) => (
-            <button
-              key={id}
-              onClick={() => setFilterTier(id)}
+            {/* Header row */}
+            <div
+              onClick={() => setExpanded(isOpen ? null : r.formula.id)}
               style={{
-                padding: "2px 8px", borderRadius: 12,
-                border: `1px solid ${filterTier === id ? color : "#e2e8f0"}`,
-                background: filterTier === id ? `${color}18` : "transparent",
-                color: filterTier === id ? color : "#94a3b8",
-                fontSize: "0.65rem", fontWeight: 700, cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                padding: "8px 10px",
+                cursor: "pointer",
+                background: isOpen ? "#f8faff" : "#fff",
               }}
             >
-              {label}
+              {/* Tier badge */}
+              <span
+                style={{
+                  fontSize: "0.6rem",
+                  fontWeight: 800,
+                  color: meta.color,
+                  background: meta.bg,
+                  borderRadius: "4px",
+                  padding: "1px 6px",
+                  flexShrink: 0,
+                }}
+              >
+                {meta.label.toUpperCase()}
+              </span>
+
+              {/* Name */}
+              <span
+                style={{
+                  flex: 1,
+                  fontSize: "0.82rem",
+                  fontWeight: 600,
+                  color: "#1e293b",
+                  minWidth: 0,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {r.formula.name}
+              </span>
+
+              {/* Score bar */}
+              <div style={{ width: 80, flexShrink: 0 }}>
+                <ScoreBar score={r.score} />
+              </div>
+
+              <span style={{ fontSize: "0.65rem", color: "#94a3b8", flexShrink: 0 }}>
+                {isOpen ? "▲" : "▼"}
+              </span>
+            </div>
+
+            {/* Expanded detail */}
+            {isOpen && (
+              <div
+                style={{
+                  padding: "8px 10px",
+                  borderTop: "1px solid #f1f5f9",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "6px",
+                }}
+              >
+                {/* Nutrient deliveries */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(4, 1fr)",
+                    gap: "4px",
+                  }}
+                >
+                  <MiniStat label="Vol/day" value={`${r.optimalVolMl} mL`} />
+                  <MiniStat label="Rate" value={`${r.optimalRateMlHr} mL/hr`} />
+                  <MiniStat label="Kcal" value={`${r.actualKcal}`} />
+                  <MiniStat label="Protein" value={`${r.actualProteinG}g`} />
+                </div>
+
+                {/* Per-nutrient penalty bars */}
+                <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
+                  <PenaltyRow label="Kcal fit"    penalty={r.kcalPenalty}    />
+                  <PenaltyRow label="Protein fit" penalty={r.proteinPenalty} />
+                  <PenaltyRow label="Fluid fit"   penalty={r.fluidPenalty}   />
+                </div>
+
+                {/* Flags */}
+                {r.flags.length > 0 && (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "3px" }}>
+                    {r.flags.map((f) => (
+                      <span
+                        key={f}
+                        style={{
+                          fontSize: "0.65rem",
+                          background: "#fef3c7",
+                          color: "#92400e",
+                          border: "1px solid #fde68a",
+                          borderRadius: "4px",
+                          padding: "1px 5px",
+                        }}
+                      >
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Apply button */}
+                <button
+                  onClick={() =>
+                    onApply(r.formula.name, r.optimalRateMlHr, r.optimalVolMl)
+                  }
+                  style={applyBtn}
+                >
+                  ↙ Apply to Prescription
+                </button>
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MiniStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div style={{ textAlign: "center" }}>
+      <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e293b" }}>{value}</div>
+      <div style={{ fontSize: "0.6rem", color: "#94a3b8" }}>{label}</div>
+    </div>
+  );
+}
+
+function PenaltyRow({ label, penalty }: { label: string; penalty: number }) {
+  // Penalty 0 = perfect fit, 100 = worst. Invert for display.
+  const fitPct = Math.max(0, 100 - penalty);
+  const color =
+    fitPct >= 85 ? "#22c55e" :
+    fitPct >= 60 ? "#f59e0b" :
+    "#ef4444";
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+      <span style={{ fontSize: "0.62rem", color: "#64748b", width: 64, flexShrink: 0 }}>
+        {label}
+      </span>
+      <div
+        style={{
+          flex: 1,
+          height: 4,
+          borderRadius: 2,
+          background: "#e2e8f0",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          style={{
+            width: `${fitPct}%`,
+            height: "100%",
+            background: color,
+            borderRadius: 2,
+          }}
+        />
+      </div>
+      <span style={{ fontSize: "0.6rem", color, minWidth: 28, textAlign: "right" }}>
+        {fitPct}%
+      </span>
+    </div>
+  );
+}
+
+// ── Suggest Blend tab ─────────────────────────────────────────────────────────
+
+interface BlendTabProps {
+  targets: OptimizationTargets;
+  onApply: FormulaViabilityPanelProps["onApply"];
+}
+
+function BlendTab({ targets, onApply }: BlendTabProps) {
+  const formulas = useEnteralFormulaStore((s) => s.formulas);
+  const [result, setResult] = useState<OptimizationResult | null>(null);
+  const [ran, setRan] = useState(false);
+
+  function runOptimizer() {
+    const r = optimizeEnteralPrescription(formulas, targets);
+    setResult(r);
+    setRan(true);
+  }
+
+  if (!ran) {
+    return (
+      <div style={{ padding: "1rem", textAlign: "center" }}>
+        <p style={{ fontSize: "0.8rem", color: "#64748b", marginBottom: "0.75rem" }}>
+          Runs a grid search over all formulas (and 50/50 blends) to find the
+          combination that best satisfies your kcal, protein, and fluid targets
+          with an optimised flush volume.
+        </p>
+        <button onClick={runOptimizer} style={primaryBtn}>
+          ▶ Run Blend Optimizer
+        </button>
+      </div>
+    );
+  }
+
+  if (!result || !result.feasible) {
+    return (
+      <div style={{ ...emptyState, padding: "1rem" }}>
+        No feasible result found. Check that the formulary has formulas with
+        complete macronutrient data, and that kcal low ≤ kcal high.
+        <br />
+        <button onClick={runOptimizer} style={{ ...primaryBtn, marginTop: "0.75rem" }}>
+          ↺ Retry
+        </button>
+      </div>
+    );
+  }
+
+  const isBlend  = result.formulas.length > 1;
+  const totalVol = result.formulas.reduce((s, f) => s + f.volumeMl, 0);
+  const rateMlHr = Math.round((totalVol / 24) * 10) / 10;
+  const blendName = result.formulas.map((f) => f.formula.name).join(" + ");
+
+  // Modular supplementation guidance
+  const needsModular  = (result.proteinDeficitG ?? 0) > 0;
+  const hasHeadroom   = result.proteinHeadroomG !== null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "8px", padding: "4px 0" }}>
+      {/* Result header */}
+      <div
+        style={{
+          background: "#f0fdf4",
+          border: "1px solid #bbf7d0",
+          borderRadius: "8px",
+          padding: "10px 12px",
+        }}
+      >
+        <div
+          style={{
+            fontSize: "0.72rem",
+            fontWeight: 800,
+            color: "#166534",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            marginBottom: "4px",
+          }}
+        >
+          {isBlend ? "Optimal Blend Found" : "Optimal Single Formula Found"}
+        </div>
+
+        {result.formulas.map((f) => (
+          <div
+            key={f.formula.id}
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: "0.83rem",
+              marginBottom: "2px",
+            }}
+          >
+            <span style={{ fontWeight: 600, color: "#1e293b" }}>{f.formula.name}</span>
+            <span style={{ color: "#64748b" }}>{f.volumeMl} mL</span>
+          </div>
+        ))}
+
+        {isBlend && (
+          <div style={{ fontSize: "0.72rem", color: "#64748b", marginTop: "4px", fontStyle: "italic" }}>
+            50/50 blend — each formula delivered in equal kcal proportion
+          </div>
+        )}
+      </div>
+
+      {/* Totals grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
+        <MiniStat label="Total vol" value={`${totalVol} mL`} />
+        <MiniStat label="Rate"      value={`${rateMlHr} mL/hr`} />
+        <MiniStat label="Flush"     value={`${result.flushMl} mL`} />
+        <MiniStat label="Kcal"      value={`${result.totals.kcal}`} />
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+        <MiniStat label="Formula protein" value={`${result.totals.protein}g`} />
+        <MiniStat label="Free water"      value={`${result.totals.fluid} mL`} />
+      </div>
+
+      {/* Protein modular guidance
+          The optimizer uses a ceiling-only protein penalty, so formula protein
+          is always ≤ proteinHigh.  If it's also below the floor, we show exactly
+          how much modular is safe to add without breaching the ceiling. */}
+      
+      {/* Deficit exceeds what kcal budget allows — genuinely infeasible */}
+      {needsModular &&
+        result.proteinHeadroomG !== null &&
+        result.proteinDeficitG! > result.proteinHeadroomG && (
+        <div style={{
+          background: "#fee2e2", border: "1px solid #fca5a5",
+          borderRadius: "7px", padding: "8px 10px",
+          fontSize: "0.78rem", color: "#991b1b", lineHeight: 1.5,
+        }}>
+          <strong>⛔ Modular target unreachable at this kcal ceiling.</strong><br />
+          Need <strong>{result.proteinDeficitG}g</strong> modular
+          (+{Math.round(result.proteinDeficitG! * MODULAR_KCAL_PER_G)} kcal) but only{" "}
+          <strong>{result.proteinHeadroomG}g</strong> modular
+          fits within the {targets.kcalHigh} kcal ceiling.
+          Consider raising the kcal target or selecting a higher-protein formula.
+        </div>
+      )}
+
+      {/* Feasible deficit — modular fits within both ceilings */}
+      {needsModular &&
+        result.proteinHeadroomG !== null &&
+        result.proteinDeficitG! <= result.proteinHeadroomG && (
+        <div
+          style={{
+            background: "#fef9c3",
+            border: "1px solid #fde68a",
+            borderRadius: "7px",
+            padding: "8px 10px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "3px",
+          }}
+        >
+          <div style={{ fontSize: "0.72rem", fontWeight: 800, color: "#92400e" }}>
+            ⚠ Protein modular required
+          </div>
+          <div style={{ fontSize: "0.78rem", color: "#78350f", lineHeight: 1.5 }}>
+            Formula delivers <strong>{result.totals.protein}g</strong> protein.
+            Add <strong>{result.proteinDeficitG}g</strong> modular to reach the
+            target floor.
+          </div>
+          <div style={{ fontSize: "0.72rem", color: "#92400e" }}>
+            Safe modular range: 0 – <strong>{result.proteinHeadroomG}g</strong>
+            {" "}(ceiling is {Math.round((result.totals.protein + result.proteinHeadroomG!) * 10) / 10}g total)
+          </div>
+        </div>
+      )}
+
+      {/* If formula protein already meets or exceeds the floor */}
+      {!needsModular && result.proteinDeficitG !== null && (
+        <div
+          style={{
+            background: "#f0fdf4",
+            border: "1px solid #bbf7d0",
+            borderRadius: "7px",
+            padding: "6px 10px",
+            fontSize: "0.72rem",
+            color: "#166534",
+          }}
+        >
+          ✓ Formula protein meets target — no modular needed
+          {hasHeadroom && result.proteinHeadroomG! > 0 && (
+            <span style={{ color: "#64748b" }}>
+              {" "}(up to {result.proteinHeadroomG}g modular still safe)
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Actions */}
+      <div style={{ display: "flex", gap: "6px" }}>
+        <button
+          onClick={() => onApply(blendName, rateMlHr, totalVol)}
+          style={{ ...applyBtn, flex: 1 }}
+        >
+          ↙ Apply to Prescription
+        </button>
+        <button
+          onClick={() => { setRan(false); setResult(null); }}
+          style={{
+            background: "transparent",
+            border: "1px solid #e2e8f0",
+            borderRadius: "6px",
+            fontSize: "0.75rem",
+            color: "#64748b",
+            cursor: "pointer",
+            padding: "4px 10px",
+          }}
+        >
+          ↺ Reset
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+export default function FormulaViabilityPanel({
+  kcalLow,
+  kcalHigh,
+  proteinLow,
+  proteinHigh,
+  fluidLow,
+  fluidHigh,
+  onApply,
+}: FormulaViabilityPanelProps) {
+  const formulas = useEnteralFormulaStore((s) => s.formulas);
+  const [tab, setTab] = useState<"ranked" | "blend">("ranked");
+
+  // Only render once there are meaningful kcal targets
+  const kcalLowNum  = parseFloat(kcalLow);
+  const kcalHighNum = parseFloat(kcalHigh);
+  if (!kcalLowNum || !kcalHighNum || kcalLowNum > kcalHighNum) return null;
+
+  const viabilityTargets: ViabilityTargets = {
+    kcalLow:     kcalLowNum,
+    kcalHigh:    kcalHighNum,
+    proteinLow:  parseFloat(proteinLow)  || 0,
+    proteinHigh: parseFloat(proteinHigh) || 0,
+    fluidLow:    parseFloat(fluidLow)    || 0,
+    fluidHigh:   parseFloat(fluidHigh)   || 0,
+  };
+
+  const optimizerTargets: OptimizationTargets = {
+    kcalLow:     kcalLowNum,
+    kcalHigh:    kcalHighNum,
+    proteinLow:  parseFloat(proteinLow)  || 0,
+    proteinHigh: parseFloat(proteinHigh) || 0,
+    fluidLow:    parseFloat(fluidLow)    || 0,
+    fluidHigh:   parseFloat(fluidHigh)   || 0,
+  };
+
+  // Ranked results are memoized against the formulary + targets
+  const ranked = useMemo(
+    () => rankFormulas(formulas, viabilityTargets),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      formulas,
+      kcalLow, kcalHigh,
+      proteinLow, proteinHigh,
+      fluidLow, fluidHigh,
+    ]
+  );
+
+  return (
+    <div
+      style={{
+        marginTop: "0.75rem",
+        border: "1px solid #dbeafe",
+        borderRadius: "8px",
+        overflow: "hidden",
+        background: "#fff",
+      }}
+    >
+      {/* Panel header */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "7px 12px",
+          background: "#eff6ff",
+          borderBottom: "1px solid #dbeafe",
+        }}
+      >
+        <span
+          style={{
+            fontSize: "0.7rem",
+            fontWeight: 800,
+            color: "#1a6fa8",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          Formula Viability
+        </span>
+
+        {/* Tab switcher */}
+        <div style={{ display: "flex", gap: "4px" }}>
+          {(["ranked", "blend"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              style={{
+                background: tab === t ? "#3498db" : "transparent",
+                color: tab === t ? "#fff" : "#64748b",
+                border: `1px solid ${tab === t ? "#3498db" : "#e2e8f0"}`,
+                borderRadius: "5px",
+                padding: "2px 10px",
+                fontSize: "0.7rem",
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              {t === "ranked" ? "Ranked Formulas" : "Suggest Blend"}
             </button>
           ))}
         </div>
       </div>
 
-      <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
-        {filtered.length === 0 ? (
-          <div style={{ textAlign: "center", color: "#94a3b8", fontSize: "0.8rem", padding: "1rem 0" }}>
-            No formulas in this tier.
-          </div>
+      {/* Tab body */}
+      <div style={{ padding: "10px 12px", maxHeight: 400, overflowY: "auto" }}>
+        {tab === "ranked" ? (
+          <RankedTab ranked={ranked} onApply={onApply} />
         ) : (
-          <>
-            {displayed.map(result => (
-              <ResultRow
-                key={result.formula.id}
-                result={result}
-                rank={ranked.indexOf(result) + 1}
-                onApply={r => onApply(r.formula.name, r.optimalRateMlHr, r.optimalVolMl)}
-              />
-            ))}
-            {filtered.length > 4 && (
-              <button
-                onClick={() => setShowAll(s => !s)}
-                style={{
-                  alignSelf: "center", background: "transparent",
-                  border: "1px solid #e2e8f0", color: "#64748b",
-                  borderRadius: 20, padding: "3px 14px",
-                  fontSize: "0.72rem", cursor: "pointer", marginTop: 2,
-                }}
-              >
-                {showAll ? "Show fewer" : `Show ${filtered.length - 4} more`}
-              </button>
-            )}
-          </>
+          <BlendTab targets={optimizerTargets} onApply={onApply} />
         )}
       </div>
     </div>
   );
 }
+
+// ── Shared style tokens ───────────────────────────────────────────────────────
+
+const applyBtn: React.CSSProperties = {
+  background: "#3498db",
+  color: "#fff",
+  border: "none",
+  borderRadius: "6px",
+  padding: "5px 12px",
+  fontSize: "0.75rem",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const primaryBtn: React.CSSProperties = {
+  background: "#3498db",
+  color: "#fff",
+  border: "none",
+  borderRadius: "8px",
+  padding: "6px 18px",
+  fontSize: "0.82rem",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const emptyState: React.CSSProperties = {
+  fontSize: "0.8rem",
+  color: "#94a3b8",
+  fontStyle: "italic",
+  textAlign: "center",
+  padding: "1rem",
+};
