@@ -4,7 +4,6 @@ import type { RiskLevel } from "../../../types/refeedingScreen";
 import { CriterionCard } from "./CriterionCard";
 
 interface Props {
-  autoRisk: RiskLevel;
   computedRisk: RiskLevel;
   orbital: string;
   cheek: string;

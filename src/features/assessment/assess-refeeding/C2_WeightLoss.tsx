@@ -9,7 +9,6 @@ import type { RiskLevel, WtLossSource } from "../../../types/refeedingScreen";
 import { CriterionCard } from "./CriterionCard";
 
 interface Props {
-  autoRisk: RiskLevel;
   computedRisk: RiskLevel;
 }
 
@@ -102,16 +101,19 @@ export function C2_WeightLoss({ computedRisk }: Props) {
               <StatChip label="Current Wt" value={`${metrics.wtKg.toFixed(1)} kg`} />
               <StatChip label="UBW" value={`${anthro.ubw} ${anthro.wtUnit}`} />
             </div>
+          ) : !anthro.ubw ? (
+            <InfoBox color="#a0aec0">No UBW entered in Anthropometrics.</InfoBox>
+          ) : !anthro.ubwDate ? (
+            <InfoBox color="#a0aec0">UBW date not entered. Please add it in Anthropometrics.</InfoBox>
+          ) : derived === null ? (
+            <ActionRequiredBanner
+              icon="⚠️"
+              title="UBW Date Outside 6-Month Window"
+              body="Automatic scoring is unavailable. Switch to Manual Entry and document percent weight loss based on clinical judgment or available records."
+              accentColor="#da7f2b"
+            />
           ) : (
-            <InfoBox color="#a0aec0">
-              {!anthro.ubw
-                ? "No UBW entered in Anthropometrics."
-                : !anthro.ubwDate
-                ? "UBW date not entered. Please add it in Anthropometrics."
-                : derived === null
-                ? "UBW date is outside the 6-month window — using manual entry or clinical judgment is recommended."
-                : "Unable to calculate weight loss."}
-            </InfoBox>
+            <InfoBox color="#a0aec0">Unable to calculate weight loss.</InfoBox>
           )}
           <ThresholdTable isPediatric={false} />
         </div>
@@ -185,6 +187,31 @@ export function C2_WeightLoss({ computedRisk }: Props) {
         </InfoBox>
       )}
     </CriterionCard>
+  );
+}
+
+function ActionRequiredBanner({
+  icon, title, body, accentColor,
+}: {
+  icon: string; title: string; body: string; accentColor: string;
+}) {
+  return (
+    <div style={{
+      display: "flex", alignItems: "flex-start", gap: "14px",
+      background: `${accentColor}14`,
+      border: `2px solid ${accentColor}`,
+      borderLeft: `6px solid ${accentColor}`,
+      borderRadius: "8px", padding: "14px 16px", marginBottom: "0.5rem",
+    }}>
+      <span style={{ fontSize: "1.75rem", lineHeight: 1, flexShrink: 0 }}>{icon}</span>
+      <div>
+        <div style={{
+          fontSize: "0.88rem", fontWeight: 800, color: accentColor,
+          textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "4px",
+        }}>{title}</div>
+        <div style={{ fontSize: "0.82rem", color: "#4a5568", lineHeight: 1.5 }}>{body}</div>
+      </div>
+    </div>
   );
 }
 
