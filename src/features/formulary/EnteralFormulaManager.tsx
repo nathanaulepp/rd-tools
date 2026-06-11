@@ -4,21 +4,21 @@
 
 import React, { useEffect, useState } from "react";
 import { useEnteralFormulaStore } from "../../stores/useEnteralFormulaStore";
-import type { EnteralFormula, EnteralFormulaInput, EnteralRoute } from "../../types/enteralFormula";
+import type { EnteralFormula, EnteralFormulaInput, EnteralPopulation } from "../../types/enteralFormula";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const ROUTE_OPTIONS: { value: EnteralRoute; label: string }[] = [
+const ROUTE_OPTIONS: { value: EnteralPopulation; label: string }[] = [
   { value: "",              label: "Not specified" },
-  { value: "gastric",       label: "Gastric" },
-  { value: "post-pyloric",  label: "Post-pyloric" },
-  { value: "both",          label: "Both" },
+  { value: "infant",       label: "Infant" },
+  { value: "children",     label: "Children" },
+  { value: "adult",        label: "Adult" },
 ];
 
 const ROUTE_BADGE: Record<string, { bg: string; color: string; label: string }> = {
-  gastric:       { bg: "#e6f4ff", color: "#1a6fa8", label: "Gastric" },
-  "post-pyloric":{ bg: "#f0fdf4", color: "#166534", label: "Post-pyloric" },
-  both:          { bg: "#fef9c3", color: "#854d0e", label: "Both" },
+  "infant":       { bg: "#e6f4ff", color: "#1a6fa8", label: "Infant" },
+  "children":{ bg: "#f0fdf4", color: "#166534", label: "Children" },
+  "adult":          { bg: "#fef9c3", color: "#854d0e", label: "Adult" },
   "":            { bg: "#f1f5f9", color: "#64748b", label: "—" },
 };
 
@@ -49,7 +49,7 @@ function fmtNum(v: number | null, decimals = 1): string {
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function RouteBadge({ route }: { route: EnteralRoute }) {
+function RouteBadge({ route }: { route: EnteralPopulation }) {
   const { bg, color, label } = ROUTE_BADGE[route] ?? ROUTE_BADGE[""];
   return (
     <span style={{
@@ -186,7 +186,7 @@ function FormulaForm({ initial, onSave, onCancel, isSaving, mode }: FormulaFormP
           <label style={labelStyle}>Route (optional)</label>
           <select
             value={form.route}
-            onChange={e => setForm(prev => ({ ...prev, route: e.target.value as EnteralRoute }))}
+            onChange={e => setForm(prev => ({ ...prev, route: e.target.value as EnteralPopulation }))}
             style={inputStyle}
           >
             {ROUTE_OPTIONS.map(o => (
@@ -378,7 +378,7 @@ export default function EnteralFormulaManager() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [search, setSearch] = useState("");
-  const [routeFilter, setRouteFilter] = useState<EnteralRoute | "all">("all");
+  const [routeFilter, setRouteFilter] = useState<EnteralPopulation | "all">("all");
   const [toast, setToast] = useState("");
 
   useEffect(() => {
@@ -451,10 +451,10 @@ export default function EnteralFormulaManager() {
             />
             <select
               value={routeFilter}
-              onChange={e => setRouteFilter(e.target.value as EnteralRoute | "all")}
+              onChange={e => setRouteFilter(e.target.value as EnteralPopulation | "all")}
               style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: 6, fontSize: "0.82rem" }}
             >
-              <option value="all">All routes</option>
+              <option value="all">All populations</option>
               {ROUTE_OPTIONS.filter(o => o.value !== "").map(o => (
                 <option key={o.value} value={o.value}>{o.label}</option>
               ))}

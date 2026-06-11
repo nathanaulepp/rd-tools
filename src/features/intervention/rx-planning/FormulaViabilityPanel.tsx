@@ -131,24 +131,24 @@ export default function FormulaViabilityPanel({
   // Only render once there are meaningful kcal targets
   const kcalLowNum  = parseFloat(kcalLow);
   const kcalHighNum = parseFloat(kcalHigh);
-  if (!kcalLowNum || !kcalHighNum || kcalLowNum > kcalHighNum) return null;
-
   const optimizerTargets: OptimizationTargets = {
-    kcalLow:     kcalLowNum,
-    kcalHigh:    kcalHighNum,
+    kcalLow:     kcalLowNum  || 0,
+    kcalHigh:    kcalHighNum || 0,
     proteinLow:  parseFloat(proteinLow)  || 0,
     proteinHigh: parseFloat(proteinHigh) || 0,
     fluidLow:    parseFloat(fluidLow)    || 0,
     fluidHigh:   parseFloat(fluidHigh)   || 0,
   };
 
-  // Compute the optimal config for *every* formula on the fly
+  // useMemo must always run — no early returns before this
   const results = useMemo(
     () => optimizeEnteralPrescription(formulas, optimizerTargets),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [formulas, kcalLow, kcalHigh, proteinLow, proteinHigh, fluidLow, fluidHigh]
   );
 
+  // Early returns are safe AFTER all hooks have been called
+  if (!kcalLowNum || !kcalHighNum || kcalLowNum > kcalHighNum) return null;
   if (results.length === 0) return null;
 
   return (

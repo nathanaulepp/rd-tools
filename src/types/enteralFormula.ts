@@ -1,4 +1,4 @@
-export type EnteralRoute = "gastric" | "post-pyloric" | "both" | "";
+export type EnteralPopulation = "infant" | "children" | "adult" | "";
 
 export interface EnteralFormula {
   id: string;
@@ -17,7 +17,7 @@ export interface EnteralFormula {
   k_mg_per_l: number | null;
   phos_mg_per_l: number | null;
   mg_mg_per_l: number | null;
-  route: EnteralRoute;
+  route: EnteralPopulation;
   notes: string;
   is_seeded: boolean;
   created_at: string;
