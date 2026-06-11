@@ -77,54 +77,57 @@ export function evaluateWeightLoss(
     const severeThreshold = getChronicSevereThreshold(days);
     if (severeThreshold === null) return "Not Applicable";
 
+    // Moderate floor = 80% of the severe threshold (0.8 × f(x)).
+    // Band structure:
+    //   >= sevThresh + 0.5                       → Severe
+    //   [sevThresh - 0.5, sevThresh + 0.5)        → Borderline (severe edge)
+    //   [0.8 × sevThresh, sevThresh - 0.5)        → Moderate
+    //   [0.8 × sevThresh - 0.5, 0.8 × sevThresh) → Borderline (moderate edge)
+    //   < 0.8 × sevThresh - 0.5                  → None
+    const chronicModerateFloor = 0.8 * severeThreshold;
+
     if (sanitizedPct >= severeThreshold + CLINICAL_BUFFER) return "Severe";
     if (sanitizedPct >= severeThreshold - CLINICAL_BUFFER) return "Borderline";
-    
-    // Chronic Moderate is typically everything above 0 but below Severe?
-    // Instruction says: "Falling within the buffer zone yields 'Borderline'. 
-    // Falling below the buffer but above the moderate floor yields 'Moderate'."
-    // For Chronic, instructions don't explicitly define a moderate floor curve,
-    // but implied by "Rule of Two" and "Convergence Quirk".
-    // Usually Chronic Moderate is 5% in 1 month, 7.5% in 3 months, 10% in 6 months, 20% in 1 year.
-    // Wait, f(x) IS that: 5 (30d), 7.5 (91d), 10 (183d), 20 (365d).
-    // The instruction says f(x) is the "baseline severe threshold".
-    // Typically Moderate is < Severe. 
-    // Let's assume Moderate is half of Severe or similar if not specified? 
-    // NO, usually ASPEN has specific values.
-    // Moderate Chronic: 5% (1mo), 7.5% (3mo), 10% (6mo), 20% (1yr).
-    // Severe Chronic: >5% (1mo), >7.5% (3mo), >10% (6mo), >20% (1yr).
-    // So f(x) is the threshold between Moderate and Severe.
-    
-    if (sanitizedPct > 0) return "Moderate";
+    if (sanitizedPct >= chronicModerateFloor) return "Moderate";
+    if (sanitizedPct >= chronicModerateFloor - CLINICAL_BUFFER) return "Borderline";
     return "None";
   } else {
     // Acute
     const moderateThreshold = getAcuteModerateThreshold(days);
     if (moderateThreshold === null) return "Not Applicable";
 
-    // "The Convergence Quirk: In the acute context between days 30 and 91, the moderate and severe baselines share the exact same mathematical line. 
-    // The differentiation relies entirely on the inequality operator."
-    // Also: "Severe Diagnosis: Requires 2 or more criteria returning 'Severe'."
-    
-    // Typically Acute Severe: 2% (1wk), 5% (1mo), 7.5% (3mo).
-    // Acute Moderate: 1-2% (1wk), 5% (1mo), 7.5% (3mo).
-    // g(x) gives 1 (7d), 5 (30d), 7.5 (91d).
-    
-    // Severe thresholds for Acute (traditional ASPEN): >2% (1wk), >5% (1mo).
-    // So Severe curve for Acute is higher in the 7-30d range.
-    
-    const acuteSevereThreshold = days >= 7 && days < 30 
-      ? (3 / 23) * (days - 7) + 2 // 2% at 7d, 5% at 30d
-      : moderateThreshold; // Converges after 30d
+    // Severe threshold runs higher than moderate in days 7-30 (2%→5%),
+    // then converges with the moderate line after day 30.
+    const acuteSevereThreshold = days >= 7 && days < 30
+      ? (3 / 23) * (days - 7) + 2  // 2% at 7d, 5% at 30d
+      : moderateThreshold;          // Converges after 30d
+
+    // Moderate floor = 80% of the severe threshold.
+    // Band structure:
+    //   >= sevThresh + 0.5                       → Severe
+    //   [sevThresh - 0.5, sevThresh + 0.5)        → Borderline (severe edge)
+    //   [0.8 × sevThresh, sevThresh - 0.5)        → Moderate
+    //   [0.8 × sevThresh - 0.5, 0.8 × sevThresh) → Borderline (moderate edge)
+    //   < 0.8 × sevThresh - 0.5                  → None
+    //
+    // Collapse guard: on days 7-10 the 0.8× floor falls inside the severe
+    // buffer zone (mod_floor >= sevThresh - 0.5). In that case the Moderate
+    // band has zero width and is skipped; Borderline extends from
+    // (mod_floor - 0.5) up to the severe buffer ceiling.
+    const acuteModerateFloor = 0.8 * acuteSevereThreshold;
+    const moderateBandCollapses = acuteModerateFloor >= acuteSevereThreshold - CLINICAL_BUFFER;
 
     if (sanitizedPct >= acuteSevereThreshold + CLINICAL_BUFFER) return "Severe";
-    if (sanitizedPct >= moderateThreshold + CLINICAL_BUFFER) {
-        // Between moderate+buffer and severe+buffer
-        // If they converge, this might return Severe above.
-        return "Moderate"; 
+    if (sanitizedPct >= acuteSevereThreshold - CLINICAL_BUFFER) return "Borderline";
+
+    if (moderateBandCollapses) {
+      // Moderate band absent; extend borderline down to mod_floor - 0.5
+      if (sanitizedPct >= acuteModerateFloor - CLINICAL_BUFFER) return "Borderline";
+      return "None";
     }
-    if (sanitizedPct >= moderateThreshold - CLINICAL_BUFFER) return "Borderline";
-    if (sanitizedPct > 0) return "Moderate";
+
+    if (sanitizedPct >= acuteModerateFloor) return "Moderate";
+    if (sanitizedPct >= acuteModerateFloor - CLINICAL_BUFFER) return "Borderline";
     return "None";
   }
 }
@@ -136,17 +139,25 @@ export function evaluateIntake(pct: number, days: number, context: ClinicalConte
   if (pct <= 0) return "None";
   
   if (context === "Acute") {
-    // Severe: <50% for >= 5 days
-    // Moderate: <75% for >= 7 days
+    // Severe deficit: intake drops below 50% (deficit > 50pts from 100%).
+    // Moderate band = 0.8 × severe deficit: deficit 40-50pts → intake 50-60%.
+    // Borderline: 5pt buffer below moderate floor → intake 60-65%.
+    // >= 65%: None.
+    //
+    // Day thresholds preserved from original (severe: >= 5d, moderate: >= 5d).
     if (pct < 50 && days >= 5) return "Severe";
-    if (pct < 75 && days >= 7) return "Moderate";
+    if (pct < 60 && days >= 5) return "Moderate";
+    if (pct < 65 && days >= 5) return "Borderline";
   } else {
     // Chronic
-    // Severe: <=50% for >= 1 month
-    // Moderate: <75% for >= 1 month
+    // Severe deficit: intake <= 50% (deficit >= 50pts).
+    // Moderate band = 0.8 × severe deficit: deficit 40-50pts → intake 50-60%.
+    // Borderline: 5pt buffer below moderate floor → intake 60-65%.
+    // >= 65%: None.
     if (days < 30) return "Not Applicable";
     if (pct <= 50) return "Severe";
-    if (pct < 75) return "Moderate";
+    if (pct <= 60) return "Moderate";
+    if (pct <= 65) return "Borderline";
   }
   return "None";
 }

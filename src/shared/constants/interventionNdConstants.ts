@@ -232,8 +232,8 @@ export const ND1_OTHER: string[] = [
 export const ND2_EN_ACTIONS: string[] = [
   "Management of composition of enteral nutrition",
   "Management of concentration of enteral nutrition",
-  "Management of rate of enteral nutrition",
   "Management of volume of enteral nutrition",
+  "Management of rate of enteral nutrition",
   "Management of schedule of enteral nutrition",
   "Management of route of enteral nutrition",
   "Insert enteral feeding tube",
