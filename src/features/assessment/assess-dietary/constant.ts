@@ -11,7 +11,6 @@ export const EN_ROUTES: string[] = [
   "PEJ (Percutaneous Endoscopic Jejunostomy)",
   "Surgical Gastrostomy (Open/Laparoscopic)",
   "Surgical Jejunostomy (Open/Laparoscopic)",
-  "PICC-NJ (PICC-guided Nasojejunal)",
   "Other (specify in notes)",
 ];
 

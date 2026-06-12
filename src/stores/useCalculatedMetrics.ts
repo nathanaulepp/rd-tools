@@ -95,6 +95,8 @@ export interface CalculatedMetrics {
   ibwKg: number;
   /** Amputation-corrected weight (intact weight estimate). Equals wtKg when no amputations. */
   correctedWtKg: number;
+  /** Dry weight (for GIR and other fluid-shift-sensitive calcs) */
+  dryWtKg: number;
 
   // Display-ready values in the user's chosen units (for UI fields)
   wtDisplay: number;
@@ -161,6 +163,11 @@ export function useCalculatedMetrics(): CalculatedMetrics {
   }, 0);
   const correctedWtKg = totalAmputationPct > 0
     ? wtKg / (1 - totalAmputationPct / 100)
+    : wtKg;
+
+  // ── Dry weight (for GIR and other fluid-shift-sensitive calcs) ────────────
+  const dryWtKg = anthro.isFluidShift && anthro.edw
+    ? toKg(Number(anthro.edw) || 0, anthro.edwUnit || "kg")
     : wtKg;
 
   // ── Age in days ─────────────────────────────────────────────────────────────
@@ -314,6 +321,7 @@ export function useCalculatedMetrics(): CalculatedMetrics {
     htCm,
     ibwKg,
     correctedWtKg,
+    dryWtKg,
     wtDisplay,
     wtDisplayUnit,
     htDisplay,

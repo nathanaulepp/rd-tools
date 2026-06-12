@@ -403,15 +403,12 @@ function ENFeedCard({ feed, idx, onChange, onRemove }: ENFeedCardProps) {
       />
       {isExpanded && (
         <div style={{ padding: "0.75rem", borderTop: "1px solid #e2e8f0", background: "#fff" }}>
-          {/* Row 1: Label, Route, Delivery type */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr auto", gap: "0.65rem", marginBottom: "0.65rem", alignItems: "end" }}>
-            <Field label="Feed Label">
-              <input type="text" value={feed.label} onChange={e => update("label", e.target.value)} placeholder={`Feed ${idx + 1}`}
-                style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.88rem" }} />
-            </Field>
+          {/* Row 1: Route, Type, Formula, Delivery params — all on one row */}
+          <div style={{ display: "grid", gridTemplateColumns: "1.8fr auto 1.6fr 1fr 1fr 1fr", gap: "0.5rem", marginBottom: "0.65rem", alignItems: "end" }}>
             <Field label="Route & Access">
               <Sel value={feed.route} onChange={v => update("route", v)} options={constant.EN_ROUTES} placeholder="Select route..." />
             </Field>
+
             <div>
               <label style={{ fontSize: "0.72rem", fontWeight: 700, color: "#4a5568", textTransform: "uppercase", letterSpacing: "0.04em", display: "block", marginBottom: "4px" }}>Type</label>
               <div style={{ display: "flex", gap: "5px" }}>
@@ -421,34 +418,31 @@ function ENFeedCard({ feed, idx, onChange, onRemove }: ENFeedCardProps) {
                     borderColor: feed.type === t ? "#27ae60" : "#e2e8f0",
                     background: feed.type === t ? "#27ae60" : "transparent",
                     color: feed.type === t ? "#fff" : "#555",
-                    fontWeight: 600, fontSize: "0.78rem", cursor: "pointer",
+                    fontWeight: 600, fontSize: "0.78rem", cursor: "pointer", whiteSpace: "nowrap",
                   }}>
                     {t.charAt(0).toUpperCase() + t.slice(1)}
                   </button>
                 ))}
               </div>
             </div>
-          </div>
 
-          {/* Row 2: Formula search + delivery params */}
-          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "0.65rem", marginBottom: "0.65rem" }}>
             <Field label="Formula">
               <ENFormulaSearch value={feed.formula} onSelect={handleFormulaSelect} />
             </Field>
-            <div>
-              {feed.type === "bolus" ? (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.4rem" }}>
-                  <Field label="mL/bolus"><NumInput value={feed.bolusMl} onChange={v => update("bolusMl", v)} /></Field>
-                  <Field label="Times/day"><NumInput value={feed.bolusTimesPerDay} onChange={v => update("bolusTimesPerDay", v)} /></Field>
-                  <Field label="Every (hrs)"><NumInput value={feed.bolusEveryHrs} onChange={v => update("bolusEveryHrs", v)} /></Field>
-                </div>
-              ) : (
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.4rem" }}>
-                  <Field label="Rate (mL/hr)"><NumInput value={feed.continuousRate} onChange={v => update("continuousRate", v)} /></Field>
-                  <Field label="Hrs/day"><NumInput value={feed.continuousHrs} onChange={v => update("continuousHrs", v)} /></Field>
-                </div>
-              )}
-            </div>
+
+            {feed.type === "bolus" ? (
+              <>
+                <Field label="mL/bolus"><NumInput value={feed.bolusMl} onChange={v => update("bolusMl", v)} /></Field>
+                <Field label="Times/day"><NumInput value={feed.bolusTimesPerDay} onChange={v => update("bolusTimesPerDay", v)} /></Field>
+                <Field label="Every (hrs)"><NumInput value={feed.bolusEveryHrs} onChange={v => update("bolusEveryHrs", v)} /></Field>
+              </>
+            ) : (
+              <>
+                <Field label="Rate (mL/hr)"><NumInput value={feed.continuousRate} onChange={v => update("continuousRate", v)} /></Field>
+                <Field label="Hrs/day"><NumInput value={feed.continuousHrs} onChange={v => update("continuousHrs", v)} /></Field>
+                <div />
+              </>
+            )}
           </div>
 
           {/* Row 3: Nutrition params + flushes */}
@@ -717,9 +711,6 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
               g/day
             </span>
           </div>
-          <div style={{ fontSize: "0.62rem", color: "#92400e", marginTop: "2px" }}>
-            PN + EN
-          </div>
         </div>
 
         <div style={chipStyle("#e67e22")}>
@@ -729,9 +720,6 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
             <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
               g/day
             </span>
-          </div>
-          <div style={{ fontSize: "0.62rem", color: "#92400e", marginTop: "2px" }}>
-            PN + EN
           </div>
         </div>
 
@@ -805,7 +793,7 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
 
 export default function D1NutritionRx() {
   const { dietary, setDietary } = useDietaryStore();
-  const { ageDays, wtKg: patientWtKg } = useCalculatedMetrics();
+  const { ageDays, wtKg: patientWtKg, dryWtKg } = useCalculatedMetrics();
 
   // Multi-select: track which sections are active
   const [activeSections, setActiveSections] = useState<string[]>(["D11"]);
@@ -862,7 +850,7 @@ export default function D1NutritionRx() {
         <D12Enteral state={enState} setState={setEnState} />
       )}
       {activeSections.includes("D13") && (
-        <PNPrescriptionMatrix state={pnState} setState={setPnState} patientWtKg={patientWtKg} ageDays={ageDays} />
+        <PNPrescriptionMatrix state={pnState} setState={setPnState} patientWtKg={patientWtKg} girWtKg={dryWtKg} ageDays={ageDays} />
       )}
       {activeSections.includes("D14") && (
         <DietaryD14IVOrders />

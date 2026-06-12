@@ -10,17 +10,18 @@ interface PNPrescriptionMatrixProps {
   state: PNState;
   setState: (s: PNState) => void;
   patientWtKg: number;
+  girWtKg: number;
   ageDays: number | null;
 }
 
-const ROUTES = ['TNA — central', '2-in-1 — central', 'TNA — peripheral (PPN)', '2-in-1 — peripheral (PPN)'];
+const ROUTES = ['CPN (Central)', 'PPN (Peripheral)'];
 const DELIVERY_MODES = ["3-in-1 (TNA)", "2-in-1 + Separate Lipid Infusion", "3 Fully Separated Macros"];
 const DURATIONS = ['Continuous (24 hr)', 'Cyclic (12 hr)', 'Cyclic (16 hr)', 'Cyclic (18 hr)'];
-const AA_OPTIONS = ['AA 10%', 'AA 11.4%', 'AA 15%'];
+const AA_OPTIONS = ['AA 3.5%', 'AA 5%', 'AA 5.5%', 'AA 7%', 'AA 8.5%', 'AA 10%', 'AA 11.4%', 'AA 15%', 'AA 20%'];
 const DEXT_OPTIONS = ['D70W', 'D50W', 'D20W', 'D10W', 'D5W'];
 const LIPID_OPTIONS = ['ILE 20%', 'ILE 10%', 'SMOF 20%'];
 
-export default function PNPrescriptionMatrix({ state, setState, patientWtKg, ageDays }: PNPrescriptionMatrixProps) {
+export default function PNPrescriptionMatrix({ state, setState, patientWtKg, girWtKg, ageDays }: PNPrescriptionMatrixProps) {
   const addBag = () => setState({ ...state, bags: [...state.bags, helper.makePNFeed(state.nextId)], nextId: state.nextId + 1 });
   const updateBag = (id: number, updated: PNFeed) => setState({ ...state, bags: state.bags.map(b => b.id === id ? updated : b) });
   const removeBag = (id: number) => setState({ ...state, bags: state.bags.filter(b => b.id !== id) });
@@ -35,13 +36,13 @@ export default function PNPrescriptionMatrix({ state, setState, patientWtKg, age
       </div>
 
       {state.bags.map((bag, idx) => (
-        <PNBagMatrix key={bag.id} bag={bag} idx={idx} onChange={updated => updateBag(bag.id, updated)} onRemove={() => removeBag(bag.id)} patientWtKg={patientWtKg} ageDays={ageDays} />
+        <PNBagMatrix key={bag.id} bag={bag} idx={idx} onChange={updated => updateBag(bag.id, updated)} onRemove={() => removeBag(bag.id)} patientWtKg={patientWtKg} girWtKg={girWtKg} ageDays={ageDays} />
       ))}
     </div>
   );
 }
 
-function PNBagMatrix({ bag, idx, onChange, onRemove, patientWtKg, ageDays }: { bag: PNFeed; idx: number; onChange: (u: PNFeed) => void; onRemove: () => void; patientWtKg: number; ageDays: number | null }) {
+function PNBagMatrix({ bag, idx, onChange, onRemove, patientWtKg, girWtKg, ageDays }: { bag: PNFeed; idx: number; onChange: (u: PNFeed) => void; onRemove: () => void; patientWtKg: number; girWtKg: number; ageDays: number | null }) {
   const update = (field: keyof PNFeed, val: any) => onChange({ ...bag, [field]: val });
 
   const durationHrs = (() => {
@@ -74,7 +75,7 @@ function PNBagMatrix({ bag, idx, onChange, onRemove, patientWtKg, ageDays }: { b
   const compoundedRate = compoundedVol > 0 ? compoundedVol / durationHrs : 0;
   const ileRate = ileVol > 0 ? ileVol / bag.separateIleDurationHr : 0;
 
-  const gir = helper.calcGIR(dexG, patientWtKg);
+  const gir = helper.calcGIR(dexG, girWtKg);
   const girStat = gir !== null ? helper.girStatus(gir, ageDays) : null;
 
   const lipidPctKcal = totalKcal > 0 ? (ileG * 10 / totalKcal) * 100 : 0;
@@ -94,7 +95,7 @@ function PNBagMatrix({ bag, idx, onChange, onRemove, patientWtKg, ageDays }: { b
       <div style={{ border: "1px solid #e2e8f0", borderRadius: "7px", marginBottom: "1rem", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
           <div style={{ flex: 1 }}>
-            <CollapseHeader label={bag.label || `PN Bag ${idx + 1}`} expanded={bag.expanded} onToggle={() => update("expanded", !bag.expanded)} accent="#8e44ad" />
+            <CollapseHeader label={`PN Bag ${idx + 1}`} expanded={bag.expanded} onToggle={() => update("expanded", !bag.expanded)} accent="#8e44ad" />
           </div>
           <button onClick={onRemove} style={{ background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "0.9rem", padding: "0 12px", flexShrink: 0 }}>🗑</button>
         </div>
@@ -118,7 +119,7 @@ function PNBagMatrix({ bag, idx, onChange, onRemove, patientWtKg, ageDays }: { b
       <div style={{ display: "flex", alignItems: "center", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
         <div style={{ flex: 1 }}>
           <CollapseHeader
-            label={bag.label || `PN Bag ${idx + 1}`}
+            label={`PN Bag ${idx + 1}`}
             expanded={bag.expanded}
             onToggle={() => update("expanded", !bag.expanded)}
             accent="#8e44ad"
@@ -136,37 +137,34 @@ function PNBagMatrix({ bag, idx, onChange, onRemove, patientWtKg, ageDays }: { b
       {bag.expanded && (
         <div style={{ background: "#fff" }}>
           {/* Config Bar */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: "10px", padding: "10px 12px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
-            <Field label="Delivery Mode">
-              <select value={bag.delivery} onChange={e => update("delivery", e.target.value)} style={{ width: "100%", padding: "5px", borderRadius: "4px", border: "1px solid #e2e8f0", fontSize: "0.82rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(95px, 1fr))", gap: "6px", padding: "10px 12px", background: "#f8fafc", borderBottom: "1px solid #e2e8f0" }}>
+            <Field label="Delivery">
+              <select value={bag.delivery} onChange={e => update("delivery", e.target.value)} style={{ width: "100%", padding: "5px", borderRadius: "2px", border: "1px solid #e2e8f0", fontSize: "0.82rem" }}>
                 {DELIVERY_MODES.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </Field>
-            <Field label="Bag Label">
-              <input type="text" value={bag.label} onChange={e => update("label", e.target.value)} placeholder={`PN Bag ${idx + 1}`} style={{ padding: "5px 8px", border: "1px solid #e2e8f0", borderRadius: "4px", fontSize: "0.82rem", width: "100%", boxSizing: "border-box" }} />
-            </Field>
-            <Field label="Weight (kg)"><div style={{ padding: "5px 8px", background: "#edf2f7", borderRadius: "4px", fontSize: "0.85rem", fontWeight: 600 }}>{patientWtKg > 0 ? patientWtKg : "—"}</div></Field>
+            <Field label="Weight (kg)"><div style={{ padding: "5px 8px", background: "#edf2f7", borderRadius: "2px", fontSize: "0.85rem", fontWeight: 600 }}>{patientWtKg > 0 ? patientWtKg : "—"}</div></Field>
             <Field label="FW Goal (mL)"><NumInput value={bag.fwGoalMl} onChange={v => update("fwGoalMl", helper.num(v))} /></Field>
             <Field label="Route">
-              <select value={bag.route} onChange={e => update("route", e.target.value)} style={{ width: "100%", padding: "5px", borderRadius: "4px", border: "1px solid #e2e8f0", fontSize: "0.82rem" }}>
+              <select value={bag.route} onChange={e => update("route", e.target.value)} style={{ width: "100%", padding: "5px", borderRadius: "2px", border: "1px solid #e2e8f0", fontSize: "0.82rem" }}>
                 <option value="">Select Route</option>
                 {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
             </Field>
-            <Field label="Compounded Duration">
-              <select value={bag.dextDuration} onChange={e => update("dextDuration", e.target.value)} style={{ width: "100%", padding: "5px", borderRadius: "4px", border: "1px solid #e2e8f0", fontSize: "0.82rem" }}>
+            <Field label="Duration">
+              <select value={bag.dextDuration} onChange={e => update("dextDuration", e.target.value)} style={{ width: "100%", padding: "5px", borderRadius: "2px", border: "1px solid #e2e8f0", fontSize: "0.82rem" }}>
                 <option value="">Select Duration</option>
                 {DURATIONS.map(d => <option key={d} value={d}>{d}</option>)}
               </select>
             </Field>
             {isTwoInOne && (
               <>
-                <Field label="ILE Duration (hr)"><NumInput value={bag.separateIleDurationHr} onChange={v => update("separateIleDurationHr", helper.num(v))} /></Field>
-                <Field label="ILE Freq (×/wk)"><NumInput value={bag.separateIleFreqPerWeek} onChange={v => update("separateIleFreqPerWeek", helper.num(v))} /></Field>
+                <Field label="ILE Dur. hr"><NumInput value={bag.separateIleDurationHr} onChange={v => update("separateIleDurationHr", helper.num(v))} /></Field>
+                <Field label="ILE Freq d/wk"><NumInput value={bag.separateIleFreqPerWeek} onChange={v => update("separateIleFreqPerWeek", helper.num(v))} /></Field>
               </>
             )}
-            <Field label="Insulin (units)"><NumInput value={bag.insulinUnits} onChange={v => update("insulinUnits", v)} /></Field>
-            <Field label="Start Date"><input type="date" value={bag.startDate} onChange={e => update("startDate", e.target.value)} style={{ width: "100%", padding: "4px", borderRadius: "4px", border: "1px solid #e2e8f0", fontSize: "0.82rem" }} /></Field>
+            <Field label="Insulin (U)"><NumInput value={bag.insulinUnits} onChange={v => update("insulinUnits", v)} /></Field>
+            <Field label="Start Date"><input type="date" value={bag.startDate} onChange={e => update("startDate", e.target.value)} style={{ width: "100%", padding: "4px", borderRadius: "2px", border: "1px solid #e2e8f0", fontSize: "0.82rem" }} /></Field>
           </div>
 
           {/* Matrix Table */}
@@ -343,7 +341,7 @@ function PNBagMatrix({ bag, idx, onChange, onRemove, patientWtKg, ageDays }: { b
           {/* Summary Chips */}
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", padding: "12px", borderTop: "1px solid #e2e8f0" }}>
             <NutrientChip label="Total Energy" value={totalKcal} unit="kcal/day" color="#e67e22" />
-            <NutrientChip label="Total Protein" value={aaG} unit={`g/day (${patientWtKg > 0 ? (aaG/patientWtKg).toFixed(1) : "—"} g/kg)`} color="#8e44ad" />
+            <NutrientChip label="Protein" value={aaG} unit={`g/day (${patientWtKg > 0 ? (aaG/patientWtKg).toFixed(1) : "—"} g/kg)`} color="#8e44ad" />
             <NutrientChip label="Total Volume" value={totalVol} unit="mL/day" color="#3498db" />
             <NutrientChip label="GIR" value={gir?.toFixed(2) || "—"} unit="mg/kg/min" color="#d69e2e" />
             <NutrientChip label="SWFI" value={swfiVol} unit="mL/day" color="#2563eb" />
@@ -352,7 +350,7 @@ function PNBagMatrix({ bag, idx, onChange, onRemove, patientWtKg, ageDays }: { b
           {/* Safety Notes */}
           <div style={{ padding: "0 12px 12px", fontSize: "0.7rem", color: "#718096" }}>
             <div style={{ display: "flex", gap: "15px", flexWrap: "wrap" }}>
-              <span>• Lipid kcal: <strong>{Math.round(lipidPctKcal)}%</strong> {lipidPctKcal > 30 ? <span style={{ color: "#e67e22" }}> (High, target &lt;30%)</span> : "(Target &lt;30%)"}</span>
+              <span>• Lipid kcal: <strong>{Math.round(lipidPctKcal)}%</strong> {lipidPctKcal > 30 ? <span style={{ color: "#e67e22" }}> (High, target {"<30%"})</span> : "(Target <30%)"}</span>
               <span>• Compounded Dex: <strong>{finalDexPct.toFixed(1)}%</strong> {finalDexPct > 25 ? <span style={{ color: "#e53e3e" }}> (Central access required)</span> : "(Safe for peripheral if PPN)"}</span>
               {phosAmount > 0 && <span>• Ca:P Ratio: <strong>{caPRatio.toFixed(2)}</strong> {(caPRatio < 1 || caPRatio > 1.3) ? <span style={{ color: "#e53e3e" }}> (Risk of precipitation)</span> : "(Stable)"}</span>}
             </div>
