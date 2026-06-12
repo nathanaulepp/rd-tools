@@ -38,7 +38,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 
 #### Dietary
 - [ ] **add** D2.1 automated estimated oral intake, integrating Multiple Pass Dietary Recall
-- [ ] **add** Build a modifiable EN formulary database into ./src/shared/api
+- [x] **add** Build a modifiable EN formulary database into ./src/shared/api
 
 #### Standards
 - [ ] *no changes at this time*

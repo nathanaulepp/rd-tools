@@ -200,6 +200,8 @@ export function makePNFeed(id: number): PNFeed {
     lipidCustomOil: "",
     combinedRate: "",
     insulinUnits: "",
+    separateIleDurationHr: 12,
+    separateIleFreqPerWeek: 3,
     fwGoalMl: 2000,
     electrolytes: {}, vitamins: {},
     expanded: true, electroExpanded: false, vitExpanded: false,

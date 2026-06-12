@@ -74,6 +74,8 @@ export interface PNFeed {
   // Combined rate for TNA / 2-in-1
   combinedRate: string | number;
   insulinUnits: string | number;
+  separateIleDurationHr: number;
+  separateIleFreqPerWeek: number;
   /** Free water goal in mL — drives SWFI auto-calculation */
   fwGoalMl: number;
   electrolytes: Record<string, MicroNutrientParams>;
