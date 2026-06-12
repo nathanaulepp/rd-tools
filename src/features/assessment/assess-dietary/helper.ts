@@ -41,49 +41,17 @@ export function calculateDietaryTotals(dietary: Dietary) {
   // ── Parenteral (D13) ──────────────────────────────────────────────────────
   const pnTotals = pnState?.bags.reduce(
     (acc, bag) => {
-      const rateMode = getRateMode(bag.delivery);
-      const effectiveDextRate =
-        rateMode === "tna" || rateMode === "twoplusone"
-          ? bag.combinedRate
-          : bag.dextRate;
-      const masterHrs =
-        rateMode === "tna"
-          ? num(bag.dextHrs) || num(bag.aaHrs) || num(bag.lipidHrs) || 24
-          : 0;
-      const dHrs =
-        rateMode === "tna" && !bag.dextHrs ? masterHrs : bag.dextHrs;
-      const aHrs =
-        rateMode === "tna" && !bag.aaHrs ? masterHrs : bag.aaHrs;
-      const lHrs =
-        rateMode === "tna" && !bag.lipidHrs ? masterHrs : bag.lipidHrs;
+      const dextG  = num(bag.dextAmount);
+      const aaG    = num(bag.aaAmount);
+      const lipidG = num(bag.lipidAmount);
 
-      const dextDerived = deriveDextrose(effectiveDextRate, dHrs, bag.dextConc);
-      const aaDerived = deriveAA(
-        rateMode === "tna" || rateMode === "twoplusone"
-          ? bag.combinedRate
-          : bag.aaRate,
-        aHrs,
-        bag.aaConc
-      );
-      const lipidDerived =
-        rateMode === "tna"
-          ? deriveTNALipid(bag.combinedRate, lHrs, bag.lipidConc)
-          : deriveLipid(bag.lipidRate, lHrs, bag.lipidConc, bag.lipidFreq);
-
-      const dG = dextDerived ? dextDerived.g : num(bag.dextAmount);
-      const aG = aaDerived ? aaDerived.g : num(bag.aaAmount);
-      const lG = lipidDerived ? lipidDerived.g : num(bag.lipidAmount);
-      const lipidKcalPerG =
-        rateMode === "tna"
-          ? 10
-          : constant.getLipidMeta(bag.lipidConc).kcalPerMl /
-            constant.getLipidMeta(bag.lipidConc).gPerMl;
+      const lipidKcalPerG = 10;
 
       return {
-        kcal: acc.kcal + dG * 3.4 + aG * 4 + lG * lipidKcalPerG,
-        prot: acc.prot + aG,
-        cho:  acc.cho  + dG,
-        fat:  acc.fat  + lG,
+        kcal: acc.kcal + dextG * 3.4 + aaG * 4 + lipidG * lipidKcalPerG,
+        prot: acc.prot + aaG,
+        cho:  acc.cho  + dextG,
+        fat:  acc.fat  + lipidG,
       };
     },
     { kcal: 0, prot: 0, cho: 0, fat: 0 }
@@ -232,7 +200,51 @@ export function makePNFeed(id: number): PNFeed {
     lipidCustomOil: "",
     combinedRate: "",
     insulinUnits: "",
+    fwGoalMl: 2000,
     electrolytes: {}, vitamins: {},
     expanded: true, electroExpanded: false, vitExpanded: false,
   };
+}
+
+/**
+ * Calculates the sterile water for injection (SWFI) volume needed to meet
+ * a free water goal. Derives implicit free water from macro solution volumes
+ * (the aqueous fraction not occupied by solute), then fills the gap.
+ *
+ * @param fwGoalMl     Target free water in mL (clinician-set)
+ * @param aaG          Amino acid grams ordered
+ * @param aaConcPct    AA solution concentration (e.g. 15 for 15%)
+ * @param dexG         Dextrose grams ordered
+ * @param dexConcPct   Dextrose solution concentration (e.g. 70 for D70W)
+ * @param ileG         Lipid grams ordered
+ * @param ileConcPct   ILE concentration (e.g. 20 for 20%)
+ * @param additivesVol Fixed additive volume in mL (MVI + TE, default 100)
+ * @returns SWFI mL to add (minimum 0)
+ */
+export function calcSWFI(
+  fwGoalMl: number,
+  aaG: number,    aaConcPct: number,
+  dexG: number,   dexConcPct: number,
+  ileG: number,   ileConcPct: number,
+  additivesVol = 100
+): number {
+  const aaVol   = aaConcPct   > 0 ? aaG  / (aaConcPct  / 100) : 0;
+  const dexVol  = dexConcPct  > 0 ? dexG / (dexConcPct / 100) : 0;
+  const ileVol  = ileConcPct  > 0 ? ileG / (ileConcPct / 100) : 0;
+
+  // Solute mass in mL (approximation: 1 g solute ≈ 1 mL displacement)
+  const aaFW   = aaVol   - aaG;
+  const dexFW  = dexVol  - dexG;
+  const ileFW  = ileVol  - ileG;
+
+  const macroFW = aaFW + dexFW + ileFW;
+  const swfi = fwGoalMl - macroFW - additivesVol;
+  return Math.max(0, Math.round(swfi));
+}
+
+/** Extract numeric concentration from a source string like "D70W" → 70, "AA 15%" → 15 */
+export function concFromSourceString(src: string): number {
+  if (!src) return 0;
+  const m = src.match(/(\d+(?:\.\d+)?)/);
+  return m ? parseFloat(m[1]) : 0;
 }

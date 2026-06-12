@@ -68,12 +68,14 @@ export interface PNFeed {
   lipidAmount: string | number;  // g/day
   lipidDuration: string;
   lipidRate: string | number;    // mL/hr
-  lipidConc: "10" | "20" | "30";
+  lipidConc: string;
   lipidFreq?: string;            // e.g. "3x"
   lipidCustomOil: string;
   // Combined rate for TNA / 2-in-1
   combinedRate: string | number;
   insulinUnits: string | number;
+  /** Free water goal in mL — drives SWFI auto-calculation */
+  fwGoalMl: number;
   electrolytes: Record<string, MicroNutrientParams>;
   vitamins: Record<string, MicroNutrientParams>;
   expanded: boolean;
