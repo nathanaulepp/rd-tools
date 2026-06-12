@@ -244,6 +244,51 @@ export function calcSWFI(
   return Math.max(0, Math.round(swfi));
 }
 
+/**
+ * Calculates all volumes for a PN bag, ensuring consistent math across
+ * the bag matrix and totals summary.
+ */
+export function calcPNBagVolumes(bag: PNFeed) {
+  const aaG = num(bag.aaAmount);
+  const dexG = num(bag.dextAmount);
+  const ileG = num(bag.lipidAmount);
+
+  const aaConcPct = concFromSourceString(bag.aaConc || 'AA 15%');
+  const dexConcPct = concFromSourceString(bag.dextConc || 'D70W');
+  const ileConcPct = concFromSourceString(bag.lipidConc || 'ILE 20%');
+
+  const aaVol = aaConcPct > 0 ? aaG / (aaConcPct / 100) : 0;
+  const dexVol = dexConcPct > 0 ? dexG / (dexConcPct / 100) : 0;
+  const ileVol = ileConcPct > 0 ? ileG / (ileConcPct / 100) : 0;
+  const additivesVol = 100;
+
+  const isTNA = bag.delivery === "3-in-1 (TNA)";
+  const swfiVol = isTNA
+    ? calcSWFI(bag.fwGoalMl, aaG, aaConcPct, dexG, dexConcPct, ileG, ileConcPct, additivesVol)
+    : calcSWFI(bag.fwGoalMl, aaG, aaConcPct, dexG, dexConcPct, 0, 0, additivesVol);
+
+  const aaFW = aaVol - aaG;
+  const dexFW = dexVol - dexG;
+  const ileFW = ileVol - ileG;
+  const totalFreeWater = Math.round(aaFW + dexFW + ileFW + additivesVol + swfiVol);
+
+  const compoundedVol = Math.round(aaVol + dexVol + additivesVol + swfiVol);
+  const totalVol = isTNA ? Math.round(compoundedVol + ileVol) : compoundedVol + Math.round(ileVol);
+
+  return {
+    aaVol, dexVol, ileVol, swfiVol, additivesVol,
+    compoundedVol, totalVol, totalFreeWater
+  };
+}
+
+/**
+ * Calculates the total free water contributed by a PN bag, including
+ * implicit free water from macro solutions and added SWFI.
+ */
+export function calcPNBagFreeWater(bag: PNFeed): number {
+  return calcPNBagVolumes(bag).totalFreeWater;
+}
+
 /** Extract numeric concentration from a source string like "D70W" → 70, "AA 15%" → 15 */
 export function concFromSourceString(src: string): number {
   if (!src) return 0;

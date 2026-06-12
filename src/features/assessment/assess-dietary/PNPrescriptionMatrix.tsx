@@ -62,14 +62,7 @@ function PNBagMatrix({ bag, idx, onChange, onRemove, patientWtKg, girWtKg, ageDa
   const dexConcPct = helper.concFromSourceString(bag.dextConc || 'D70W');
   const ileConcPct = helper.concFromSourceString(bag.lipidConc || 'ILE 20%');
 
-  const aaVol = aaConcPct > 0 ? aaG / (aaConcPct / 100) : 0;
-  const dexVol = dexConcPct > 0 ? dexG / (dexConcPct / 100) : 0;
-  const ileVol = ileConcPct > 0 ? ileG / (ileConcPct / 100) : 0;
-  const additivesVol = 100;
-  const swfiVol = isTNA ? helper.calcSWFI(bag.fwGoalMl, aaG, aaConcPct, dexG, dexConcPct, ileG, ileConcPct, additivesVol) : helper.calcSWFI(bag.fwGoalMl, aaG, aaConcPct, dexG, dexConcPct, 0, 0, additivesVol);
-
-  const compoundedVol = Math.round(aaVol + dexVol + additivesVol + swfiVol);
-  const totalVol = isTNA ? Math.round(compoundedVol + ileVol) : compoundedVol + Math.round(ileVol);
+  const { aaVol, dexVol, ileVol, swfiVol, additivesVol, compoundedVol, totalVol } = helper.calcPNBagVolumes(bag);
   const totalKcal = Math.round(aaG * 4 + dexG * 3.4 + ileG * 10);
   
   const compoundedRate = compoundedVol > 0 ? compoundedVol / durationHrs : 0;

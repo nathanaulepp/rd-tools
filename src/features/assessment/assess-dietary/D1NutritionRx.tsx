@@ -597,12 +597,8 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
     };
   }, { cho: 0, fat: 0, freeWater: 0, flush: 0 });
 
-  // ── PN free water — placeholder ─────────────────────────────────────────
-  // PN bags don't yet expose a dedicated "free water" figure; the aqueous
-  // volume is implicit in dextrose/AA/lipid solution volumes (totalVol),
-  // which is computed locally inside PNFeedCard and not currently surfaced
-  // to this component. Wiring TBD — defaulting to 0 for now.
-  const pnFreeWaterMl = 0; // TODO: derive from PN bag totalVol once exposed via pnState
+  // ── PN free water ──────────────────────────────────────────────────────────
+  const pnFreeWaterMl = pnState.bags.reduce((sum, bag) => sum + helper.calcPNBagFreeWater(bag), 0);
 
   const oralFluidMl = helper.num(dietary.oralWater);
   const totalFluidsMl = oralFluidMl + enTotals.freeWater + enTotals.flush + pnFreeWaterMl;
@@ -759,7 +755,6 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
           <span>EN Flush: <strong>{Math.round(enTotals.flush)}</strong> mL</span>
           <span>
             PN Free Water: <strong>{Math.round(pnFreeWaterMl)}</strong> mL
-            <em style={{ marginLeft: "4px", color: "#94a3b8" }}>(not yet wired)</em>
           </span>
         </div>
       </div>
