@@ -31,6 +31,10 @@ export interface ENFeed {
   calPerMl: string | number;
   protGPerL: string | number;
   fwPct: string | number;
+  /** g carbohydrate per L of formula — populated via formula search */
+  choGPerL?: string | number;
+  /** g fat per L of formula — populated via formula search */
+  fatGPerL?: string | number;
   expanded: boolean;
 }
 
