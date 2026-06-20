@@ -2,7 +2,7 @@
 // Phase 1 change: "Create New ADIME" now routes to PATIENT_GATE,
 // not directly to CREATE_NOTE.
 
-import { ViewState } from "./App";
+import type { ViewState } from "../stores/useUIStore";
 
 import createAdimeImg from "../shared/assets/create_new_adime.jpg";
 import dietitianToolsImg from "../shared/assets/dietitian_tools.jpg";

@@ -166,6 +166,7 @@ export type EESource =
   | "Galveston Infant"
   | "SCD REE"
   | "BEE×AF"
+  | "35–40 x kg"
   | "HSCT";
 
 export interface NutritionEvaluation {

@@ -199,7 +199,7 @@ export function evaluateAdultCondition(
         const hbe = calcHarrisBenedict(wtKg, htCm, ageYears, sex);
         const torontoKcal = calcToronto(tbsa, caloricIntake, hbe, coreTempC, pbd);
         eeKcal = Math.max(torontoKcal, wtKg * 20);
-        eeSource = "Milner"; // reuse slot; displayed as Toronto in flags
+        eeSource = "Toronto";
         kcalLow = eeKcal * 0.9; kcalHigh = eeKcal * 1.1;
         flags.push(`Toronto Formula: −4343 + 10.5×${tbsa} + 0.23×${Math.round(caloricIntake)} + 0.84×HBE(${Math.round(hbe)}) + 114×${coreTempC}°C − 4.5×${pbd} = ${Math.round(eeKcal)} kcal.`);
         flags.push("Toronto equation preferred: limits glucose to ≤5 mg/kg/min, preventing hepatic steatosis and hypercapnia.");

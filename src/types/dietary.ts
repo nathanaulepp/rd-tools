@@ -70,6 +70,7 @@ export type IVOrderType =
   | "Dextrose 5% (D5W)"
   | "Dextrose 10% (D10W)"
   | "Dextrose 20% (D20W)"
+  | "Dextrose 40% (D40W)"
   | "Dextrose 50% (D50W)"
   | "Dextrose 70% (D70W)"
   | "Propofol 1% (10mg/mL)"

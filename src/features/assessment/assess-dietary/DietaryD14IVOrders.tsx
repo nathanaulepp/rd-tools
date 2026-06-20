@@ -14,6 +14,7 @@ const IV_ORDER_OPTIONS: IVOrderType[] = [
   "Dextrose 5% (D5W)",
   "Dextrose 10% (D10W)",
   "Dextrose 20% (D20W)",
+  "Dextrose 40% (D40W)",
   "Dextrose 50% (D50W)",
   "Dextrose 70% (D70W)",
   "Propofol 1% (10mg/mL)",
@@ -26,6 +27,7 @@ const IV_KCAL_NOTE: Record<IVOrderType, string> = {
   "Dextrose 5% (D5W)":                     "0.17 kcal/mL (3.4 kcal/g dextrose)",
   "Dextrose 10% (D10W)":                    "0.34 kcal/mL",
   "Dextrose 20% (D20W)":                    "0.68 kcal/mL",
+  "Dextrose 40% (D40W)":                    "1.36 kcal/mL",
   "Dextrose 50% (D50W)":                    "1.70 kcal/mL",
   "Dextrose 70% (D70W)":                    "2.38 kcal/mL",
   "Propofol 1% (10mg/mL)":                 "1.1 kcal/mL — 10% soybean lipid emulsion",
@@ -38,6 +40,18 @@ const IV_LIPID_TYPES = new Set<IVOrderType>([
   "Clevidipine 0.5mg/mL (lipid emulsion)",
 ]);
 
+const IV_KCAL_MAP: Record<IVOrderType, number> = {
+  "Dextrose 5% (D5W)": 0.17,
+  "Dextrose 10% (D10W)": 0.34,
+  "Dextrose 20% (D20W)": 0.68,
+  "Dextrose 40% (D40W)": 1.36,
+  "Dextrose 50% (D50W)": 1.7,
+  "Dextrose 70% (D70W)": 2.38,
+  "Propofol 1% (10mg/mL)": 1.1,
+  "Clevidipine 0.5mg/mL (lipid emulsion)": 1.1,
+  "Trisodium Citrate (4% solution)": 0.0803,
+};
+
 function makeIVOrder(id: number): IVOrder {
   return { id, type: "", totalVolumeMl: "", rateMlHr: "", hrsPerDay: "" };
 }
@@ -45,19 +59,7 @@ function makeIVOrder(id: number): IVOrder {
 function calcOrderKcal(order: IVOrder): number | null {
   const vol = parseFloat(order.totalVolumeMl);
   if (!order.type || isNaN(vol) || vol <= 0) return null;
-
-  const kcalMap: Record<IVOrderType, number> = {
-    "Dextrose 5% (D5W)":                     0.17,
-    "Dextrose 10% (D10W)":                    0.34,
-    "Dextrose 20% (D20W)":                    0.68,
-    "Dextrose 50% (D50W)":                    1.70,
-    "Dextrose 70% (D70W)":                    2.38,
-    "Propofol 1% (10mg/mL)":                 1.10,
-    "Clevidipine 0.5mg/mL (lipid emulsion)": 1.10,
-    "Trisodium Citrate (4% solution)":        0.0803,
-  };
-
-  return vol * (kcalMap[order.type] ?? 0);
+  return vol * IV_KCAL_MAP[order.type];
 }
 
 export default function DietaryD14IVOrders() {
@@ -148,17 +150,7 @@ export default function DietaryD14IVOrders() {
           kcal !== null
             ? kcal
             : derivedVol && order.type
-            ? derivedVol *
-              ({
-                "Dextrose 5% (D5W)":                     0.17,
-                "Dextrose 10% (D10W)":                    0.34,
-                "Dextrose 20% (D20W)":                    0.68,
-                "Dextrose 50% (D50W)":                    1.70,
-                "Dextrose 70% (D70W)":                    2.38,
-                "Propofol 1% (10mg/mL)":                 1.10,
-                "Clevidipine 0.5mg/mL (lipid emulsion)": 1.10,
-                "Trisodium Citrate (4% solution)":        0.0803,
-              } as Record<string, number>)[order.type] ?? 0
+            ? derivedVol * IV_KCAL_MAP[order.type]
             : null;
 
         return (

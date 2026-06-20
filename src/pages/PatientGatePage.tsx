@@ -53,7 +53,7 @@ export default function PatientGatePage({ onEnterWorkspace, onCancel }: PatientG
       const note = await createNote({
         patient_id:     patient.id,
         note_date:      today(),
-        admission_date: data.admission_date || today(),
+        admission_date: today(),
       });
       onEnterWorkspace(patient.id, note.id, patient, note);
     } catch (e: any) {

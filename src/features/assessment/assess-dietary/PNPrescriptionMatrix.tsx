@@ -18,7 +18,7 @@ const ROUTES = ['CPN (Central)', 'PPN (Peripheral)'];
 const DELIVERY_MODES = ["3-in-1 (TNA)", "2-in-1 + Separate Lipid Infusion", "3 Fully Separated Macros"];
 const DURATIONS = ['Continuous (24 hr)', 'Cyclic (12 hr)', 'Cyclic (16 hr)', 'Cyclic (18 hr)'];
 const AA_OPTIONS = ['AA 3.5%', 'AA 5%', 'AA 5.5%', 'AA 7%', 'AA 8.5%', 'AA 10%', 'AA 11.4%', 'AA 15%', 'AA 20%'];
-const DEXT_OPTIONS = ['D70W', 'D50W', 'D20W', 'D10W', 'D5W'];
+const DEXT_OPTIONS = ['D70W', 'D50W', 'D40W', 'D20W', 'D10W', 'D5W'];
 const LIPID_OPTIONS = ['ILE 20%', 'ILE 10%', 'SMOF 20%'];
 
 export default function PNPrescriptionMatrix({ state, setState, patientWtKg, girWtKg, ageDays }: PNPrescriptionMatrixProps) {

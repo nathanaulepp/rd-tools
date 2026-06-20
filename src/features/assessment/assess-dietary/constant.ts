@@ -22,7 +22,7 @@ export const PN_DURATIONS: string[] = ["Continuous", "Cyclic", "Taper"];
 export const LIPID_OILS: string[] = ["Soybean (SO)", "SMOF (Soy/MCT/Olive/Fish)", "Custom (specify)"];
 export const AMOUNT_UNITS: string[] = ["%", "mcg", "mg", "g", "mL", "L", "mEq", "mmol", "IU"];
 export const RATE_UNITS: string[] = ["per hour", "per day"];
-export const DEXT_CONC_OPTIONS = ["5","10","20","25","30","50","70"];
+export const DEXT_CONC_OPTIONS = ["5","10","20","25","30","40","50","70"];
 export const AA_CONC_OPTIONS = ["5","8.5","10","11.4","15"];
 export const LIPID_FREQ_OPTIONS = ["1x", "2x", "3x", "4x", "5x", "6x", "7x"];
 
@@ -121,6 +121,7 @@ export const IV_KCAL_PER_ML: Record<string, number> = {
   "Dextrose 5% (D5W)":                    0.17,   // 5g/100mL × 3.4 kcal/g
   "Dextrose 10% (D10W)":                  0.34,
   "Dextrose 20% (D20W)":                  0.68,
+  "Dextrose 40% (D40W)":                  1.36,
   "Dextrose 50% (D50W)":                  1.70,
   "Dextrose 70% (D70W)":                  2.38,
   "Propofol 1% (10mg/mL)":               1.10,   // 10% lipid emulsion
