@@ -82,8 +82,14 @@ interface LabsState {
   /** Snapshot the current activeLabKeys as a named preset */
   saveCurrentViewAsPreset: (name: string) => LabPreset;
 
+  /** Snapshot the given keys as a named preset */
+  saveKeysAsPreset: (name: string, keys: string[]) => LabPreset;
+
   /** Replace activeLabKeys with those stored in the preset */
   loadPreset: (presetId: string) => void;
+
+  /** Load multiple presets and union their keys */
+  loadPresets: (ids: string[]) => void;
 
   /** Remove a preset by ID */
   deletePreset: (presetId: string) => void;
@@ -165,6 +171,24 @@ export const useLabsStore = create<LabsState>((set, get) => ({
     return preset;
   },
 
+  saveKeysAsPreset: (name, keys) => {
+    const preset: LabPreset = {
+      id:      uuid(),
+      name,
+      labKeys: [...keys],
+    };
+    set((state) => ({ userPresets: [...state.userPresets, preset] }));
+
+    // Fire-and-forget DB write — import lazily to avoid circular dep with db.ts
+    import("../shared/api/db").then(({ insertLabPreset }) => {
+      insertLabPreset(preset).catch((e) =>
+        console.error("[useLabsStore] insertLabPreset failed:", e)
+      );
+    });
+
+    return preset;
+  },
+
   loadPreset: (presetId) =>
     set((state) => {
       const preset = state.userPresets.find((p) => p.id === presetId);
@@ -185,6 +209,40 @@ export const useLabsStore = create<LabsState>((set, get) => ({
       }
 
       return { activeLabKeys: [...preset.labKeys], labs };
+    }),
+
+  loadPresets: (ids) =>
+    set((state) => {
+      const selected = state.userPresets.filter((p) => ids.includes(p.id));
+      if (selected.length === 0) return state;
+
+      // Union all labKeys preserving insertion order, deduplicated
+      const seen = new Set<string>();
+      const unionKeys: string[] = [];
+      for (const preset of selected) {
+        for (const key of preset.labKeys) {
+          if (!seen.has(key)) {
+            seen.add(key);
+            unionKeys.push(key);
+          }
+        }
+      }
+
+      // Ensure skeleton LabEntry exists for every key
+      const labs = { ...state.labs };
+      for (const key of unionKeys) {
+        if (!labs[key]) {
+          const catalog = GLOBAL_LAB_CATALOG[key];
+          labs[key] = {
+            current: "", historical: "",
+            unit:      catalog?.defaultUnit ?? "",
+            loincCode: catalog?.loinc       ?? "",
+            loincName: catalog?.name        ?? key,
+          };
+        }
+      }
+
+      return { activeLabKeys: unionKeys, labs };
     }),
 
   deletePreset: (presetId) => {

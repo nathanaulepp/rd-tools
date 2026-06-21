@@ -9,34 +9,15 @@
 //
 // All state comes from useLabsStore — zero props.
 
-import React, { useEffect } from "react";
+import React from "react";
 import { useLabsStore } from "../../../stores/useLabsStore";
-import { useUIStore } from "../../../stores/useUIStore";
 import { GLOBAL_LAB_CATALOG } from "../../../shared/data/biochemicalCatalog";
 import { DomainHeader } from "../../../shared/ui/DomainHeader";
 import LabPresetToolbar from "./LabPresetToolbar";
 
 export default function BiochemicalDomain() {
-  const { labs, activeLabKeys, updateLabField, removeLabFromView, loadDefaultPanel } =
+  const { labs, activeLabKeys, updateLabField, removeLabFromView } =
     useLabsStore();
-  const activeSubDomain = useUIStore((s) => s.activeSubDomain);
-
-  // ── Optional: wire sidebar B1–B9 clicks to panel auto-load ────────────────
-  useEffect(() => {
-    const panelMap: Record<string, string> = {
-      B1: "Endocrine & Metabolic",
-      B2: "Renal & Urinary",
-      B3: "Chemistry & Electrolytes",
-      B4: "Hematology & Iron",
-      B5: "Hepatobiliary & Proteins",
-      B6: "Micronutrient Status",
-      B7: "Digestive & Pancreatic",
-      B8: "Blood Gas & Acute Care",
-      B9: "Physiological & Fluid",
-    };
-    const panel = panelMap[activeSubDomain];
-    if (panel) loadDefaultPanel(panel);
-  }, [activeSubDomain, loadDefaultPanel]);
 
   return (
     <div className="fade-in">
@@ -48,7 +29,7 @@ export default function BiochemicalDomain() {
         {activeLabKeys.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="table-container">
+          <div className="table-container" style={{ overflowY: "auto", maxHeight: "calc(100vh - 260px)" }}>
             <table className="lab-table" style={{ tableLayout: "fixed" }}>
               <colgroup>
                 <col style={{ width: "36%" }} />

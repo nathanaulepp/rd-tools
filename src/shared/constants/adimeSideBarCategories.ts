@@ -3,18 +3,6 @@ export const ASSESSMENT_CATEGORIES = [
   { id: "A8", title: "DEXA" },
 ];
 
-export const BIOCHEMICAL_CATEGORIES = [
-  { id: "B1", title: "B1: Endocrine & Metabolic" },
-  { id: "B2", title: "B2: Renal & Urinary Function" },
-  { id: "B3", title: "B3: General Chemistry & Electrolytes" },
-  { id: "B4", title: "B4: Hematology & Iron Studies" },
-  { id: "B5", title: "B5: Hepatobiliary & Specialty Proteins" },
-  { id: "B6", title: "B6: Micronutrient Status" },
-  { id: "B7", title: "B7: Digestive, Pancreatic & Stool" },
-  { id: "B8", title: "B8: Blood Gas & Acute Care" },
-  { id: "B9", title: "B9: Physiological & Fluid Status" },
-];
-
 export const CLINICAL_CATEGORIES = [
   { id: "C1", title: "C1: Medical Context" },
   { id: "C2", title: "C2: Vital Signs & Screenings" },

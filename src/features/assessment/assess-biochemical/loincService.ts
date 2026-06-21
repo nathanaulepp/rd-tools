@@ -17,15 +17,27 @@ export interface LoincResult {
   loincName:   string;
   defaultUnit: string;
   shortName:   string;
+  subtitle:    string; // bracketed qualifier + specimen portion of the long name
 }
 
 type NlmResponse = [number, string[], null, Array<[string, string, string]>];
+
+function parseLongName(longName: string): { displayName: string; subtitle: string } {
+  const idx = longName.indexOf("[");
+  if (idx === -1) return { displayName: longName.trim(), subtitle: "" };
+  return {
+    displayName: longName.slice(0, idx).trim(),
+    subtitle:    longName.slice(idx).trim(),
+  };
+}
 
 function buildUrl(query: string): string {
   const params = new URLSearchParams({
     terms:   query.trim(),
     df:      DF_FIELDS,
+    sf:      "COMPONENT,LONG_COMMON_NAME",
     maxList: String(MAX_COUNT),
+    q:       "CLASSTYPE:1",
   });
   return `${NLM_BASE}?${params.toString()}`;
 }
@@ -49,11 +61,14 @@ function parseNlmResponse(data: NlmResponse): LoincResult[] {
       .replace(/\{[^}]*\}/g, "") // strip {qualifier} expressions
       .trim();
 
+    const { displayName, subtitle } = parseLongName(name);
+
     return {
       loincCode:   code,
       loincName:   name,
       defaultUnit: cleanUnit,
-      shortName:   name,
+      shortName:   displayName,
+      subtitle,
     };
   });
 }

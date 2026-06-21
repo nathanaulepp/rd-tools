@@ -1,13 +1,9 @@
-import { useState, useEffect, useMemo, CSSProperties } from "react";
-import {
-  getSubmissionRequirements,
-  updateSubmissionRequirement,
-  addSubmissionRequirement,
-  SubmissionRequirement,
-} from "../shared/api/db";
+import { useState, CSSProperties } from "react";
 import { useEscapeBackout } from "../shared/utils/ShortcutContext";
-import { MASTER_DOMAINS } from "../shared/constants/masterFieldRegistry";
 import EnteralFormulaManager from "../features/formulary/EnteralFormulaManager";
+import SubmissionRequirementsPanel from "../features/settings/SubmissionRequirementsPanel";
+import SchemaInfoPanel from "../features/settings/SchemaInfoPanel";
+import ChemistryTemplatesPanel from "../features/settings/ChemistryTemplatesPanel";
 
 // ─── Components ───────────────────────────────────────────────────────────────
 
@@ -17,50 +13,14 @@ interface SettingsPageProps {
 
 export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
   useEscapeBackout(handleExitToStart);
-  
-  const [requirements, setRequirements] = useState<SubmissionRequirement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [savingKey, setSavingKey] = useState<string | null>(null);
-  const [activeDomainId, setActiveDomainId] = useState<string>("patient");
-  const [activeTab, setActiveTab] = useState<"requirements" | "formulary">("requirements");
+
+  const [activeTab, setActiveTab] = useState<"requirements" | "formulary" | "chemistry">("requirements");
   const [toastMsg, setToastMsg] = useState("");
-
-  useEffect(() => {
-    loadRequirements();
-  }, []);
-
-  const loadRequirements = async () => {
-    setLoading(true);
-    try {
-      setRequirements(await getSubmissionRequirements());
-    } catch (e) {
-      console.error("Failed to load requirements:", e);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(""), 2500);
   };
-
-  const handleToggle = async (fieldKey: string, label: string, currentlyRequired: boolean) => {
-    setSavingKey(fieldKey);
-    try {
-      await addSubmissionRequirement(fieldKey, label);
-      await updateSubmissionRequirement(fieldKey, !currentlyRequired);
-      await loadRequirements();
-      showToast(`"${label}" updated ✓`);
-    } catch (e) {
-      console.error("Update failed:", e);
-      showToast("⚠ Save failed");
-    } finally {
-      setSavingKey(null);
-    }
-  };
-
-  const currentDomain = MASTER_DOMAINS.find(d => d.id === activeDomainId);
 
   return (
     <div style={s.container}>
@@ -75,10 +35,11 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
             {[
               { id: "requirements", label: "⚙ Submission Requirements" },
               { id: "formulary",    label: "🥤 Enteral Formulary" },
+              { id: "chemistry",    label: "🧪 Chemistry Templates" },
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as "requirements" | "formulary")}
+                onClick={() => setActiveTab(tab.id as "requirements" | "formulary" | "chemistry")}
                 style={{
                   padding: "6px 16px",
                   borderRadius: "8px",
@@ -100,111 +61,11 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
       <div style={s.content}>
         {activeTab === "requirements" ? (
           <>
-            {/* 1. MASTER MENU CARD */}
-            <section style={s.section}>
-              <div style={{ ...s.masterMenuHeader, borderBottom: '1px solid #e2e8f0', marginBottom: '0' }}>
-                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Step 1: Select Domain to Configure
-                </span>
-                <select 
-                  value={activeDomainId} 
-                  onChange={(e) => setActiveDomainId(e.target.value)}
-                  style={s.domainSelect}
-                >
-                  {MASTER_DOMAINS.map(d => (
-                    <option key={d.id} value={d.id}>{d.title}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={s.fieldsList}>
-                <div style={{ padding: '1rem 1.5rem 0.5rem', fontSize: '0.7rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase' }}>
-                  Step 2: Toggle Mandatory Inputs
-                </div>
-                {loading ? (
-                  <div style={{ padding: '2rem', textAlign: 'center' }}>Loading logic...</div>
-                ) : currentDomain?.fields.map(f => {
-                  const req = requirements.find(r => r.field_key === f.key);
-                  const isRequired = req?.required ?? false;
-                  const isSaving = savingKey === f.key;
-                  const isLocked = (f as any).locked === true;
-
-                  return (
-                    <div key={f.key} style={s.fieldRow}>
-                      <div>
-                        <div style={s.fieldName}>{f.label}</div>
-                        <div style={s.fieldKey}>field: {f.key}</div>
-                      </div>
-                      <button
-                        onClick={() => !isLocked && handleToggle(f.key, f.label, isRequired)}
-                        disabled={isSaving || isLocked}
-                        title={isLocked ? "This field is always required and cannot be disabled" : undefined}
-                        style={{
-                          ...s.toggleBtn,
-                          background: isLocked ? "#e2e8f0" : isRequired ? "#27ae60" : "#f1f5f9",
-                          color:      isLocked ? "#94a3b8" : isRequired ? "#fff" : "#64748b",
-                          border:     isLocked ? "1px solid #cbd5e1" : isRequired ? "none" : "1px solid #cbd5e1",
-                          cursor:     isLocked ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        {isLocked ? "🔒 Always Required" : isSaving ? "..." : isRequired ? "Mandatory ✓" : "Optional"}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div style={s.infoBox}>
-                <span style={{ fontSize: '1rem' }}>💡</span>
-                <p>
-                  Fields marked as <strong>Mandatory</strong> will be checked during note submission. 
-                  If left blank, the clinician will be prompted to fix them before the record can be finalized.
-                </p>
-              </div>
-            </section>
-
-            {/* 2. DATABASE SCHEMA INFO */}
-            <section style={s.section}>
-              <h3 style={s.sectionTitle}>Database Schema</h3>
-              <p style={s.sectionDesc}>
-                The following columns are stored as JSON blobs in the <code style={s.code}>notes</code> table. 
-                This structure allows for rapid field expansion without changing the database core.
-              </p>
-              <div style={s.schemaTable}>
-                {[
-                  { col: "diagnosis",        type: "TEXT (JSON)", desc: "PES statements, priority ranking, narrative" },
-                  { col: "intervention",     type: "TEXT (JSON)", desc: "ND / Education / Counseling / Coordination of Care" },
-                  { col: "monitor_evaluate", type: "TEXT (JSON)", desc: "Indicators, criteria, outcome evaluation, discharge plan" },
-                  { col: "standards",        type: "TEXT (JSON)", desc: "Condition-based evaluation targets and PAL factors" },
-                ].map(row => (
-                  <div key={row.col} style={s.schemaRow}>
-                    <code style={{ ...s.code, fontSize: "0.85rem", color: "#2980b9" }}>{row.col}</code>
-                    <span style={{ fontSize: "0.75rem", color: "#94a3b8", marginLeft: "0.5rem" }}>{row.type}</span>
-                    <span style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginLeft: "auto" }}>{row.desc}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-
-            {/* 3. PLANNED EXTENSIONS */}
-            <section style={s.section}>
-              <h3 style={s.sectionTitle}>Planned Extensions (Phase 6 hooks)</h3>
-              <div style={s.hooksList}>
-                {[
-                  { icon: "🔒", title: "Role-Based Requirements", desc: "Logic to enforce different mandatory fields for inpatient vs. outpatient RDs." },
-                  { icon: "📊", title: "Analytics Domain", desc: "Proposed module for tracking GFR trends, EER/Protein targets, and weight history analytics." },
-                ].map(h => (
-                  <div key={h.title} style={s.hookCard}>
-                    <span style={{ fontSize: "1.5rem" }}>{h.icon}</span>
-                    <div>
-                      <div style={s.hookTitle}>{h.title}</div>
-                      <div style={s.hookDesc}>{h.desc}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
+            <SubmissionRequirementsPanel showToast={showToast} />
+            <SchemaInfoPanel />
           </>
+        ) : activeTab === "chemistry" ? (
+          <ChemistryTemplatesPanel showToast={showToast} />
         ) : (
           <section style={s.section}>
             <h3 style={s.sectionTitle}>Hospital Enteral Formulary</h3>
@@ -216,7 +77,6 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
           </section>
         )}
       </div>
-
 
       {/* Toast */}
       <div style={{
@@ -238,65 +98,8 @@ const s: Record<string, CSSProperties> = {
   backBtn: { background: "none", border: "none", color: "#e74c3c", cursor: "pointer", fontSize: "0.85rem", fontWeight: 700, padding: 0, marginBottom: "0.75rem", display: "block" },
   title: { margin: "0 0 0.25rem", fontSize: "1.75rem", fontWeight: 800, color: '#0f172a' },
   subtitle: { margin: 0, fontSize: "0.95rem", color: "#64748b" },
-
   content: { maxWidth: "800px", margin: "0 auto", padding: "0 1.5rem" },
-
   section: { background: "#fff", border: "1px solid #e2e8f0", borderRadius: "12px", padding: "1.5rem", marginBottom: "1.5rem", boxShadow: '0 1px 3px rgba(0,0,0,0.05)' },
   sectionTitle: { margin: "0 0 0.35rem", fontSize: "1rem", fontWeight: 800, color: '#1e293b' },
   sectionDesc: { margin: "0 0 1rem", fontSize: "0.85rem", color: "#64748b", lineHeight: 1.5 },
-
-  masterMenuHeader: {
-    padding: '1rem',
-    background: '#f8fafc',
-    borderRadius: '8px',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '8px',
-    marginBottom: '1rem'
-  },
-  domainSelect: {
-    width: '100%',
-    padding: '10px 12px',
-    borderRadius: '8px',
-    border: '1px solid #cbd5e1',
-    background: '#fff',
-    fontSize: '0.95rem',
-    fontWeight: 700,
-    color: '#1e293b',
-    outline: 'none',
-    cursor: 'pointer'
-  },
-
-  fieldsList: { marginTop: '0.5rem' },
-  fieldRow: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: '0.85rem 1.5rem',
-    borderBottom: '1px solid #f1f5f9'
-  },
-  fieldName: { fontWeight: 700, fontSize: '0.92rem', color: '#1e293b' },
-  fieldKey: { fontSize: '0.7rem', color: '#94a3b8', fontFamily: 'monospace', marginTop: '1px' },
-
-  toggleBtn: {
-    padding: '6px 14px',
-    borderRadius: '20px',
-    fontSize: '0.75rem',
-    fontWeight: 700,
-    cursor: 'pointer',
-    transition: 'all 0.15s',
-    minWidth: '105px',
-    textAlign: 'center'
-  },
-
-  schemaTable: { border: "1px solid #e2e8f0", borderRadius: "8px", overflow: "hidden", marginTop: "0.75rem" },
-  schemaRow: { display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.75rem 1rem", borderBottom: "1px solid #f1f5f9", flexWrap: "wrap" },
-
-  hooksList: { display: "flex", flexDirection: "column", gap: "0.75rem", marginTop: "0.75rem" },
-  hookCard: { display: "flex", gap: "0.75rem", alignItems: "flex-start", padding: "0.85rem 1rem", background: "#f8fafc", borderRadius: "8px", border: '1px solid #e2e8f0' },
-  hookTitle: { fontWeight: 700, fontSize: "0.9rem", marginBottom: "0.2rem", color: '#1e293b' },
-  hookDesc: { fontSize: "0.82rem", color: "#64748b", lineHeight: 1.5 },
-
-  code: { fontFamily: "monospace", background: "#f1f5f9", padding: "1px 5px", borderRadius: "3px", fontSize: "0.8rem", color: '#2c3e50' },
-  infoBox: { display: "flex", gap: "0.75rem", alignItems: "flex-start", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "1rem", marginTop: "1rem", fontSize: "0.82rem", lineHeight: 1.6, color: "#1e40af" },
 };

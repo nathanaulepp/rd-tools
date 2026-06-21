@@ -10,24 +10,10 @@ import { useCalculatedMetrics } from "../stores/useCalculatedMetrics";
 import {
   DIETARY_CATEGORIES,
   ASSESSMENT_CATEGORIES,
-  BIOCHEMICAL_CATEGORIES,
-  CLINICAL_CATEGORIES,
-  REFEEDING_CATEGORIES
+  CLINICAL_CATEGORIES
 } from "../shared/constants/adimeSideBarCategories";
 
 export type DomainKey = "A" | "B" | "C" | "D" | "S" | "Dx" | "I" | "ME" | "RF";
-
-const DOMAIN_LABELS: Record<DomainKey, string> = {
-  A:  "Anthropometrics",
-  B:  "Biochemical",
-  C:  "Clinical",
-  D:  "Dietary",
-  S:  "Nutrition Standards",
-  RF: "Refeeding Screen",
-  Dx: "Nutrition Diagnosis",
-  I:  "Intervention",
-  ME: "Monitor & Evaluate",
-};
 
 const SINGLE_DOMAINS: { key: DomainKey; label: string }[] = [
   { key: "Dx", label: "Dx. Nutrition Diagnosis" },
@@ -109,18 +95,6 @@ export default function Sidebar({
           active={activeDomain === "B"}
           onClick={() => handleDomainClick("B")}
         />
-        {activeDomain === "B" && (
-          <div className="sub-nav">
-            {BIOCHEMICAL_CATEGORIES.map((cat) => (
-              <SubNavItem
-                key={cat.id}
-                label={cat.title}
-                active={activeSubDomain === cat.id}
-                onClick={() => setActiveSubDomain(cat.id)}
-              />
-            ))}
-          </div>
-        )}
 
         {/* C — Clinical */}
         <NavItem
