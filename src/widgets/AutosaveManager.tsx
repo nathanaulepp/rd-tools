@@ -11,8 +11,6 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useNoteStore }     from "../stores/useNoteStore";
 import { useDietaryStore }  from "../stores/useDietaryStore";
-import { useClinicalStore } from "../stores/useClinicalStore";
-import { useLabsStore }     from "../stores/useLabsStore";
 
 const DIETARY_DEBOUNCE_MS = 1200;
 
@@ -34,15 +32,9 @@ export default function AutosaveManager({
 }: AutosaveManagerProps) {
   const { noteId, saveDomain } = useNoteStore();
   const dietary = useDietaryStore((s) => s.dietary);
-  const setClinical = useClinicalStore((s) => s.setClinical);
-  const { labs, setLabs } = useLabsStore();
-
   // Keep a ref so the debounced callback always reads the latest dietary
   const dietaryRef = useRef(dietary);
   dietaryRef.current = dietary;
-
-  const labsRef = useRef(labs);
-  labsRef.current = labs;
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

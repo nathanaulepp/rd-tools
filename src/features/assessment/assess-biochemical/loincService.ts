@@ -37,7 +37,6 @@ function buildUrl(query: string): string {
     df:      DF_FIELDS,
     sf:      "COMPONENT,LONG_COMMON_NAME",
     maxList: String(MAX_COUNT),
-    q:       "CLASSTYPE:1",
   });
   return `${NLM_BASE}?${params.toString()}`;
 }

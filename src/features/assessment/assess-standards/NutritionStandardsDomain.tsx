@@ -27,7 +27,8 @@ import { useAnthroStore } from "../../../stores/useAnthroStore";
 import { useNoteStore } from "../../../stores/useNoteStore";
 import { useDietaryStore } from "../../../stores/useDietaryStore";
 import { useClinicalStore } from "../../../stores/useClinicalStore";
-import { useLabsStore } from "../../../stores/useLabsStore";
+import { useLabsStore, sortColumns } from "../../../stores/useLabsStore";
+import { GLOBAL_LAB_CATALOG } from "../../../shared/data/biochemicalCatalog";
 import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 import { classifyPediatricWeightStatus } from "../../../shared/utils/pediatricWeightStatus";
 import * as helper from "../assess-dietary/helper";
@@ -294,7 +295,7 @@ function ExtraInputRenderer({
   sex,
 }: ExtraInputRendererProps) {
   const { clinical, setClinical } = useClinicalStore();
-  const { labs, setLabs } = useLabsStore();
+  const { labs, setLabs, columns } = useLabsStore();
 
   if (!condition) return null;
   const fields = CONDITION_EXTRA_INPUTS[condition as ConditionKey] || [];
@@ -308,10 +309,26 @@ function ExtraInputRenderer({
       if (domain === "clinical") {
         setClinical({ [fieldKey]: value } as any);
       } else if (domain === "labs") {
-        setLabs({
-          ...labs,
-          [fieldKey]: { ...(labs[fieldKey] ?? { current: "", historical: "" }), current: value },
-        });
+        const sortedCols = sortColumns(columns);
+        const colId = sortedCols[sortedCols.length - 1]?.id;
+        if (colId) {
+          const existing = labs[fieldKey] ?? {
+            unit: GLOBAL_LAB_CATALOG[fieldKey]?.defaultUnit ?? "",
+            loincCode: GLOBAL_LAB_CATALOG[fieldKey]?.loinc ?? "",
+            loincName: GLOBAL_LAB_CATALOG[fieldKey]?.name ?? fieldKey,
+            values: {},
+          };
+          setLabs({
+            ...labs,
+            [fieldKey]: {
+              ...existing,
+              values: {
+                ...existing.values,
+                [colId]: value,
+              },
+            },
+          });
+        }
       }
     }
   };
@@ -320,7 +337,11 @@ function ExtraInputRenderer({
     if (!autoPullFrom) return "";
     const [domain, fieldKey] = autoPullFrom.split(".");
     if (domain === "clinical") return (clinical as any)[fieldKey] || "";
-    if (domain === "labs") return labs[fieldKey]?.current || "";
+    if (domain === "labs") {
+      const sortedCols = sortColumns(columns);
+      const colId = sortedCols[sortedCols.length - 1]?.id;
+      return colId ? labs[fieldKey]?.values?.[colId] || "" : "";
+    }
     return "";
   };
 
@@ -398,7 +419,7 @@ export default function NutritionStandardsDomain() {
   const calculatedMetrics = useCalculatedMetrics();
   const { dietary } = useDietaryStore();
   const { clinical } = useClinicalStore();
-  const { labs } = useLabsStore();
+  const { labs, columns } = useLabsStore();
 
   if (!standards) return <div>Loading standards...</div>;
 
@@ -443,7 +464,11 @@ export default function NutritionStandardsDomain() {
       const [domain, fieldKey] = f.autoPullFrom.split(".");
       let pulled = "";
       if (domain === "clinical") pulled = (clinical as any)?.[fieldKey] || "";
-      if (domain === "labs") pulled = labs?.[fieldKey]?.current || "";
+      if (domain === "labs") {
+        const sortedCols = sortColumns(columns);
+        const colId = sortedCols[sortedCols.length - 1]?.id;
+        pulled = colId ? labs?.[fieldKey]?.values?.[colId] || "" : "";
+      }
 
       if (pulled) {
         updates[f.key] = pulled;
@@ -452,7 +477,7 @@ export default function NutritionStandardsDomain() {
     }
 
     if (changed) setExtraInputs(updates);
-  }, [condition, clinical, labs]);
+  }, [condition, clinical, labs, columns]);
 
   useEffect(() => {
     if (!bmi || bmi <= 0) return;

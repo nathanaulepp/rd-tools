@@ -1,17 +1,6 @@
 // src/stores/useLabsStore.ts
-// Phase 1 overhaul: dynamic activeLabKeys + userPresets + LOINC-aware LabEntry.
-//
-// Backward-compat notes:
-//   - registerDomainReset("labs", ...) still fires on note open.
-//     The persisted JSON blob now has the new LabEntry shape; old notes
-//     with the legacy { current, historical } shape are up-migrated inline
-//     inside the reset callback via migrateLabEntry().
-//   - registerDomainGetter("labs", ...) serialises only the populated subset
-//     (compactLabs) so the DB column stays lean.
-
 import { create } from "zustand";
-import type { Labs, LabEntry, LabPreset } from "../types";
-import { defaultLabs } from "../entities/note/defaults";
+import type { Labs, LabEntry, LabPreset, LabColumn } from "../types";
 import { registerDomainReset, registerDomainGetter } from "./useNoteStore";
 import { tryParse } from "./storeUtils";
 import {
@@ -20,25 +9,49 @@ import {
 } from "../shared/data/biochemicalCatalog";
 import { v4 as uuid } from "uuid";
 
-// ── Migration helper ───────────────────────────────────────────────────────────
-// Up-migrates a legacy { current, historical } entry to the new LabEntry shape.
-// Safe to run on already-migrated entries (idempotent).
-function migrateLabEntry(raw: Record<string, unknown>, key: string): LabEntry {
-  const catalog = GLOBAL_LAB_CATALOG[key];
+// ── Sorting Helpers ───────────────────────────────────────────────────────────
+
+export function getSortKey(col: LabColumn): string {
+  const hasDate = col.date && col.date.trim() !== "";
+  const hasTime = col.time && col.time.trim() !== "";
+  if (!hasDate && !hasTime) {
+    return "ZZZZ-ZZ-ZZTZZ:ZZ"; // Sort to the very end
+  }
+  const datePart = hasDate ? col.date.trim() : "9999-12-31";
+  const timePart = hasTime ? col.time.trim() : "23:59";
+  return `${datePart}T${timePart}`;
+}
+
+export function sortColumns(cols: LabColumn[]): LabColumn[] {
+  return [...cols].sort((a, b) => {
+    const keyA = getSortKey(a);
+    const keyB = getSortKey(b);
+    return keyA.localeCompare(keyB);
+  });
+}
+
+// ── Skeleton LabEntry helper (internal) ────────────────────────────────────────
+
+function makeEntry(slug: string, columnIds: string[]): LabEntry {
+  const catalog = GLOBAL_LAB_CATALOG[slug];
+  const values: Record<string, string> = {};
+  for (const id of columnIds) {
+    values[id] = "";
+  }
   return {
-    current:    String((raw.current    as string) ?? ""),
-    historical: String((raw.historical as string) ?? ""),
-    unit:       String((raw.unit       as string) ?? catalog?.defaultUnit ?? ""),
-    loincCode:  String((raw.loincCode  as string) ?? catalog?.loinc      ?? ""),
-    loincName:  String((raw.loincName  as string) ?? catalog?.name       ?? key),
+    unit: catalog?.defaultUnit ?? "",
+    loincCode: catalog?.loinc ?? "",
+    loincName: catalog?.name ?? slug,
+    values,
   };
 }
 
 // ── Serialise only populated entries to keep the DB column lean ───────────────
+
 function compactLabs(labs: Labs): Labs {
   return Object.fromEntries(
-    Object.entries(labs).filter(
-      ([, entry]) => entry.current.trim() !== "" || entry.historical.trim() !== ""
+    Object.entries(labs).filter(([, entry]) =>
+      Object.values(entry.values).some((v) => typeof v === "string" && v.trim() !== "")
     )
   );
 }
@@ -46,100 +59,135 @@ function compactLabs(labs: Labs): Labs {
 // ── State interface ───────────────────────────────────────────────────────────
 
 interface LabsState {
-  // Core lab data — keyed by catalog slug
   labs: Labs;
-
-  // Which lab slugs are currently rendered on the clinician's screen.
-  // Ordered — insertion order = row order in the table.
+  columns: LabColumn[];
   activeLabKeys: string[];
-
-  // User-defined saved templates (persisted to DB in Phase 4)
   userPresets: LabPreset[];
 
-  // ── Core lab mutations ─────────────────────────────────────────────────────
   setLabs: (labs: Labs) => void;
-
-  /** Update a single field on an existing entry */
-  updateLabField: (
-    key: string,
-    type: keyof Pick<LabEntry, "current" | "historical" | "unit">,
-    value: string
-  ) => void;
-
-  // ── Active key management ──────────────────────────────────────────────────
-
-  /** Append a catalog key to the visible table (no-op if already present) */
+  updateLabValue: (slug: string, columnId: string, value: string) => void;
+  addColumnLeft: (referenceId: string) => void;
+  addColumnRight: (referenceId: string) => void;
+  removeColumn: (id: string) => void;
+  updateColumnDate: (id: string, date: string) => void;
+  updateColumnTime: (id: string, time: string) => void;
   addLabToView: (key: string) => void;
-
-  /** Remove a key from the visible table (data is preserved in labs{}) */
   removeLabFromView: (key: string) => void;
-
-  /** Replace the visible set with all keys from a named panel (seeded defaults) */
   loadDefaultPanel: (panelName: string) => void;
-
-  // ── Preset management ──────────────────────────────────────────────────────
-
-  /** Snapshot the current activeLabKeys as a named preset */
-  saveCurrentViewAsPreset: (name: string) => LabPreset;
-
-  /** Snapshot the given keys as a named preset */
   saveKeysAsPreset: (name: string, keys: string[]) => LabPreset;
-
-  /** Replace activeLabKeys with those stored in the preset */
+  saveCurrentViewAsPreset: (name: string) => LabPreset;
   loadPreset: (presetId: string) => void;
-
-  /** Load multiple presets and union their keys */
   loadPresets: (ids: string[]) => void;
-
-  /** Remove a preset by ID */
   deletePreset: (presetId: string) => void;
-
-  /** Hydrate presets from DB (called once on app boot / note open) */
   setUserPresets: (presets: LabPreset[]) => void;
 }
 
 // ── Store ──────────────────────────────────────────────────────────────────────
 
 export const useLabsStore = create<LabsState>((set, get) => ({
-  labs:           defaultLabs,
-  activeLabKeys:  DEFAULT_PANEL_KEYS["Endocrine & Metabolic"], // sensible boot default
-  userPresets:    [],
+  labs: {},
+  columns: [{ id: uuid(), date: "", time: "" }],
+  activeLabKeys: DEFAULT_PANEL_KEYS["Endocrine & Metabolic"],
+  userPresets: [],
 
-  // ── Core ─────────────────────────────────────────────────────────────────
   setLabs: (labs) => set({ labs }),
 
-  updateLabField: (key, type, value) =>
+  updateLabValue: (slug, columnId, value) =>
     set((state) => {
-      const existing = state.labs[key] ?? {
-        current: "", historical: "", unit: "", loincCode: "", loincName: "",
-      };
+      const existing = state.labs[slug] ?? makeEntry(slug, state.columns.map((c) => c.id));
+      const updatedValues = { ...existing.values, [columnId]: value };
       return {
-        labs: { ...state.labs, [key]: { ...existing, [type]: value } },
+        labs: {
+          ...state.labs,
+          [slug]: { ...existing, values: updatedValues },
+        },
       };
     }),
 
-  // ── Active key management ─────────────────────────────────────────────────
+  addColumnLeft: (referenceId) =>
+    set((state) => {
+      const idx = state.columns.findIndex((c) => c.id === referenceId);
+      if (idx === -1) return state;
+      const newColId = uuid();
+      const newCol: LabColumn = { id: newColId, date: "", time: "" };
+      const newColumns = [...state.columns];
+      newColumns.splice(idx, 0, newCol);
+
+      const updatedLabs = { ...state.labs };
+      for (const slug in updatedLabs) {
+        updatedLabs[slug] = {
+          ...updatedLabs[slug],
+          values: {
+            ...updatedLabs[slug].values,
+            [newColId]: "",
+          },
+        };
+      }
+      return { columns: newColumns, labs: updatedLabs };
+    }),
+
+  addColumnRight: (referenceId) =>
+    set((state) => {
+      const idx = state.columns.findIndex((c) => c.id === referenceId);
+      if (idx === -1) return state;
+      const newColId = uuid();
+      const newCol: LabColumn = { id: newColId, date: "", time: "" };
+      const newColumns = [...state.columns];
+      newColumns.splice(idx + 1, 0, newCol);
+
+      const updatedLabs = { ...state.labs };
+      for (const slug in updatedLabs) {
+        updatedLabs[slug] = {
+          ...updatedLabs[slug],
+          values: {
+            ...updatedLabs[slug].values,
+            [newColId]: "",
+          },
+        };
+      }
+      return { columns: newColumns, labs: updatedLabs };
+    }),
+
+  removeColumn: (id) =>
+    set((state) => {
+      if (state.columns.length === 1) return state;
+      const newColumns = state.columns.filter((c) => c.id !== id);
+      const updatedLabs = { ...state.labs };
+      for (const slug in updatedLabs) {
+        const newValues = { ...updatedLabs[slug].values };
+        delete newValues[id];
+        updatedLabs[slug] = {
+          ...updatedLabs[slug],
+          values: newValues,
+        };
+      }
+      return { columns: newColumns, labs: updatedLabs };
+    }),
+
+  updateColumnDate: (id, date) =>
+    set((state) => ({
+      columns: state.columns.map((c) => (c.id === id ? { ...c, date } : c)),
+    })),
+
+  updateColumnTime: (id, time) =>
+    set((state) => ({
+      columns: state.columns.map((c) => (c.id === id ? { ...c, time } : c)),
+    })),
+
   addLabToView: (key) =>
     set((state) => {
       if (state.activeLabKeys.includes(key)) return state;
-
-      // Ensure a skeleton LabEntry exists so the row renders immediately
-      const catalog = GLOBAL_LAB_CATALOG[key];
       const existing = state.labs[key];
       const labs = existing
         ? state.labs
         : {
             ...state.labs,
-            [key]: {
-              current:   "",
-              historical:"",
-              unit:      catalog?.defaultUnit ?? "",
-              loincCode: catalog?.loinc       ?? "",
-              loincName: catalog?.name        ?? key,
-            },
+            [key]: makeEntry(key, state.columns.map((c) => c.id)),
           };
-
-      return { activeLabKeys: [...state.activeLabKeys, key], labs };
+      return {
+        activeLabKeys: [...state.activeLabKeys, key],
+        labs,
+      };
     }),
 
   removeLabFromView: (key) =>
@@ -148,20 +196,26 @@ export const useLabsStore = create<LabsState>((set, get) => ({
     })),
 
   loadDefaultPanel: (panelName) =>
-    set((_state) => ({
-      activeLabKeys: DEFAULT_PANEL_KEYS[panelName] ?? [],
-    })),
+    set((state) => {
+      const keys = DEFAULT_PANEL_KEYS[panelName] ?? [];
+      const labs = { ...state.labs };
+      const colIds = state.columns.map((c) => c.id);
+      for (const key of keys) {
+        if (!labs[key]) {
+          labs[key] = makeEntry(key, colIds);
+        }
+      }
+      return { activeLabKeys: keys, labs };
+    }),
 
-  // ── Presets ───────────────────────────────────────────────────────────────
-  saveCurrentViewAsPreset: (name) => {
+  saveKeysAsPreset: (name, keys) => {
     const preset: LabPreset = {
-      id:      uuid(),
+      id: uuid(),
       name,
-      labKeys: [...get().activeLabKeys],
+      labKeys: [...keys],
     };
     set((state) => ({ userPresets: [...state.userPresets, preset] }));
 
-    // Fire-and-forget DB write — import lazily to avoid circular dep with db.ts
     import("../shared/api/db").then(({ insertLabPreset }) => {
       insertLabPreset(preset).catch((e) =>
         console.error("[useLabsStore] insertLabPreset failed:", e)
@@ -171,15 +225,14 @@ export const useLabsStore = create<LabsState>((set, get) => ({
     return preset;
   },
 
-  saveKeysAsPreset: (name, keys) => {
+  saveCurrentViewAsPreset: (name) => {
     const preset: LabPreset = {
-      id:      uuid(),
+      id: uuid(),
       name,
-      labKeys: [...keys],
+      labKeys: [...get().activeLabKeys],
     };
     set((state) => ({ userPresets: [...state.userPresets, preset] }));
 
-    // Fire-and-forget DB write — import lazily to avoid circular dep with db.ts
     import("../shared/api/db").then(({ insertLabPreset }) => {
       insertLabPreset(preset).catch((e) =>
         console.error("[useLabsStore] insertLabPreset failed:", e)
@@ -194,20 +247,13 @@ export const useLabsStore = create<LabsState>((set, get) => ({
       const preset = state.userPresets.find((p) => p.id === presetId);
       if (!preset) return state;
 
-      // Ensure skeleton entries exist for any key that hasn't been seen before
       const labs = { ...state.labs };
+      const colIds = state.columns.map((c) => c.id);
       for (const key of preset.labKeys) {
         if (!labs[key]) {
-          const catalog = GLOBAL_LAB_CATALOG[key];
-          labs[key] = {
-            current: "", historical: "",
-            unit:      catalog?.defaultUnit ?? "",
-            loincCode: catalog?.loinc       ?? "",
-            loincName: catalog?.name        ?? key,
-          };
+          labs[key] = makeEntry(key, colIds);
         }
       }
-
       return { activeLabKeys: [...preset.labKeys], labs };
     }),
 
@@ -216,7 +262,6 @@ export const useLabsStore = create<LabsState>((set, get) => ({
       const selected = state.userPresets.filter((p) => ids.includes(p.id));
       if (selected.length === 0) return state;
 
-      // Union all labKeys preserving insertion order, deduplicated
       const seen = new Set<string>();
       const unionKeys: string[] = [];
       for (const preset of selected) {
@@ -228,20 +273,13 @@ export const useLabsStore = create<LabsState>((set, get) => ({
         }
       }
 
-      // Ensure skeleton LabEntry exists for every key
       const labs = { ...state.labs };
+      const colIds = state.columns.map((c) => c.id);
       for (const key of unionKeys) {
         if (!labs[key]) {
-          const catalog = GLOBAL_LAB_CATALOG[key];
-          labs[key] = {
-            current: "", historical: "",
-            unit:      catalog?.defaultUnit ?? "",
-            loincCode: catalog?.loinc       ?? "",
-            loincName: catalog?.name        ?? key,
-          };
+          labs[key] = makeEntry(key, colIds);
         }
       }
-
       return { activeLabKeys: unionKeys, labs };
     }),
 
@@ -264,33 +302,56 @@ export const useLabsStore = create<LabsState>((set, get) => ({
 
 registerDomainReset("labs", (raw) => {
   if (!raw) {
-    useLabsStore.setState({ labs: defaultLabs });
+    useLabsStore.setState({
+      labs: {},
+      columns: [{ id: uuid(), date: "", time: "" }],
+      activeLabKeys: DEFAULT_PANEL_KEYS["Endocrine & Metabolic"],
+    });
     return;
   }
 
-  const parsed = tryParse<Record<string, Record<string, unknown>>>(raw, {});
+  const parsed = tryParse<Record<string, any>>(raw, {});
 
-  // Up-migrate every entry to the new LabEntry shape
-  const migrated: Labs = {};
-  for (const [key, entry] of Object.entries(parsed)) {
-    migrated[key] = migrateLabEntry(entry, key);
+  // Extract columns
+  let columns: LabColumn[] = [];
+  if (Array.isArray(parsed.__columns__)) {
+    columns = parsed.__columns__;
+  }
+  if (columns.length === 0) {
+    columns = [{ id: uuid(), date: "", time: "" }];
   }
 
-  // Restore activeLabKeys to whatever keys have data, preserving order.
-  // If the note has no populated labs, fall back to the boot default.
-  const populatedKeys = Object.keys(migrated).filter(
-    (k) => migrated[k].current !== "" || migrated[k].historical !== ""
+  // Extract labs (excluding __columns__)
+  const labs: Labs = {};
+  for (const [key, val] of Object.entries(parsed)) {
+    if (key === "__columns__") continue;
+    labs[key] = {
+      unit: String(val?.unit ?? ""),
+      loincCode: String(val?.loincCode ?? ""),
+      loincName: String(val?.loincName ?? ""),
+      values: val?.values && typeof val.values === "object" ? { ...val.values } : {},
+    };
+  }
+
+  // Find keys that have at least one non-empty value in their values Record
+  const populatedKeys = Object.keys(labs).filter((k) =>
+    Object.values(labs[k].values).some((v) => typeof v === "string" && v.trim() !== "")
   );
 
   useLabsStore.setState({
-    labs: migrated,
+    labs,
+    columns,
     activeLabKeys: populatedKeys.length > 0
       ? populatedKeys
       : DEFAULT_PANEL_KEYS["Endocrine & Metabolic"],
   });
 });
 
-// Only persist populated entries — keeps the DB column lean.
-registerDomainGetter("labs", () =>
-  compactLabs(useLabsStore.getState().labs)
-);
+registerDomainGetter("labs", () => {
+  const { labs, columns } = useLabsStore.getState();
+  const sorted = sortColumns(columns);
+  return {
+    __columns__: sorted,
+    ...compactLabs(labs),
+  };
+});

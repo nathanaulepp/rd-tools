@@ -154,9 +154,8 @@ export default function ChemistryTemplatesPanel({ showToast }: ChemistryTemplate
         </div>
 
         <div style={styles.grid}>
-          {/* Left column — Browse by Panel */}
           <div style={styles.column}>
-            <h4 style={styles.columnHeader}>Browse by Panel</h4>
+            <h4 style={styles.columnHeader}>Browse Common Labs</h4>
             <select
               value={panelFilter}
               onChange={(e) => setPanelFilter(e.target.value)}

@@ -144,16 +144,7 @@ export const useNoteStore = create<NoteState>((set, get) => ({
 
   // ── handleExitToStart ──────────────────────────────────────────────────────
   // Replaces the handleExitToStart in old App.tsx / CreateNotePage.
-  handleExitToStart: (skipConfirm = false) => {
-    const { noteStatus } = get();
-
-    if (!skipConfirm && noteStatus !== "submitted") {
-      const confirmed = window.confirm(
-        "Are you sure you want to exit? Any unsaved changes will be lost."
-      );
-      if (!confirmed) return;
-    }
-
+  handleExitToStart: (_skipConfirm = false) => {
     get()._clearNote();
     import("./useUIStore").then(({ useUIStore }) => {
       useUIStore.getState().setCurrentView("START");

@@ -84,7 +84,7 @@ export default function ClinicalC3C4() {
             type="text"
             value={clinical.tbsa}
             onChange={(e) => handleUpdate("tbsa", e.target.value)}
-            placeholder="For Curreri formula"
+            placeholder="For Milner/Toronto formula"
           />
         </div>
       </div>

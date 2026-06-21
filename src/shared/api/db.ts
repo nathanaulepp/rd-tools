@@ -250,7 +250,9 @@ async function initSchema(db: Database): Promise<void> {
     { field_key: "dob",            label: "Date of Birth" },
     { field_key: "sex",            label: "Sex" },
     { field_key: "note_date",      label: "Note Date"  },
-    { field_key: "diagnosis",      label: "Nutrition Diagnosis (PES)" },
+    { field_key: "diagnosis",      label: "Nutrition Diagnosis (P)" },
+    { field_key: "etiology",       label: "Primary Etiology (E)" },
+    { field_key: "signsSymptoms",  label: "Primary Signs/Symptoms (S)" },
     { field_key: "chiefComplaint", label: "Chief Complaint" },
     { field_key: "dietOrder",      label: "Rx Diet Order" },
   ];

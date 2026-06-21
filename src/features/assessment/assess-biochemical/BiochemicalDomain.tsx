@@ -1,48 +1,93 @@
 // src/features/assessment/assess-biochemical/BiochemicalDomain.tsx
-// Phase 3 overhaul: pure layout shell — dynamic canvas replacing static panels.
-//
-// Responsibilities:
-//   - Render LabPresetToolbar (search + preset controls)
-//   - Render the dynamic lab table from activeLabKeys
-//   - Keyboard tabIndex ergonomics: Historical → Current per row
-//   - Remove row button per entry
-//
-// All state comes from useLabsStore — zero props.
-
 import React from "react";
-import { useLabsStore } from "../../../stores/useLabsStore";
+import { useLabsStore, sortColumns } from "../../../stores/useLabsStore";
 import { GLOBAL_LAB_CATALOG } from "../../../shared/data/biochemicalCatalog";
 import { DomainHeader } from "../../../shared/ui/DomainHeader";
 import LabPresetToolbar from "./LabPresetToolbar";
 
 export default function BiochemicalDomain() {
-  const { labs, activeLabKeys, updateLabField, removeLabFromView } =
-    useLabsStore();
+  const {
+    labs,
+    columns,
+    activeLabKeys,
+    updateLabValue,
+    addColumnLeft,
+    addColumnRight,
+    removeColumn,
+    updateColumnDate,
+    updateColumnTime,
+    removeLabFromView,
+  } = useLabsStore();
+
+  const sortedColumns = sortColumns(columns);
 
   return (
-    <div className="fade-in">
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }} className="fade-in">
       <DomainHeader title="Biochemical Data" />
+      <LabPresetToolbar />
 
-      <div className="card">
-        <LabPresetToolbar />
-
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         {activeLabKeys.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="table-container" style={{ overflowY: "auto", maxHeight: "calc(100vh - 260px)" }}>
-            <table className="lab-table" style={{ tableLayout: "fixed" }}>
-              <colgroup>
-                <col style={{ width: "36%" }} />
-                <col style={{ width: "28%" }} />
-                <col style={{ width: "28%" }} />
-                <col style={{ width: "8%" }} />
-              </colgroup>
+          <div style={{ flex: 1, overflowX: "auto", overflowY: "auto" }}>
+            <table className="lab-table" style={{ width: "100%", borderCollapse: "collapse", tableLayout: "auto" }}>
               <thead>
                 <tr>
-                  <th>Lab Test</th>
-                  <th>Historical</th>
-                  <th>Current</th>
-                  <th aria-label="Remove" />
+                  <th style={firstThStyle}>Lab Test</th>
+                  {sortedColumns.map((column, colIndex) => {
+                    return (
+                      <th key={column.id} style={thStyle}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "center", width: "100%" }}>
+                          <input
+                            type="date"
+                            value={column.date}
+                            onChange={(e) => updateColumnDate(column.id, e.target.value)}
+                            style={headerInputStyle}
+                            aria-label={`Column ${colIndex + 1} date`}
+                          />
+                          <input
+                            type="time"
+                            value={column.time}
+                            onChange={(e) => updateColumnTime(column.id, e.target.value)}
+                            style={headerInputStyle}
+                            aria-label={`Column ${colIndex + 1} time`}
+                          />
+                        </div>
+
+                        {columns.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => removeColumn(column.id)}
+                            style={deleteColBtnStyle}
+                            title="Delete column"
+                            aria-label={`Delete column ${colIndex + 1}`}
+                          >
+                            ×
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => addColumnLeft(column.id)}
+                          style={{ ...addBtnStyle, left: "-10px" }}
+                          title="Add column left"
+                          aria-label="Add column left"
+                        >
+                          +
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => addColumnRight(column.id)}
+                          style={{ ...addBtnStyle, right: "-10px" }}
+                          title="Add column right"
+                          aria-label="Add column right"
+                        >
+                          +
+                        </button>
+                      </th>
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -53,53 +98,44 @@ export default function BiochemicalDomain() {
                   const unit = entry?.unit || catalog?.defaultUnit || "";
                   const placeholder = unit ? `-- ${unit}` : "--";
 
-                  // tabIndex: historical = even, current = odd, flowing top-to-bottom
-                  // then left-to-right within a row.
-                  const tabHist = rowIndex * 2 + 1;
-                  const tabCurr = rowIndex * 2 + 2;
-
                   return (
-                    <tr key={slug}>
-                      <td>
-                        <span style={cellLabel}>{label}</span>
-                        {unit && (
-                          <span style={cellUnit}>{unit}</span>
-                        )}
+                    <tr key={slug} style={trStyle}>
+                      <td style={firstTdStyle}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "8px" }}>
+                          <div style={{ display: "flex", flexDirection: "column" }}>
+                            <span style={cellLabelStyle}>{label}</span>
+                            {unit && <span style={cellUnitStyle}>{unit}</span>}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeLabFromView(slug)}
+                            style={removeBtnStyle}
+                            title={`Remove ${label} from view`}
+                            aria-label={`Remove ${label}`}
+                          >
+                            ×
+                          </button>
+                        </div>
                       </td>
-                      <td>
-                        <input
-                          type="text"
-                          tabIndex={tabHist}
-                          placeholder={placeholder}
-                          value={entry?.historical ?? ""}
-                          onChange={(e) =>
-                            updateLabField(slug, "historical", e.target.value)
-                          }
-                          aria-label={`${label} historical value`}
-                        />
-                      </td>
-                      <td>
-                        <input
-                          type="text"
-                          tabIndex={tabCurr}
-                          placeholder={placeholder}
-                          value={entry?.current ?? ""}
-                          onChange={(e) =>
-                            updateLabField(slug, "current", e.target.value)
-                          }
-                          aria-label={`${label} current value`}
-                        />
-                      </td>
-                      <td style={{ textAlign: "center" }}>
-                        <button
-                          onClick={() => removeLabFromView(slug)}
-                          style={removeBtn}
-                          title={`Remove ${label} from view`}
-                          aria-label={`Remove ${label}`}
-                        >
-                          ×
-                        </button>
-                      </td>
+                      {sortedColumns.map((column) => {
+                        const colIndex = sortedColumns.findIndex((c) => c.id === column.id);
+                        const tabIndex = colIndex * activeLabKeys.length + rowIndex + 1;
+                        const val = entry?.values?.[column.id] ?? "";
+
+                        return (
+                          <td key={column.id} style={tdStyle}>
+                            <input
+                              type="text"
+                              tabIndex={tabIndex}
+                              placeholder={placeholder}
+                              value={val}
+                              onChange={(e) => updateLabValue(slug, column.id, e.target.value)}
+                              style={cellInputStyle}
+                              aria-label={`${label} value for column ${colIndex + 1}`}
+                            />
+                          </td>
+                        );
+                      })}
                     </tr>
                   );
                 })}
@@ -136,26 +172,128 @@ function EmptyState() {
   );
 }
 
-// ── Inline styles (small, not worth a CSS class) ──────────────────────────────
+// ── Styles ────────────────────────────────────────────────────────────────────
 
-const cellLabel: React.CSSProperties = {
+const thStyle: React.CSSProperties = {
+  position: "relative",
+  padding: "12px 14px",
+  background: "var(--card-bg, #ffffff)",
+  border: "1px solid var(--border-color, #e2e8f0)",
+  minWidth: "140px",
+  verticalAlign: "middle",
+};
+
+const firstThStyle: React.CSSProperties = {
+  position: "sticky",
+  left: 0,
+  zIndex: 4,
+  background: "var(--card-bg, #ffffff)",
+  border: "1px solid var(--border-color, #e2e8f0)",
+  textAlign: "left",
+  padding: "12px 8px",
+  minWidth: "180px",
+  boxShadow: "2px 0 5px -2px rgba(0,0,0,0.1)",
+};
+
+const headerInputStyle: React.CSSProperties = {
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  fontSize: "0.75rem",
+  textAlign: "center",
+  outline: "none",
+  padding: "2px 4px",
+  color: "var(--text-main, #334155)",
+  fontFamily: "inherit",
+};
+
+const deleteColBtnStyle: React.CSSProperties = {
+  position: "absolute",
+  top: "2px",
+  right: "2px",
+  background: "none",
+  border: "none",
+  color: "var(--text-muted, #94a3b8)",
+  cursor: "pointer",
+  fontSize: "12px",
+  lineHeight: 1,
+  padding: "2px",
+  borderRadius: "4px",
+  zIndex: 3,
+};
+
+const addBtnStyle: React.CSSProperties = {
+  position: "absolute",
+  top: "50%",
+  transform: "translateY(-50%)",
+  width: "18px",
+  height: "18px",
+  borderRadius: "50%",
+  border: "1px solid var(--border-color, #cbd5e1)",
+  background: "var(--bg-color, #f8fafc)",
+  color: "var(--text-main, #334155)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  fontSize: "12px",
+  fontWeight: "bold",
+  lineHeight: 1,
+  padding: 0,
+  zIndex: 3,
+  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+};
+
+const trStyle: React.CSSProperties = {
+  borderBottom: "1px solid var(--border-color, #e2e8f0)",
+};
+
+const firstTdStyle: React.CSSProperties = {
+  position: "sticky",
+  left: 0,
+  zIndex: 2,
+  background: "var(--card-bg, #ffffff)",
+  border: "1px solid var(--border-color, #e2e8f0)",
+  padding: "8px 12px",
+  boxShadow: "2px 0 5px -2px rgba(0,0,0,0.1)",
+};
+
+const tdStyle: React.CSSProperties = {
+  padding: 0,
+  border: "1px solid var(--border-color, #e2e8f0)",
+  textAlign: "center",
+};
+
+const cellInputStyle: React.CSSProperties = {
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  padding: "8px",
+  boxSizing: "border-box",
+  textAlign: "center",
+  outline: "none",
+  fontSize: "0.85rem",
+  color: "var(--text-main)",
+};
+
+const cellLabelStyle: React.CSSProperties = {
   fontWeight: 600,
   fontSize: "0.82rem",
   color: "var(--text-main)",
 };
 
-const cellUnit: React.CSSProperties = {
+const cellUnitStyle: React.CSSProperties = {
   display: "block",
   fontSize: "0.68rem",
   color: "var(--text-muted)",
   marginTop: "1px",
 };
 
-const removeBtn: React.CSSProperties = {
+const removeBtnStyle: React.CSSProperties = {
   background: "none",
   border: "none",
-  color: "var(--text-muted)",
-  fontSize: "1rem",
+  color: "var(--text-muted, #94a3b8)",
+  fontSize: "1.1rem",
   cursor: "pointer",
   lineHeight: 1,
   padding: "0 4px",

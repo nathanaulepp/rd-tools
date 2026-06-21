@@ -43,6 +43,14 @@ export const MASTER_DOMAINS = [
     ]
   },
   {
+    id: "biochemical",
+    title: "B. Biochemical Data",
+    fields: [
+      { key: "activeLabKeys",   label: "Active Lab Panel (dynamic)" },
+      { key: "userPresets",     label: "Saved Lab Presets" },
+    ]
+  },
+  {
     id: "clinical",
     title: "C. Clinical & NFPE",
     fields: [
@@ -141,7 +149,7 @@ export const MASTER_DOMAINS = [
     id: "diagnosis",
     title: "Dx. Nutrition Diagnosis",
     fields: [
-      { key: "diagnosis", label: "Nutrition Diagnosis (PES)" },
+      { key: "diagnosis", label: "Nutrition Diagnosis (P)" },
       { key: "etiology", label: "Primary Etiology (E)" },
       { key: "signsSymptoms", label: "Primary Signs/Symptoms (S)" },
       { key: "nutritionDxNarrative", label: "Diagnostic Narrative" },
@@ -219,14 +227,6 @@ export const MASTER_DOMAINS = [
       { key: "c7_selected",      label: "C7: Comorbidities Selected" },
       { key: "screenNotes",      label: "Refeeding Screen Notes" },
       { key: "screenedAt",       label: "Screen Timestamp" },
-    ]
-  },
-  {
-    id: "biochemical",
-    title: "B. Biochemical Data",
-    fields: [
-      { key: "activeLabKeys",   label: "Active Lab Panel (dynamic)" },
-      { key: "userPresets",     label: "Saved Lab Presets" },
     ]
   }
 ];
