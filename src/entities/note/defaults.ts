@@ -148,7 +148,6 @@ export const defaultMonitorEval: MonitorEval = {
 
 export const defaultStandards: Standards = {
   condition: "", variant: "",
-  currentKcal: "", currentProtein: "", currentFat: "", currentCho: "", currentFluid: "",
   icKcal: "", icCaf: "1.0",
   extraInputs: {},
   snapshot: null,

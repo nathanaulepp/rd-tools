@@ -202,10 +202,6 @@ export const MASTER_DOMAINS = [
     fields: [
       { key: "condition",      label: "Clinical Condition Selected" },
       { key: "variant",        label: "Condition Sub-type / Variant" },
-      { key: "currentKcal",    label: "Current Energy Prescription (kcal)" },
-      { key: "currentProtein", label: "Current Protein Prescription (g)" },
-      { key: "currentFat",     label: "Current Fat Prescription (g)" },
-      { key: "currentFluid",   label: "Current Fluid Prescription (mL)" },
       { key: "icKcal",         label: "Indirect Calorimetry mREE (kcal)" },
       { key: "snapshot",       label: "Evaluation Snapshot (Engine Output)" },
     ]

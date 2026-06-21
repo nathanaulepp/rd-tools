@@ -572,39 +572,24 @@ interface D15Props {
 }
 
 function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
-  const { totalKcal, totalProt, totalCho, totalFat, ivKcal, ivLipidFlagOrders } = helper.calculateDietaryTotals({
+  const {
+    totalKcal,
+    totalProt,
+    totalFat,
+    totalCho,
+    totalFluid,
+    enFreeWater,
+    enFlush,
+    pnFreeWater,
+    ivKcal,
+    ivLipidFlagOrders,
+  } = helper.calculateDietaryTotals({
     ...dietary,
     enState,
     pnState,
   } as any);
 
-  // ── EN contributions not yet covered by helper.calculateDietaryTotals ──────
-  // helper.calculateDietaryTotals currently reports totalCho/totalFat as
-  // "PN only" (see chip labels below). Compute EN CHO/Fat/FreeWater/Flush
-  // here from enState directly until the shared helper is updated.
-  const enTotals = enState.feeds.reduce((acc, f) => {
-    const choGPerLNum = helper.num((f as any).choGPerL);
-    const fatGPerLNum = helper.num((f as any).fatGPerL);
-    const fwPctNum    = helper.num(f.fwPct);
-    const vol = f.type === "bolus"
-      ? helper.num(f.bolusMl) * helper.num(f.bolusTimesPerDay)
-      : helper.num(f.continuousRate) * (helper.num(f.continuousHrs) || 24);
-    return {
-      cho: acc.cho + (vol > 0 && choGPerLNum > 0 ? (vol / 1000) * choGPerLNum : 0),
-      fat: acc.fat + (vol > 0 && fatGPerLNum > 0 ? (vol / 1000) * fatGPerLNum : 0),
-      freeWater: acc.freeWater + (vol > 0 && fwPctNum > 0 ? vol * (fwPctNum / 100) : 0),
-      flush: acc.flush + (helper.num(f.flushMl) * (helper.num(f.flushTimesPerDay) || 1)),
-    };
-  }, { cho: 0, fat: 0, freeWater: 0, flush: 0 });
-
-  // ── PN free water ──────────────────────────────────────────────────────────
-  const pnFreeWaterMl = pnState.bags.reduce((sum, bag) => sum + helper.calcPNBagFreeWater(bag), 0);
-
   const oralFluidMl = helper.num(dietary.oralWater);
-  const totalFluidsMl = oralFluidMl + enTotals.freeWater + enTotals.flush + pnFreeWaterMl;
-
-  const combinedCho = totalCho + enTotals.cho + helper.num(dietary.oralCho);
-  const combinedFat = totalFat + enTotals.fat + helper.num(dietary.oralFat);
 
   const chipStyle = (color: string): React.CSSProperties => ({
     background: `${color}12`,
@@ -702,7 +687,7 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
         <div style={chipStyle("#d69e2e")}>
           <div style={labelStyle}>Total CHO</div>
           <div style={valueStyle("#d69e2e")}>
-            {Math.round(combinedCho * 10) / 10}
+            {Math.round(totalCho * 10) / 10}
             <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
               g/day
             </span>
@@ -712,7 +697,7 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
         <div style={chipStyle("#e67e22")}>
           <div style={labelStyle}>Total Fat</div>
           <div style={valueStyle("#c05621")}>
-            {Math.round(combinedFat * 10) / 10}
+            {Math.round(totalFat * 10) / 10}
             <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
               g/day
             </span>
@@ -745,16 +730,16 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
             Total Fluids
           </span>
           <span style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1e40af" }}>
-            {Math.round(totalFluidsMl)}
+            {Math.round(totalFluid)}
             <span style={{ fontSize: "0.7rem", fontWeight: 400, marginLeft: "2px" }}>mL/day</span>
           </span>
         </div>
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", fontSize: "0.7rem", color: "#475569" }}>
           <span>Oral: <strong>{Math.round(oralFluidMl)}</strong> mL</span>
-          <span>EN Free Water: <strong>{Math.round(enTotals.freeWater)}</strong> mL</span>
-          <span>EN Flush: <strong>{Math.round(enTotals.flush)}</strong> mL</span>
+          <span>EN Free Water: <strong>{Math.round(enFreeWater)}</strong> mL</span>
+          <span>EN Flush: <strong>{Math.round(enFlush)}</strong> mL</span>
           <span>
-            PN Free Water: <strong>{Math.round(pnFreeWaterMl)}</strong> mL
+            PN Free Water: <strong>{Math.round(pnFreeWater)}</strong> mL
           </span>
         </div>
       </div>

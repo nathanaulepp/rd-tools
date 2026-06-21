@@ -26,17 +26,27 @@ export function calculateDietaryTotals(dietary: Dietary) {
   // ── Enteral (D12) ─────────────────────────────────────────────────────────
   const enTotals = enState?.feeds.reduce(
     (acc, f) => {
-      const n = calcENNutrients(f);
+      const n            = calcENNutrients(f);
       const mods: constant.ENModular[] = (f as any).modulars || [];
-      const modKcal = mods.reduce((s, m) => s + num(m.kcal), 0);
-      const modProt = mods.reduce((s, m) => s + num(m.protein), 0);
+      const modKcal      = mods.reduce((s, m) => s + num(m.kcal), 0);
+      const modProt      = mods.reduce((s, m) => s + num(m.protein), 0);
+      const choGPerLNum  = num((f as any).choGPerL);
+      const fatGPerLNum  = num((f as any).fatGPerL);
+      const fwPctNum     = num(f.fwPct);
+      const vol = f.type === "bolus"
+        ? num(f.bolusMl) * num(f.bolusTimesPerDay)
+        : num(f.continuousRate) * (num(f.continuousHrs) || 24);
       return {
-        kcal: acc.kcal + n.totalCal + modKcal,
-        prot: acc.prot + n.totalProt + modProt,
+        kcal:      acc.kcal      + n.totalCal + modKcal,
+        prot:      acc.prot      + n.totalProt + modProt,
+        fat:       acc.fat       + (vol > 0 && fatGPerLNum > 0 ? (vol / 1000) * fatGPerLNum : 0),
+        cho:       acc.cho       + (vol > 0 && choGPerLNum > 0 ? (vol / 1000) * choGPerLNum : 0),
+        freeWater: acc.freeWater + (vol > 0 && fwPctNum > 0 ? vol * (fwPctNum / 100) : 0),
+        flush:     acc.flush     + (num(f.flushMl) * (num(f.flushTimesPerDay) || 1)),
       };
     },
-    { kcal: 0, prot: 0 }
-  ) || { kcal: 0, prot: 0 };
+    { kcal: 0, prot: 0, fat: 0, cho: 0, freeWater: 0, flush: 0 }
+  ) ?? { kcal: 0, prot: 0, fat: 0, cho: 0, freeWater: 0, flush: 0 };
 
   // ── Parenteral (D13) ──────────────────────────────────────────────────────
   const pnTotals = pnState?.bags.reduce(
@@ -44,31 +54,38 @@ export function calculateDietaryTotals(dietary: Dietary) {
       const dextG  = num(bag.dextAmount);
       const aaG    = num(bag.aaAmount);
       const lipidG = num(bag.lipidAmount);
-
-      const lipidKcalPerG = 10;
-
       return {
-        kcal: acc.kcal + dextG * 3.4 + aaG * 4 + lipidG * lipidKcalPerG,
+        kcal: acc.kcal + dextG * 3.4 + aaG * 4 + lipidG * 10,
         prot: acc.prot + aaG,
         cho:  acc.cho  + dextG,
         fat:  acc.fat  + lipidG,
       };
     },
     { kcal: 0, prot: 0, cho: 0, fat: 0 }
-  ) || { kcal: 0, prot: 0, cho: 0, fat: 0 };
+  ) ?? { kcal: 0, prot: 0, cho: 0, fat: 0 };
+
+  const pnFreeWaterMl = pnState?.bags.reduce(
+    (sum, bag) => sum + calcPNBagFreeWater(bag), 0
+  ) ?? 0;
 
   // ── IV Orders (D14) ───────────────────────────────────────────────────────
   const ivOrders: IVOrder[] = dietary.ivOrders || [];
   const ivKcal = ivOrders.reduce((sum, o) => sum + calcIVOrderKcal(o), 0);
-  const ivLipidFlagOrders = ivOrders.filter((o) => constant.IV_LIPID_FLAG_TYPES.has(o.type as string));
+  const ivLipidFlagOrders = ivOrders.filter(
+    (o) => constant.IV_LIPID_FLAG_TYPES.has(o.type as string)
+  );
 
   return {
-    totalKcal: oralKcal + enTotals.kcal + pnTotals.kcal + ivKcal,
-    totalProt: oralProt + enTotals.prot + pnTotals.prot,
-    totalFat: pnTotals.fat,
-    totalCho: pnTotals.cho,
+    totalKcal:  oralKcal + enTotals.kcal + pnTotals.kcal + ivKcal,
+    totalProt:  oralProt + enTotals.prot  + pnTotals.prot,
+    totalFat:   num(dietary.oralFat)  + enTotals.fat + pnTotals.fat,
+    totalCho:   num(dietary.oralCho)  + enTotals.cho + pnTotals.cho,
+    totalFluid: num(dietary.oralWater) + enTotals.freeWater + enTotals.flush + pnFreeWaterMl,
     ivKcal,
     ivLipidFlagOrders,
+    enFreeWater: enTotals.freeWater,
+    enFlush:     enTotals.flush,
+    pnFreeWater: pnFreeWaterMl,
   };
 }
 
@@ -202,7 +219,7 @@ export function makePNFeed(id: number): PNFeed {
     insulinUnits: "",
     separateIleDurationHr: 12,
     separateIleFreqPerWeek: 3,
-    fwGoalMl: 2000,
+    fwGoalMl: 0,
     electrolytes: {}, vitamins: {},
     expanded: true, electroExpanded: false, vitExpanded: false,
   };
@@ -252,6 +269,14 @@ export function calcPNBagVolumes(bag: PNFeed) {
   const aaG = num(bag.aaAmount);
   const dexG = num(bag.dextAmount);
   const ileG = num(bag.lipidAmount);
+
+  // Guard: untouched bag with no macros contributes nothing
+  if (aaG <= 0 && dexG <= 0 && ileG <= 0) {
+    return {
+      aaVol: 0, dexVol: 0, ileVol: 0, swfiVol: 0, additivesVol: 0,
+      compoundedVol: 0, totalVol: 0, totalFreeWater: 0,
+    };
+  }
 
   const aaConcPct = concFromSourceString(bag.aaConc || 'AA 15%');
   const dexConcPct = concFromSourceString(bag.dextConc || 'D70W');

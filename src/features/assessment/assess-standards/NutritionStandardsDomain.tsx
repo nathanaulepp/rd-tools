@@ -13,7 +13,7 @@ import {
   IC_ACTIVITY_FACTORS,
   MSJ_ACTIVITY_FACTORS,
 } from "../../../shared/utils/nutrition-engine/nutritionStandards";
-import type { EvaluateResult } from "../../../shared/utils/nutrition-engine/nutritionStandards";
+
 import type {
   EvalStatus,
   EvalResult,
@@ -412,11 +412,6 @@ export default function NutritionStandardsDomain() {
 
   const [condition, setCondition] = useState<ConditionKey | "">(standards.condition || "");
   const [variant, setVariant] = useState(standards.variant || "");
-  const [currentKcal, setCurrentKcal] = useState(standards.currentKcal || "");
-  const [currentProtein, setCurrentProtein] = useState(standards.currentProtein || "");
-  const [currentFat, setCurrentFat] = useState(standards.currentFat || "");
-  const [currentCho, setCurrentCho] = useState(standards.currentCho || "");
-  const [currentFluid, setCurrentFluid] = useState(standards.currentFluid || "");
   const [icKcal, setIcKcal] = useState(standards.icKcal || "");
   const [icCaf, setIcCaf] = useState(standards.icCaf || "1.0");
   const [extraInputs, setExtraInputs] = useState<Record<string, string>>(standards.extraInputs || {});
@@ -425,19 +420,15 @@ export default function NutritionStandardsDomain() {
 
   const dietaryTotals = useMemo(() => helper.calculateDietaryTotals(dietary), [dietary]);
 
-  const syncToParent = useCallback(() => {
-    setStandards({ condition, variant, currentKcal, currentProtein, currentFat, currentCho, currentFluid, icKcal, icCaf, extraInputs });
-  }, [condition, variant, currentKcal, currentProtein, currentFat, currentCho, currentFluid, icKcal, icCaf, extraInputs, setStandards]);
+  const currentKcal = useMemo(() => dietaryTotals.totalKcal > 0 ? String(Math.round(dietaryTotals.totalKcal)) : "", [dietaryTotals.totalKcal]);
+  const currentProtein = useMemo(() => dietaryTotals.totalProt > 0 ? String(Math.round(dietaryTotals.totalProt * 10) / 10) : "", [dietaryTotals.totalProt]);
+  const currentFat = useMemo(() => dietaryTotals.totalFat > 0 ? String(Math.round(dietaryTotals.totalFat * 10) / 10) : "", [dietaryTotals.totalFat]);
+  const currentCho = useMemo(() => dietaryTotals.totalCho > 0 ? String(Math.round(dietaryTotals.totalCho * 10) / 10) : "", [dietaryTotals.totalCho]);
+  const currentFluid = useMemo(() => dietaryTotals.totalFluid > 0 ? String(Math.round(dietaryTotals.totalFluid)) : "", [dietaryTotals.totalFluid]);
 
-  // Phase 5: Prefill on initial load IF fields are empty, but don't live-override
-  useEffect(() => {
-    if (!currentKcal && dietaryTotals.totalKcal) {
-      setCurrentKcal(String(Math.round(dietaryTotals.totalKcal)));
-    }
-    if (!currentProtein && dietaryTotals.totalProt) {
-      setCurrentProtein(String(Math.round(dietaryTotals.totalProt * 10) / 10));
-    }
-  }, []); // Only once on mount
+  const syncToParent = useCallback(() => {
+    setStandards({ condition, variant, icKcal, icCaf, extraInputs });
+  }, [condition, variant, icKcal, icCaf, extraInputs, setStandards]);
 
   useEffect(() => {
     if (!condition) return;
@@ -781,22 +772,12 @@ export default function NutritionStandardsDomain() {
               <div className="input-group" style={{ margin: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                   <label style={tinyLabelStyle}>Energy (kcal)</label>
-                  {dietaryTotals.totalKcal > 0 && (
-                    <span style={calcIndicatorStyle} title="Live total from Diet Rx">
-                      Calc: {Math.round(dietaryTotals.totalKcal)}
-                    </span>
-                  )}
                 </div>
                 <input type="number" value={currentKcal} readOnly style={readOnlyInputStyle} placeholder="—" />
               </div>
               <div className="input-group" style={{ margin: 0 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
                   <label style={tinyLabelStyle}>Protein (g)</label>
-                  {dietaryTotals.totalProt > 0 && (
-                    <span style={calcIndicatorStyle} title="Live total from Diet Rx">
-                      Calc: {Math.round(dietaryTotals.totalProt * 10) / 10}
-                    </span>
-                  )}
                 </div>
                 <input type="number" value={currentProtein} readOnly style={readOnlyInputStyle} placeholder="—" />
               </div>
@@ -905,7 +886,6 @@ function QuickStat({ label, value }: { label: string; value: string }) {
 
 const subHeaderStyle: React.CSSProperties = { display: "block", fontSize: "0.72rem", fontWeight: 900, color: "#1e3a5f", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "10px" };
 const tinyLabelStyle: React.CSSProperties = { fontSize: "0.65rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", marginBottom: "4px", display: "block" };
-const calcIndicatorStyle: React.CSSProperties = { fontSize: "0.6rem", fontWeight: 800, color: "#0891b2", background: "#ecfeff", padding: "1px 5px", borderRadius: "4px", border: "1px solid #cffafe" };
 const selectStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box", background: "#fff", color: "#1e293b" };
 const inputStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box" };
 const readOnlyInputStyle: React.CSSProperties = { padding: "8px 10px", border: "1px solid #e2e8f0", borderRadius: "6px", fontSize: "0.85rem", width: "100%", boxSizing: "border-box", background: "#f8fafc", color: "#64748b", cursor: "default" };

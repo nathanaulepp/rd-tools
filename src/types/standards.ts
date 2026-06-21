@@ -229,11 +229,6 @@ export interface Standards {
   // ── UI parameters (RD selections) ────────────────────────────────────────
   condition: ConditionKey | "";
   variant: string;
-  currentKcal: string;
-  currentProtein: string;
-  currentFat: string;
-  currentCho: string;
-  currentFluid: string;
   icKcal: string;
   icCaf: string;
   extraInputs: Record<string, string>;
