@@ -9,6 +9,7 @@ import type { IVOrder, IVOrderType } from "../../../types/dietary";
 import { Field } from "../../../shared/ui/Field";
 import { NumInput } from "../../../shared/ui/NumInput";
 import { SectionHeader } from "../../../shared/ui/SectionHeader";
+import { calcIVOrderKcal, calcIVOrderFat } from "./helper";
 
 const IV_ORDER_OPTIONS: IVOrderType[] = [
   "Dextrose 5% (D5W)",
@@ -40,26 +41,8 @@ const IV_LIPID_TYPES = new Set<IVOrderType>([
   "Clevidipine 0.5mg/mL (lipid emulsion)",
 ]);
 
-const IV_KCAL_MAP: Record<IVOrderType, number> = {
-  "Dextrose 5% (D5W)": 0.17,
-  "Dextrose 10% (D10W)": 0.34,
-  "Dextrose 20% (D20W)": 0.68,
-  "Dextrose 40% (D40W)": 1.36,
-  "Dextrose 50% (D50W)": 1.7,
-  "Dextrose 70% (D70W)": 2.38,
-  "Propofol 1% (10mg/mL)": 1.1,
-  "Clevidipine 0.5mg/mL (lipid emulsion)": 1.1,
-  "Trisodium Citrate (4% solution)": 0.0803,
-};
-
 function makeIVOrder(id: number): IVOrder {
   return { id, type: "", totalVolumeMl: "", rateMlHr: "", hrsPerDay: "" };
-}
-
-function calcOrderKcal(order: IVOrder): number | null {
-  const vol = parseFloat(order.totalVolumeMl);
-  if (!order.type || isNaN(vol) || vol <= 0) return null;
-  return vol * IV_KCAL_MAP[order.type];
 }
 
 export default function DietaryD14IVOrders() {
@@ -87,13 +70,15 @@ export default function DietaryD14IVOrders() {
   };
 
   return (
-    <div className="card" style={{ marginBottom: "1rem" }}>
+    <div className="card" style={{ marginBottom: "1rem", padding: "0.5rem 0.75rem" }}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "flex-start",
-          marginBottom: "0.75rem",
+          alignItems: "center",
+          marginBottom: "0.5rem",
+          borderBottom: "1px dashed #e2e8f0",
+          paddingBottom: "0.35rem",
         }}
       >
         <SectionHeader
@@ -107,10 +92,10 @@ export default function DietaryD14IVOrders() {
             background: "#0891b2",
             color: "#fff",
             border: "none",
-            borderRadius: "5px",
-            padding: "6px 12px",
+            borderRadius: "4px",
+            padding: "4px 10px",
             cursor: "pointer",
-            fontSize: "0.82rem",
+            fontSize: "0.78rem",
             fontWeight: 600,
             whiteSpace: "nowrap",
           }}
@@ -119,187 +104,180 @@ export default function DietaryD14IVOrders() {
         </button>
       </div>
 
-      {orders.length === 0 && (
+      {orders.length === 0 ? (
         <p
           style={{
-            fontSize: "0.8rem",
+            fontSize: "0.78rem",
             color: "#94a3b8",
             fontStyle: "italic",
             margin: "0.5rem 0",
           }}
         >
-          No IV orders entered. Click "+ Add IV Order" to document a
-          calorie-contributing infusion.
+          No IV orders entered. Click "+ Add IV Order" to document a calorie-contributing infusion.
         </p>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table className="lab-table" style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr>
+                <th style={{ width: "35%", fontSize: "0.7rem", padding: "0.35rem 0.5rem" }}>IV Agent / Infusion</th>
+                <th style={{ width: "15%", fontSize: "0.7rem", padding: "0.35rem 0.5rem" }}>Vol (mL)</th>
+                <th style={{ width: "15%", fontSize: "0.7rem", padding: "0.35rem 0.5rem" }}>Rate (mL/h)</th>
+                <th style={{ width: "12%", fontSize: "0.7rem", padding: "0.35rem 0.5rem" }}>Hrs/d</th>
+                <th style={{ width: "15%", fontSize: "0.7rem", padding: "0.35rem 0.5rem" }}>Est. Calories</th>
+                <th style={{ width: "8%", fontSize: "0.7rem", padding: "0.35rem 0.5rem", textAlign: "center" }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {orders.map((order, idx) => {
+                const displayKcal = calcIVOrderKcal(order);
+                const displayFatG = calcIVOrderFat(order);
+                const isLipid = IV_LIPID_TYPES.has(order.type as IVOrderType);
+                const note = order.type ? IV_KCAL_NOTE[order.type as IVOrderType] : null;
+
+                const derivedVol =
+                  !order.totalVolumeMl &&
+                  parseFloat(order.rateMlHr) > 0 &&
+                  parseFloat(order.hrsPerDay) > 0
+                    ? parseFloat(order.rateMlHr) * parseFloat(order.hrsPerDay)
+                    : null;
+
+                return (
+                  <tr key={order.id}>
+                    {/* Agent */}
+                    <td style={{ padding: "0.35rem 0.5rem", verticalAlign: "middle" }}>
+                      <select
+                        value={order.type}
+                        onChange={(e) => updateOrder(order.id, { type: e.target.value as IVOrderType })}
+                        style={{
+                          padding: "3px 6px",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: "4px",
+                          fontSize: "0.78rem",
+                          width: "100%",
+                        }}
+                      >
+                        <option value="">— Select agent —</option>
+                        {IV_ORDER_OPTIONS.map((opt) => (
+                          <option key={opt} value={opt}>
+                            {opt}
+                          </option>
+                        ))}
+                      </select>
+                      {note && (
+                        <div style={{ fontSize: "0.62rem", color: "#64748b", fontStyle: "italic", marginTop: "2px" }}>
+                          {note}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Vol */}
+                    <td style={{ padding: "0.35rem 0.5rem", verticalAlign: "middle" }}>
+                      <NumInput
+                        value={order.totalVolumeMl}
+                        onChange={(v) => updateOrder(order.id, { totalVolumeMl: v })}
+                        placeholder={derivedVol ? `${Math.round(derivedVol)}` : "mL"}
+                        style={{ padding: "3px 6px", fontSize: "0.78rem" }}
+                      />
+                    </td>
+
+                    {/* Rate */}
+                    <td style={{ padding: "0.35rem 0.5rem", verticalAlign: "middle" }}>
+                      <NumInput
+                        value={order.rateMlHr}
+                        onChange={(v) => updateOrder(order.id, { rateMlHr: v })}
+                        placeholder="mL/h"
+                        style={{ padding: "3px 6px", fontSize: "0.78rem" }}
+                      />
+                    </td>
+
+                    {/* Hours */}
+                    <td style={{ padding: "0.35rem 0.5rem", verticalAlign: "middle" }}>
+                      <NumInput
+                        value={order.hrsPerDay}
+                        onChange={(v) => updateOrder(order.id, { hrsPerDay: v })}
+                        placeholder="hrs"
+                        style={{ padding: "3px 6px", fontSize: "0.78rem" }}
+                      />
+                    </td>
+
+                    {/* Calories / Lipid Warning */}
+                    <td style={{ padding: "0.35rem 0.5rem", verticalAlign: "middle" }}>
+                      {displayKcal > 0 ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "flex-start" }}>
+                          <span
+                            style={{
+                              fontSize: "0.78rem",
+                              fontWeight: 700,
+                              background: "#e0f2fe",
+                              color: "#0369a1",
+                              borderRadius: "4px",
+                              padding: "1px 6px",
+                              border: "1px solid #bae6fd",
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            ≈ {Math.round(displayKcal)} kcal/d
+                          </span>
+                          {displayFatG > 0 && (
+                            <span
+                              style={{
+                                fontSize: "0.72rem",
+                                fontWeight: 600,
+                                color: "#c05621",
+                                paddingLeft: "4px",
+                              }}
+                            >
+                              ({Math.round(displayFatG * 10) / 10} g fat/d)
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span style={{ color: "#94a3b8", fontSize: "0.72rem" }}>—</span>
+                      )}
+                      {isLipid && (
+                        <div
+                          style={{
+                            fontSize: "0.58rem",
+                            fontWeight: 700,
+                            background: "#fffbeb",
+                            color: "#92400e",
+                            borderRadius: "4px",
+                            padding: "1px 6px",
+                            border: "1px solid #fde68a",
+                            marginTop: "3px",
+                            display: "inline-block",
+                          }}
+                        >
+                          ⚠ Lipid warning
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Delete button */}
+                    <td style={{ padding: "0.35rem 0.5rem", verticalAlign: "middle", textAlign: "center" }}>
+                      <button
+                        onClick={() => removeOrder(order.id)}
+                        style={{
+                          background: "none",
+                          border: "1px solid #fecaca",
+                          color: "#dc2626",
+                          borderRadius: "4px",
+                          padding: "2px 6px",
+                          cursor: "pointer",
+                          fontSize: "0.68rem",
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
-
-      {orders.map((order, idx) => {
-        const kcal = calcOrderKcal(order);
-        const isLipid = IV_LIPID_TYPES.has(order.type as IVOrderType);
-        const note = order.type ? IV_KCAL_NOTE[order.type as IVOrderType] : null;
-
-        // Auto-derive total volume from rate × hours if vol is blank
-        const derivedVol =
-          !order.totalVolumeMl &&
-          parseFloat(order.rateMlHr) > 0 &&
-          parseFloat(order.hrsPerDay) > 0
-            ? parseFloat(order.rateMlHr) * parseFloat(order.hrsPerDay)
-            : null;
-
-        const displayKcal =
-          kcal !== null
-            ? kcal
-            : derivedVol && order.type
-            ? derivedVol * IV_KCAL_MAP[order.type]
-            : null;
-
-        return (
-          <div
-            key={order.id}
-            style={{
-              border: "1px solid #cffafe",
-              borderLeft: "3px solid #0891b2",
-              borderRadius: "6px",
-              padding: "0.65rem 0.75rem",
-              marginBottom: "0.6rem",
-              background: "#fff",
-            }}
-          >
-            {/* Row 1: agent selector */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "2fr 1fr 1fr 1fr",
-                gap: "0.5rem",
-                alignItems: "end",
-                marginBottom: "0.4rem",
-              }}
-            >
-              <Field label={`IV Order ${idx + 1} — Agent`}>
-                <select
-                  value={order.type}
-                  onChange={(e) =>
-                    updateOrder(order.id, {
-                      type: e.target.value as IVOrderType,
-                    })
-                  }
-                  style={{
-                    padding: "5px 8px",
-                    border: "1px solid #e2e8f0",
-                    borderRadius: "4px",
-                    fontSize: "0.88rem",
-                    width: "100%",
-                    boxSizing: "border-box",
-                  }}
-                >
-                  <option value="">— Select agent —</option>
-                  {IV_ORDER_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-
-              <Field label="Total Volume (mL)">
-                <NumInput
-                  value={order.totalVolumeMl}
-                  onChange={(v) => updateOrder(order.id, { totalVolumeMl: v })}
-                  placeholder={
-                    derivedVol ? `${Math.round(derivedVol)} (auto)` : "mL"
-                  }
-                />
-              </Field>
-
-              <Field label="Rate (mL/hr)">
-                <NumInput
-                  value={order.rateMlHr}
-                  onChange={(v) => updateOrder(order.id, { rateMlHr: v })}
-                  placeholder="mL/hr"
-                />
-              </Field>
-
-              <Field label="Hours/day">
-                <NumInput
-                  value={order.hrsPerDay}
-                  onChange={(v) => updateOrder(order.id, { hrsPerDay: v })}
-                  placeholder="hrs"
-                />
-              </Field>
-            </div>
-
-            {/* Row 2: calorie result + flags */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "10px",
-                flexWrap: "wrap",
-              }}
-            >
-              {note && (
-                <span
-                  style={{
-                    fontSize: "0.7rem",
-                    color: "#64748b",
-                    fontStyle: "italic",
-                  }}
-                >
-                  {note}
-                </span>
-              )}
-
-              {displayKcal !== null && displayKcal > 0 && (
-                <span
-                  style={{
-                    fontSize: "0.78rem",
-                    fontWeight: 700,
-                    background: "#e0f2fe",
-                    color: "#0369a1",
-                    borderRadius: "6px",
-                    padding: "2px 10px",
-                    border: "1px solid #bae6fd",
-                  }}
-                >
-                  ≈ {Math.round(displayKcal)} kcal/day
-                </span>
-              )}
-
-              {isLipid && (
-                <span
-                  style={{
-                    fontSize: "0.72rem",
-                    fontWeight: 700,
-                    background: "#fffbeb",
-                    color: "#92400e",
-                    borderRadius: "6px",
-                    padding: "2px 10px",
-                    border: "1px solid #fde68a",
-                  }}
-                >
-                  ⚠ Lipid emulsion — manually review fat &amp; protein macro totals
-                </span>
-              )}
-
-              <button
-                onClick={() => removeOrder(order.id)}
-                style={{
-                  marginLeft: "auto",
-                  background: "none",
-                  border: "1px solid #fca5a5",
-                  color: "#dc2626",
-                  borderRadius: "4px",
-                  padding: "2px 8px",
-                  cursor: "pointer",
-                  fontSize: "0.7rem",
-                }}
-              >
-                Remove
-              </button>
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }

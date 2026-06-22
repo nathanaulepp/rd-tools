@@ -143,23 +143,23 @@ function D11Oral({ dietary, setDietary }: D11OralProps) {
   const handleUpdate = (field: string, val: string) => setDietary({ ...dietary, [field]: val });
   return (
     <div style={{ marginBottom: "0.5rem" }}>
-      <div className="card" style={{ padding: "0.4rem 0.6rem" }}>
+      <div className="card" style={{ padding: "0.35rem 0.6rem" }}>
         <SectionHeader title="D11: Oral Diet & Intake" color="#3498db" />
         <div style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr 0.9fr 0.9fr 0.9fr 0.9fr", gap: "0.35rem" }}>
           <div className="input-group">
-            <label>Current Rx Diet Order</label>
+            <label style={{ fontSize: "0.7rem", fontWeight: 700 }}>Current Rx Diet Order</label>
             <textarea value={dietary.dietOrder || ""} onChange={e => handleUpdate("dietOrder", e.target.value)}
-              placeholder="e.g. Standard Diet, Regular" style={{ background: "#edf2f7", minHeight: "36px", fontSize: "0.82rem" }} />
+              placeholder="e.g. Standard Diet, Regular" style={{ background: "#edf2f7", minHeight: "32px", fontSize: "0.8rem", padding: "4px 8px" }} />
           </div>
-          <Field label="Calories (kcal/day)" style={{ gap: "2px" }}><NumInput value={dietary.oralCalories || ""} onChange={v => handleUpdate("oralCalories", v)} placeholder="e.g. 1800" /></Field>
-          <Field label="Protein (g/day)" style={{ gap: "2px" }}><NumInput value={dietary.oralProtein || ""} onChange={v => handleUpdate("oralProtein", v)} placeholder="e.g. 75" /></Field>
+          <Field label="Calories (kcal/day)" style={{ gap: "2px" }}><NumInput value={dietary.oralCalories || ""} onChange={v => handleUpdate("oralCalories", v)} placeholder="e.g. 1800" style={{ padding: "4px 6px", fontSize: "0.8rem" }} /></Field>
+          <Field label="Protein (g/day)" style={{ gap: "2px" }}><NumInput value={dietary.oralProtein || ""} onChange={v => handleUpdate("oralProtein", v)} placeholder="e.g. 75" style={{ padding: "4px 6px", fontSize: "0.8rem" }} /></Field>
           <Field label="CHO (g/day)" style={{ gap: "2px" }} hint="optional">
-            <NumInput value={dietary.oralCho || ""} onChange={v => handleUpdate("oralCho", v)} placeholder="e.g. 220" />
+            <NumInput value={dietary.oralCho || ""} onChange={v => handleUpdate("oralCho", v)} placeholder="e.g. 220" style={{ padding: "4px 6px", fontSize: "0.8rem" }} />
           </Field>
           <Field label="Fat (g/day)" style={{ gap: "2px" }} hint="optional">
-            <NumInput value={dietary.oralFat || ""} onChange={v => handleUpdate("oralFat", v)} placeholder="e.g. 65" />
+            <NumInput value={dietary.oralFat || ""} onChange={v => handleUpdate("oralFat", v)} placeholder="e.g. 65" style={{ padding: "4px 6px", fontSize: "0.8rem" }} />
           </Field>
-          <Field label="Water / Fluid (mL/day)" style={{ gap: "2px" }}><NumInput value={dietary.oralWater || ""} onChange={v => handleUpdate("oralWater", v)} placeholder="e.g. 1500" /></Field>
+          <Field label="Water / Fluid (mL/day)" style={{ gap: "2px" }}><NumInput value={dietary.oralWater || ""} onChange={v => handleUpdate("oralWater", v)} placeholder="e.g. 1500" style={{ padding: "4px 6px", fontSize: "0.8rem" }} /></Field>
         </div>
       </div>
     </div>
@@ -467,16 +467,86 @@ function ENFeedCard({ feed, idx, onChange, onRemove }: ENFeedCardProps) {
           {/* Modulars */}
           <ENModularPanel modulars={modulars} nextModularId={nextModularId} onUpdate={updateModulars} />
 
-          {/* Totals row */}
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", paddingTop: "0.6rem", borderTop: "1px solid #f0f0f0", marginTop: "0.6rem" }}>
-            <NutrientChip label="Volume"     value={displayVol}                                                                                              unit="mL/day"   color="#3498db" />
-            <NutrientChip label="Calories"   value={totalCalWithMod > 0 ? (modularKcal > 0 ? `${totalCalWithMod} (+${Math.round(modularKcal)})` : totalCalWithMod) : displayKcal}  unit="kcal/day" color="#e67e22" />
-            <NutrientChip label="Protein"    value={totalProtWithMod > 0 ? (modularProtein > 0 ? `${totalProtWithMod} (+${modularProtein})` : totalProtWithMod) : displayProt}   unit="g/day"    color="#8e44ad" />
-            <NutrientChip label="CHO"        value={displayCho}    unit="g/day"    color="#d69e2e" />
-            <NutrientChip label="Fat"        value={displayFat}    unit="g/day"    color="#c05621" />
-            <NutrientChip label="Free Water" value={displayFw}                                                                                              unit="mL/day"   color="#27ae60" />
-            <NutrientChip label="Flush Water" value={displayFlush}                                                                                          unit="mL/day"   color="#0891b2" />
-          </div>
+          {/* Totals strip */}
+          {(() => {
+            const labelStyle: React.CSSProperties = {
+              fontSize: "0.62rem",
+              color: "#718096",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              marginBottom: "2px",
+            };
+            return (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "0.75rem",
+                  paddingTop: "0.5rem",
+                  borderTop: "1px dashed #e2e8f0",
+                  marginTop: "0.5rem",
+                  fontSize: "0.72rem",
+                  width: "100%",
+                }}
+              >
+                <div style={{ fontWeight: 700, color: "#27ae60", marginRight: "0.25rem" }}>Feed Totals:</div>
+                
+                <div style={{ flex: 1, minWidth: "75px" }}>
+                  <div style={labelStyle}>Volume</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#3498db" }}>
+                    {Math.round(displayVol)} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>mL/d</span>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: "90px", borderLeft: "1px solid #e2e8f0", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>Calories</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#e67e22" }}>
+                    {totalCalWithMod > 0 ? (modularKcal > 0 ? `${totalCalWithMod} (+${Math.round(modularKcal)})` : totalCalWithMod) : displayKcal}{" "}
+                    <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>kcal/d</span>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: "80px", borderLeft: "1px solid #e2e8f0", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>Protein</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#8e44ad" }}>
+                    {totalProtWithMod > 0 ? (modularProtein > 0 ? `${totalProtWithMod} (+${modularProtein})` : totalProtWithMod) : displayProt}{" "}
+                    <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>g/d</span>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: "70px", borderLeft: "1px solid #e2e8f0", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>CHO</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#d69e2e" }}>
+                    {Math.round(displayCho * 10) / 10} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>g/d</span>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: "70px", borderLeft: "1px solid #e2e8f0", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>Fat</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#c05621" }}>
+                    {Math.round(displayFat * 10) / 10} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>g/d</span>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: "85px", borderLeft: "1px solid #e2e8f0", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>Free H₂O</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#27ae60" }}>
+                    {Math.round(displayFw)} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>mL/d</span>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: "85px", borderLeft: "1px solid #e2e8f0", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>Flush H₂O</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0891b2" }}>
+                    {Math.round(displayFlush)} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>mL/d</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           <button onClick={onRemove} style={{ marginTop: "0.6rem", background: "none", border: "1px solid #e74c3c", color: "#e74c3c", borderRadius: "4px", padding: "3px 10px", cursor: "pointer", fontSize: "0.78rem" }}>
             Remove Feed
@@ -537,17 +607,81 @@ function D12Enteral({ state, setState }: D12EnteralProps) {
       ))}
 
       {state.feeds.length > 1 && (
-        <div style={{ background: "#f0fff4", border: "1px solid #9ae6b4", borderRadius: "7px", padding: "0.75rem", marginTop: "0.25rem" }}>
-          <div style={{ fontSize: "0.78rem", fontWeight: 700, color: "#276749", marginBottom: "0.5rem" }}>Total EN (All Feeds + Modulars)</div>
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-            <NutrientChip label="Total Volume" value={Math.round(totals.vol)} unit="mL/day" color="#27ae60" />
-            <NutrientChip label="Total Calories" value={Math.round(totals.cal)} unit="kcal/day" color="#e67e22" />
-            <NutrientChip label="Total Protein" value={Math.round(totals.prot * 10) / 10} unit="g/day" color="#8e44ad" />
-            <NutrientChip label="Total CHO" value={Math.round(totals.cho * 10) / 10} unit="g/day" color="#d69e2e" />
-            <NutrientChip label="Total Fat" value={Math.round(totals.fat * 10) / 10} unit="g/day" color="#c05621" />
-            <NutrientChip label="Total Free Water" value={Math.round(totals.fw)} unit="mL/day" color="#3498db" />
-            <NutrientChip label="Total Flush" value={Math.round(totals.flush)} unit="mL/day" color="#0891b2" />
-          </div>
+        <div style={{ background: "#f0fff4", border: "1px solid #9ae6b4", borderRadius: "6px", padding: "0.5rem 0.75rem", marginTop: "0.5rem" }}>
+          {(() => {
+            const labelStyle: React.CSSProperties = {
+              fontSize: "0.62rem",
+              color: "#718096",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              marginBottom: "2px",
+            };
+            return (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "0.75rem",
+                  fontSize: "0.72rem",
+                  width: "100%",
+                }}
+              >
+                <div style={{ fontWeight: 700, color: "#276749", minWidth: "120px" }}>Total EN (All Feeds + Modulars)</div>
+                
+                <div style={{ flex: 1, minWidth: "75px", borderLeft: "1px solid #9ae6b4", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>Volume</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#27ae60" }}>
+                    {Math.round(totals.vol)} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>mL/d</span>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: "90px", borderLeft: "1px solid #9ae6b4", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>Calories</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#e67e22" }}>
+                    {Math.round(totals.cal)} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>kcal/d</span>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: "80px", borderLeft: "1px solid #9ae6b4", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>Protein</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#8e44ad" }}>
+                    {Math.round(totals.prot * 10) / 10} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>g/d</span>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: "70px", borderLeft: "1px solid #9ae6b4", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>CHO</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#d69e2e" }}>
+                    {Math.round(totals.cho * 10) / 10} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>g/d</span>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: "70px", borderLeft: "1px solid #9ae6b4", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>Fat</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#c05621" }}>
+                    {Math.round(totals.fat * 10) / 10} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>g/d</span>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: "85px", borderLeft: "1px solid #9ae6b4", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>Free Water</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#3498db" }}>
+                    {Math.round(totals.fw)} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>mL/d</span>
+                  </div>
+                </div>
+
+                <div style={{ flex: 1, minWidth: "85px", borderLeft: "1px solid #9ae6b4", paddingLeft: "0.5rem" }}>
+                  <div style={labelStyle}>Flush</div>
+                  <div style={{ fontSize: "0.85rem", fontWeight: 700, color: "#0891b2" }}>
+                    {Math.round(totals.flush)} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>mL/d</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
@@ -582,7 +716,7 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
     enFlush,
     pnFreeWater,
     ivKcal,
-    ivLipidFlagOrders,
+    ivFat,
   } = helper.calculateDietaryTotals({
     ...dietary,
     enState,
@@ -591,29 +725,14 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
 
   const oralFluidMl = helper.num(dietary.oralWater);
 
-  const chipStyle = (color: string): React.CSSProperties => ({
-    background: `${color}12`,
-    border: `1px solid ${color}40`,
-    borderRadius: "8px",
-    padding: "8px 16px",
-    textAlign: "center" as const,
-    minWidth: "110px",
-  });
-
   const labelStyle: React.CSSProperties = {
-    fontSize: "0.68rem",
+    fontSize: "0.65rem",
     color: "#718096",
-    fontWeight: 600,
+    fontWeight: 700,
     textTransform: "uppercase",
     letterSpacing: "0.05em",
+    marginBottom: "2px",
   };
-
-  const valueStyle = (color: string): React.CSSProperties => ({
-    fontSize: "1.1rem",
-    fontWeight: 700,
-    color,
-    marginTop: "2px",
-  });
 
   return (
     <div
@@ -622,38 +741,39 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
         marginTop: "1.5rem",
         borderTop: "2px solid #2c3e50",
         background: "#f8fafc",
+        padding: "0.5rem 0.75rem",
       }}
     >
+      {/* Title & Badge Row */}
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: "0.75rem",
+          marginBottom: "0.5rem",
+          borderBottom: "1px dashed #e2e8f0",
+          paddingBottom: "0.35rem",
         }}
       >
-        <div>
-          <div
-            style={{
-              fontWeight: 700,
-              fontSize: "1rem",
-              color: "var(--primary)",
-            }}
-          >
-            D15: Total Daily Intake
-          </div>
-          <div style={{ fontSize: "0.72rem", color: "#718096", marginTop: "2px" }}>
-            Auto-calculated from D11 + D12 + D13 + D14 — read only
-          </div>
-        </div>
         <span
           style={{
-            fontSize: "0.62rem",
+            fontWeight: 700,
+            fontSize: "0.78rem",
+            color: "var(--primary)",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+          }}
+        >
+          D15: Total Daily Intake Summary
+        </span>
+        <span
+          style={{
+            fontSize: "0.58rem",
             fontWeight: 800,
             textTransform: "uppercase",
             letterSpacing: "0.06em",
-            padding: "3px 10px",
-            borderRadius: "10px",
+            padding: "2px 8px",
+            borderRadius: "4px",
             background: "#f0fdf4",
             color: "#166534",
             border: "1px solid #bbf7d0",
@@ -663,110 +783,89 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
         </span>
       </div>
 
-      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-        <div style={chipStyle("#e67e22")}>
-          <div style={labelStyle}>Total Calories</div>
-          <div style={valueStyle("#e67e22")}>
-            {Math.round(totalKcal)}
-            <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
-              kcal/day
-            </span>
-          </div>
-        </div>
-
-        <div style={chipStyle("#8e44ad")}>
-          <div style={labelStyle}>Total Protein</div>
-          <div style={valueStyle("#8e44ad")}>
-            {Math.round(totalProt * 10) / 10}
-            <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
-              g/day
-            </span>
-          </div>
-        </div>
-
-        <div style={chipStyle("#d69e2e")}>
-          <div style={labelStyle}>Total CHO</div>
-          <div style={valueStyle("#d69e2e")}>
-            {Math.round(totalCho * 10) / 10}
-            <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
-              g/day
-            </span>
-          </div>
-        </div>
-
-        <div style={chipStyle("#e67e22")}>
-          <div style={labelStyle}>Total Fat</div>
-          <div style={valueStyle("#c05621")}>
-            {Math.round(totalFat * 10) / 10}
-            <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
-              g/day
-            </span>
-          </div>
-        </div>
-
-        <div style={chipStyle("#0891b2")}>
-          <div style={labelStyle}>IV Calories</div>
-          <div style={valueStyle("#0891b2")}>
-            {Math.round(ivKcal)}
-            <span style={{ fontSize: "0.7rem", marginLeft: "2px", fontWeight: 400 }}>
-              kcal/day
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Total Fluids Card ──────────────────────────────────────────────── */}
+      {/* EHR Flowsheet Grid Strip */}
       <div
         style={{
-          marginTop: "0.75rem",
-          background: "#eff6ff",
-          border: "1px solid #bfdbfe",
-          borderRadius: "8px",
-          padding: "0.65rem 0.85rem",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          flexWrap: "wrap",
+          gap: "1rem",
+          padding: "0.25rem 0",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "0.4rem" }}>
-          <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#1e40af" }}>
-            Total Fluids
-          </span>
-          <span style={{ fontSize: "1.15rem", fontWeight: 800, color: "#1e40af" }}>
-            {Math.round(totalFluid)}
-            <span style={{ fontSize: "0.7rem", fontWeight: 400, marginLeft: "2px" }}>mL/day</span>
-          </span>
+        {/* Energy */}
+        <div style={{ flex: 1, minWidth: "120px" }}>
+          <div style={labelStyle}>Energy</div>
+          <div style={{ fontSize: "1rem", fontWeight: 700, color: "#e67e22" }}>
+            {Math.round(totalKcal)}{" "}
+            <span style={{ fontSize: "0.7rem", fontWeight: 500, color: "#718096" }}>
+              kcal/d {ivKcal > 0 ? `(incl. ${Math.round(ivKcal)} IV)` : ""}
+            </span>
+          </div>
         </div>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", fontSize: "0.7rem", color: "#475569" }}>
-          <span>Oral: <strong>{Math.round(oralFluidMl)}</strong> mL</span>
-          <span>EN Free Water: <strong>{Math.round(enFreeWater)}</strong> mL</span>
-          <span>EN Flush: <strong>{Math.round(enFlush)}</strong> mL</span>
-          <span>
-            PN Free Water: <strong>{Math.round(pnFreeWater)}</strong> mL
-          </span>
+
+        {/* Protein */}
+        <div style={{ flex: 1, minWidth: "90px", borderLeft: "1px solid #e2e8f0", paddingLeft: "1rem" }}>
+          <div style={labelStyle}>Protein</div>
+          <div style={{ fontSize: "1rem", fontWeight: 700, color: "#8e44ad" }}>
+            {Math.round(totalProt * 10) / 10}{" "}
+            <span style={{ fontSize: "0.7rem", fontWeight: 500, color: "#718096" }}>g/d</span>
+          </div>
+        </div>
+
+        {/* CHO */}
+        <div style={{ flex: 1, minWidth: "90px", borderLeft: "1px solid #e2e8f0", paddingLeft: "1rem" }}>
+          <div style={labelStyle}>Carbohydrate</div>
+          <div style={{ fontSize: "1rem", fontWeight: 700, color: "#d69e2e" }}>
+            {Math.round(totalCho * 10) / 10}{" "}
+            <span style={{ fontSize: "0.7rem", fontWeight: 500, color: "#718096" }}>g/d</span>
+          </div>
+        </div>
+
+        {/* Fat */}
+        <div style={{ flex: 1, minWidth: "90px", borderLeft: "1px solid #e2e8f0", paddingLeft: "1rem" }}>
+          <div style={labelStyle}>Fat</div>
+          <div style={{ fontSize: "1rem", fontWeight: 700, color: "#c05621" }}>
+            {Math.round(totalFat * 10) / 10}{" "}
+            <span style={{ fontSize: "0.7rem", fontWeight: 500, color: "#718096" }}>
+              g/d {ivFat > 0 ? `(incl. ${Math.round(ivFat * 10) / 10}g IV)` : ""}
+            </span>
+          </div>
+        </div>
+
+        {/* Fluids */}
+        <div style={{ flex: 1.5, minWidth: "155px", borderLeft: "1px solid #e2e8f0", paddingLeft: "1rem" }}>
+          <div style={labelStyle}>Total Fluids</div>
+          <div style={{ fontSize: "1rem", fontWeight: 700, color: "#1e40af" }}>
+            {Math.round(totalFluid)}{" "}
+            <span style={{ fontSize: "0.7rem", fontWeight: 500, color: "#718096" }}>mL/d</span>
+          </div>
         </div>
       </div>
 
-      {/* ── Lipid-bearing IV flag ── */}
-      {ivLipidFlagOrders.length > 0 && (
-        <div
-          style={{
-            marginTop: "0.75rem",
-            background: "#fffbeb",
-            border: "1px solid #f59e0b",
-            borderLeft: "4px solid #f59e0b",
-            borderRadius: "6px",
-            padding: "0.6rem 0.85rem",
-            fontSize: "0.78rem",
-            color: "#78350f",
-            fontWeight: 600,
-          }}
-        >
-          ⚠ IV lipid-bearing solutions detected (
-          {ivLipidFlagOrders.map((o) => o.type).join(", ")}). IV calories
-          above reflect total kcal only. Fat and carbohydrate contributions
-          from these infusions are <strong>not</strong> added to the PN
-          macro totals — please manually account for lipid and CHO load when
-          reviewing the macro breakdown.
-        </div>
-      )}
+      {/* Fluid breakdown substrip */}
+      <div
+        style={{
+          marginTop: "0.5rem",
+          paddingTop: "0.35rem",
+          borderTop: "1px solid #e2e8f0",
+          fontSize: "0.68rem",
+          color: "#475569",
+          display: "flex",
+          gap: "8px",
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
+        <span>Oral: <strong>{Math.round(oralFluidMl)}</strong> mL</span>
+        <span>•</span>
+        <span>EN Free: <strong>{Math.round(enFreeWater)}</strong> mL</span>
+        <span>•</span>
+        <span>EN Flush: <strong>{Math.round(enFlush)}</strong> mL</span>
+        <span>•</span>
+        <span>PN Free: <strong>{Math.round(pnFreeWater)}</strong> mL</span>
+      </div>
     </div>
   );
 }

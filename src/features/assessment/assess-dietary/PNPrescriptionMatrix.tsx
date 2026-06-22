@@ -331,13 +331,55 @@ function PNBagMatrix({ bag, idx, onChange, onRemove, patientWtKg, girWtKg, ageDa
             </div>
           </div>
 
-          {/* Summary Chips */}
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", padding: "12px", borderTop: "1px solid #e2e8f0" }}>
-            <NutrientChip label="Total Energy" value={totalKcal} unit="kcal/day" color="#e67e22" />
-            <NutrientChip label="Protein" value={aaG} unit={`g/day (${patientWtKg > 0 ? (aaG/patientWtKg).toFixed(1) : "—"} g/kg)`} color="#8e44ad" />
-            <NutrientChip label="Total Volume" value={totalVol} unit="mL/day" color="#3498db" />
-            <NutrientChip label="GIR" value={gir?.toFixed(2) || "—"} unit="mg/kg/min" color="#d69e2e" />
-            <NutrientChip label="SWFI" value={swfiVol} unit="mL/day" color="#2563eb" />
+          {/* Summary flowsheet strip */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              flexWrap: "wrap",
+              gap: "0.75rem",
+              padding: "8px 12px",
+              borderTop: "1px solid #e2e8f0",
+              fontSize: "0.72rem",
+            }}
+          >
+            <div style={{ fontWeight: 700, color: "#8e44ad", marginRight: "0.25rem" }}>PN Totals:</div>
+            
+            <div style={{ flex: 1.2, minWidth: "105px" }}>
+              <div style={{ fontSize: "0.62rem", color: "#718096", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "2px" }}>Total Energy</div>
+              <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#e67e22" }}>
+                {totalKcal} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>kcal/d</span>
+              </div>
+            </div>
+
+            <div style={{ flex: 1.5, minWidth: "125px", borderLeft: "1px solid #e2e8f0", paddingLeft: "0.5rem" }}>
+              <div style={{ fontSize: "0.62rem", color: "#718096", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "2px" }}>Protein</div>
+              <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#8e44ad" }}>
+                {aaG} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>g/d ({patientWtKg > 0 ? (aaG / patientWtKg).toFixed(1) : "—"} g/kg)</span>
+              </div>
+            </div>
+
+            <div style={{ flex: 1.2, minWidth: "95px", borderLeft: "1px solid #e2e8f0", paddingLeft: "0.5rem" }}>
+              <div style={{ fontSize: "0.62rem", color: "#718096", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "2px" }}>Total Volume</div>
+              <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#3498db" }}>
+                {totalVol} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>mL/d</span>
+              </div>
+            </div>
+
+            <div style={{ flex: 1.2, minWidth: "90px", borderLeft: "1px solid #e2e8f0", paddingLeft: "0.5rem" }}>
+              <div style={{ fontSize: "0.62rem", color: "#718096", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "2px" }}>GIR</div>
+              <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#d69e2e" }}>
+                {gir?.toFixed(2) || "—"} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>mg/kg/m</span>
+              </div>
+            </div>
+
+            <div style={{ flex: 1.2, minWidth: "95px", borderLeft: "1px solid #e2e8f0", paddingLeft: "0.5rem" }}>
+              <div style={{ fontSize: "0.62rem", color: "#718096", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: "2px" }}>SWFI</div>
+              <div style={{ fontSize: "0.88rem", fontWeight: 700, color: "#2563eb" }}>
+                {swfiVol} <span style={{ fontSize: "0.65rem", fontWeight: 500, color: "#718096" }}>mL/d</span>
+              </div>
+            </div>
           </div>
 
           {/* Safety Notes */}

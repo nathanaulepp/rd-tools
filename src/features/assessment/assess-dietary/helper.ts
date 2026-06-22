@@ -6,13 +6,43 @@ import { Dietary, IVOrder } from "../../../types/dietary";
 
 export const num = (v: string | number | undefined | null): number => (typeof v === "string" ? parseFloat(v) : v) || 0;
 
+/**
+ * Resolve the effective volume for an IV order.
+ * Uses totalVolumeMl when present; falls back to rateMlHr × hrsPerDay.
+ */
+export function getIVOrderVolume(order: IVOrder): number {
+  const explicit = num(order.totalVolumeMl);
+  if (explicit > 0) return explicit;
+  const rate = num(order.rateMlHr);
+  const hrs  = num(order.hrsPerDay);
+  return rate > 0 && hrs > 0 ? rate * hrs : 0;
+}
+
 export function calcIVOrderKcal(order: IVOrder): number {
-  const volMl = num(order.totalVolumeMl);
+  const volMl = getIVOrderVolume(order);
   if (volMl <= 0 || !order.type) return 0;
   if (order.type === "Trisodium Citrate (4% solution)") {
     return volMl * CITRATE_KCAL_PER_ML;
   }
   return volMl * (IV_KCAL_PER_ML[order.type] ?? 0);
+}
+
+/**
+ * Fat grams per mL for lipid-bearing IV solutions.
+ * Propofol 1%   = 10% soybean lipid emulsion → 0.10 g fat/mL
+ * Clevidipine   = 20% lipid emulsion vehicle  → 0.20 g fat/mL
+ */
+const IV_FAT_G_PER_ML: Partial<Record<string, number>> = {
+  "Propofol 1% (10mg/mL)":                 0.10,
+  "Clevidipine 0.5mg/mL (lipid emulsion)": 0.20,
+};
+
+export function calcIVOrderFat(order: IVOrder): number {
+  if (!order.type) return 0;
+  const gPerMl = IV_FAT_G_PER_ML[order.type];
+  if (!gPerMl) return 0;
+  const volMl = getIVOrderVolume(order);
+  return volMl > 0 ? volMl * gPerMl : 0;
 }
 
 export function calculateDietaryTotals(dietary: Dietary) {
@@ -71,6 +101,7 @@ export function calculateDietaryTotals(dietary: Dietary) {
   // ── IV Orders (D14) ───────────────────────────────────────────────────────
   const ivOrders: IVOrder[] = dietary.ivOrders || [];
   const ivKcal = ivOrders.reduce((sum, o) => sum + calcIVOrderKcal(o), 0);
+  const ivFat  = ivOrders.reduce((sum, o) => sum + calcIVOrderFat(o), 0);
   const ivLipidFlagOrders = ivOrders.filter(
     (o) => constant.IV_LIPID_FLAG_TYPES.has(o.type as string)
   );
@@ -78,10 +109,11 @@ export function calculateDietaryTotals(dietary: Dietary) {
   return {
     totalKcal:  oralKcal + enTotals.kcal + pnTotals.kcal + ivKcal,
     totalProt:  oralProt + enTotals.prot  + pnTotals.prot,
-    totalFat:   num(dietary.oralFat)  + enTotals.fat + pnTotals.fat,
+    totalFat:   num(dietary.oralFat)  + enTotals.fat + pnTotals.fat + ivFat,
     totalCho:   num(dietary.oralCho)  + enTotals.cho + pnTotals.cho,
     totalFluid: num(dietary.oralWater) + enTotals.freeWater + enTotals.flush + pnFreeWaterMl,
     ivKcal,
+    ivFat,
     ivLipidFlagOrders,
     enFreeWater: enTotals.freeWater,
     enFlush:     enTotals.flush,
