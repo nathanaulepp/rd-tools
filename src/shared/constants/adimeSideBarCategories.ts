@@ -12,7 +12,6 @@ export const DIETARY_CATEGORIES = [
   { id: "D1", title: "D1: Food & Nutrient Rx" },
   { id: "D2", title: "D2: Food & Nutrient Intake" },
   { id: "D3-D9", title: "D3–D9: Behavioral, Social & Patient Factors" },
-  { id: "D8", title: "D8: Supplements & DNI" },
 ];
 
 export const REFEEDING_CATEGORIES = [

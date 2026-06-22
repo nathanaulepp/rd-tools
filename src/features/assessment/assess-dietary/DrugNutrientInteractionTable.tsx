@@ -162,7 +162,7 @@ export default function DrugNutrientInteractionTable({
               color: "var(--text-muted)",
             }}
           >
-            Auto-populated from Medications (C3) and Supplements (D43, D44)
+            Auto-populated from Medications (C6) and Supplements (D91, D92)
           </p>
         </div>
 
@@ -423,7 +423,7 @@ export default function DrugNutrientInteractionTable({
                           }}
                         >
                           When a data source is available, this table will automatically
-                          cross-reference the drugs and supplements entered in C3, D43, D44
+                          cross-reference the drugs and supplements entered in C6, D91, D92
                           above and surface relevant interactions here — drug name,
                           affected nutrient, clinical mechanism, and dietitian
                           recommendation. No manual lookup required.
@@ -480,7 +480,7 @@ export default function DrugNutrientInteractionTable({
                     fontStyle: "italic",
                   }}
                 >
-                  Enter medications and supplements in C3, D43, D44 to check for interactions.
+                  Enter medications and supplements in C6, D91, D92 to check for interactions.
                 </td>
               </tr>
             )}

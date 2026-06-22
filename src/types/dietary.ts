@@ -49,13 +49,13 @@ export interface Dietary {
   socialDynamics: string;
   eatingEnv: string;
 
-  // D8 — Supplements / Drug-Nutrient Interactions
-  herbalCAM: string;
-  supplements: string;
-
-  // D9 — Patient-Centered Measures
+  // D8 — Patient-Centered Measures
   perception: string;
   qolGoals: string;
+
+  // D9 — Supplements & DNI
+  herbalCAM: string;
+  supplements: string;
 
   // EN/PN state — typed loosely here; D1NutritionRx owns the full shape
   enState?: unknown;

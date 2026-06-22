@@ -30,6 +30,9 @@ export interface MonitorEval {
   dischargeRecs: string;
   transitionPlan: string;
 
+  // Narrative
+  meNarrative: string;
+
   // General
   meNotes: string;
 }

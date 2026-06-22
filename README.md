@@ -51,7 +51,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [ ] **add** Basic renal adjustments
 
 ### Monitor-Evaluate
-- [ ] **add** redesign/reorder interface
+- [x] **add** redesign/reorder interface
 
 ### Dietitian Tools
 - [ ] *no changes at this time*

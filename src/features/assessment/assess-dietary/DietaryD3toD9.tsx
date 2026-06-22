@@ -2,17 +2,41 @@
 // Phase: D3–D9 consolidated into one continuous scrollable view.
 // The sidebar sub-nav for D3–D9 is collapsed; this component renders all sections.
 
-import React from "react";
+import React, { useMemo } from "react";
 import { useDietaryStore } from "../../../stores/useDietaryStore";
+import { useClinicalStore } from "../../../stores/useClinicalStore";
+import DrugNutrientInteractionTable from "./DrugNutrientInteractionTable";
 import type { Dietary } from "../../../types";
 
 export default function DietaryD3toD9() {
   const { dietary, setDietary } = useDietaryStore();
+  const { clinical } = useClinicalStore();
 
   const handleUpdate = (field: keyof Dietary, val: any) =>
     setDietary({ [field]: val } as Partial<Dietary>);
 
   const textareaStyle: React.CSSProperties = { minHeight: "100px" };
+
+  const drugs = useMemo(() => {
+    try {
+      const parsed = JSON.parse(clinical?.medications || "[]");
+      if (Array.isArray(parsed)) return parsed.map((d: any) => d.name).filter(Boolean);
+    } catch {
+      return (clinical?.medications || "")
+        .split(/[,;\n]+/)
+        .map((s: string) => s.trim())
+        .filter(Boolean);
+    }
+    return [];
+  }, [clinical?.medications]);
+
+  const supplements = useMemo(() => {
+    const list = [
+      ...(dietary?.herbalCAM || "").split(/[,;\n]+/),
+      ...(dietary?.supplements || "").split(/[,;\n]+/),
+    ];
+    return list.map((s) => s.trim()).filter(Boolean);
+  }, [dietary?.herbalCAM, dietary?.supplements]);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
@@ -193,14 +217,14 @@ export default function DietaryD3toD9() {
         </div>
       </div>
 
-      {/* ── D9: Patient-Centered Measures ── */}
+      {/* ── D8: Patient-Centered Measures ── */}
       <div className="card">
         <h4 style={{ margin: "0 0 0.65rem", fontSize: "0.95rem", color: "var(--primary)" }}>
-          D9: Patient-Centered Measures
+          D8: Patient-Centered Measures
         </h4>
         <div className="grid-2-col">
           <div className="input-group">
-            <label>D91: Perception of Intervention</label>
+            <label>D81: Perception of Intervention</label>
             <textarea
               style={textareaStyle}
               value={dietary?.perception || ""}
@@ -208,7 +232,7 @@ export default function DietaryD3toD9() {
             />
           </div>
           <div className="input-group">
-            <label>D92: Personal Goals &amp; QoL</label>
+            <label>D82: Personal Goals &amp; QoL</label>
             <textarea
               style={textareaStyle}
               value={dietary?.qolGoals || ""}
@@ -217,6 +241,34 @@ export default function DietaryD3toD9() {
           </div>
         </div>
       </div>
+
+      {/* ── D9: Supplements & DNI ── */}
+      <div className="card">
+        <h4 style={{ margin: "0 0 0.65rem", fontSize: "0.95rem", color: "var(--primary)" }}>
+          D9: Supplements &amp; DNI
+        </h4>
+        <div className="grid-2-col">
+          <div className="input-group">
+            <label>D91: Supplement Products</label>
+            <textarea
+              style={textareaStyle}
+              value={dietary?.herbalCAM || ""}
+              onChange={(e) => handleUpdate("herbalCAM", e.target.value)}
+            />
+          </div>
+          <div className="input-group">
+            <label>D92: Vitamin &amp; Mineral Supplements</label>
+            <textarea
+              style={textareaStyle}
+              value={dietary?.supplements || ""}
+              onChange={(e) => handleUpdate("supplements", e.target.value)}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* ── Drug-Nutrient Interactions ── */}
+      <DrugNutrientInteractionTable drugs={drugs} supplements={supplements} />
 
     </div>
   );

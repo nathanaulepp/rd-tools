@@ -9,7 +9,6 @@ import { useUIStore } from "../../../stores/useUIStore";
 import D1NutritionRx from "./D1NutritionRx";
 import DietaryD2Intake from "./DietaryD2Intake";
 import DietaryD3toD9 from "./DietaryD3toD9";
-import DietaryD8Supplements from "./DietaryD8Supplements";
 
 export default function DietaryDomain() {
   const activeSubDomain = useUIStore((s) => s.activeSubDomain);
@@ -28,8 +27,7 @@ export default function DietaryDomain() {
       case "D3-D9":
         return <DietaryD3toD9 />;
 
-      case "D8":
-        return <DietaryD8Supplements />;
+
 
       default:
         return <div>Select a sub-domain from the sidebar.</div>;

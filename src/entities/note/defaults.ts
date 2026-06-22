@@ -76,8 +76,8 @@ export const defaultDietary: Dietary = {
   mealPrep: "", eatingOut: "", bingePurge: "",
   foodSecurity: "", foodSupplies: "", transport: "",
   culturalReligious: "", socialDynamics: "", eatingEnv: "",
-  herbalCAM: "", supplements: "",
   perception: "", qolGoals: "",
+  herbalCAM: "", supplements: "",
   ivOrders: [],
   ivNextId: 1,
 };
@@ -144,7 +144,7 @@ export const defaultMonitorEval: MonitorEval = {
   criteria_anthropo: "", criteria_labs: "", criteria_dietary: "",
   criteria_clinical: "", criteria_functional: "",
   outcome_progress: "", outcome_narrative: "", outcome_nextSteps: "",
-  dischargeRecs: "", transitionPlan: "", meNotes: "",
+  dischargeRecs: "", transitionPlan: "", meNarrative: "", meNotes: "",
 };
 
 export const defaultStandards: Standards = {
