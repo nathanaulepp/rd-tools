@@ -9,7 +9,6 @@ import { useCalculatedMetrics } from "../stores/useCalculatedMetrics";
 
 import {
   DIETARY_CATEGORIES,
-  ASSESSMENT_CATEGORIES,
   CLINICAL_CATEGORIES
 } from "../shared/constants/adimeSideBarCategories";
 
@@ -44,13 +43,7 @@ export default function Sidebar({
 
   const isSubmitted = noteStatus === "submitted";
 
-  // Filter out A6-A7 for adults (ageDays >= 7305)
-  const assessmentCategories = ASSESSMENT_CATEGORIES.filter((cat) => {
-    if (cat.id === "A6-A7") {
-      return (calculatedMetrics.ageDays ?? 0) < 7305;
-    }
-    return true;
-  });
+
 
   const handleDomainClick = (domain: DomainKey) => {
     setActiveDomain(domain);
@@ -76,18 +69,7 @@ export default function Sidebar({
           active={activeDomain === "A"}
           onClick={() => handleDomainClick("A")}
         />
-        {activeDomain === "A" && (
-          <div className="sub-nav">
-            {assessmentCategories.map((cat) => (
-              <SubNavItem
-                key={cat.id}
-                label={cat.title}
-                active={activeSubDomain === cat.id}
-                onClick={() => setActiveSubDomain(cat.id)}
-              />
-            ))}
-          </div>
-        )}
+
 
         {/* B — Biochemical */}
         <NavItem

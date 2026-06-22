@@ -63,8 +63,10 @@ interface LabsState {
   columns: LabColumn[];
   activeLabKeys: string[];
   userPresets: LabPreset[];
+  labNotes: string;
 
   setLabs: (labs: Labs) => void;
+  setLabNotes: (notes: string) => void;
   updateLabValue: (slug: string, columnId: string, value: string) => void;
   addColumnLeft: (referenceId: string) => void;
   addColumnRight: (referenceId: string) => void;
@@ -89,8 +91,10 @@ export const useLabsStore = create<LabsState>((set, get) => ({
   columns: [{ id: uuid(), date: "", time: "" }],
   activeLabKeys: DEFAULT_PANEL_KEYS["Endocrine & Metabolic"],
   userPresets: [],
+  labNotes: "",
 
   setLabs: (labs) => set({ labs }),
+  setLabNotes: (labNotes) => set({ labNotes }),
 
   updateLabValue: (slug, columnId, value) =>
     set((state) => {
@@ -306,6 +310,7 @@ registerDomainReset("labs", (raw) => {
       labs: {},
       columns: [{ id: uuid(), date: "", time: "" }],
       activeLabKeys: DEFAULT_PANEL_KEYS["Endocrine & Metabolic"],
+      labNotes: "",
     });
     return;
   }
@@ -321,10 +326,13 @@ registerDomainReset("labs", (raw) => {
     columns = [{ id: uuid(), date: "", time: "" }];
   }
 
-  // Extract labs (excluding __columns__)
+  // Extract lab notes
+  const labNotes = typeof parsed.__labNotes__ === "string" ? parsed.__labNotes__ : "";
+
+  // Extract labs (excluding reserved keys)
   const labs: Labs = {};
   for (const [key, val] of Object.entries(parsed)) {
-    if (key === "__columns__") continue;
+    if (key === "__columns__" || key === "__labNotes__") continue;
     labs[key] = {
       unit: String(val?.unit ?? ""),
       loincCode: String(val?.loincCode ?? ""),
@@ -344,14 +352,16 @@ registerDomainReset("labs", (raw) => {
     activeLabKeys: populatedKeys.length > 0
       ? populatedKeys
       : DEFAULT_PANEL_KEYS["Endocrine & Metabolic"],
+    labNotes,
   });
 });
 
 registerDomainGetter("labs", () => {
-  const { labs, columns } = useLabsStore.getState();
+  const { labs, columns, labNotes } = useLabsStore.getState();
   const sorted = sortColumns(columns);
   return {
     __columns__: sorted,
+    __labNotes__: labNotes,
     ...compactLabs(labs),
   };
 });

@@ -26,11 +26,14 @@ export interface Clinical {
 
   // C4 — GI & Systemic
   giDistress: string;
-  chewing: string;
   oralHygiene: string;
-  swallowing: string;
   fev1: string;    // FEV₁ % predicted — used in CF equation; cross-domain
   tbsa: string;    // Total body surface area burned — used in Curreri; cross-domain
+  giSymptoms: string[];
+  bowelFunction: string;
+  dentition: string;
+  swallowChewConcerns: string[];
+  nicheConditionFlags: string[];
 
   // C5 — NFPE: Muscle wasting
   temples: NFPESeverity;

@@ -1,11 +1,9 @@
-// src/features/assessment/assess-clinical/ClinicalC6Imaging.tsx
-// Phase 5: Reads useClinicalStore directly. No props for domain state.
-
+// src/features/assessment/assess-clinical/ClinicalC5Radiology.tsx
 import React from "react";
 import { useClinicalStore } from "../../../stores/useClinicalStore";
 import type { Clinical } from "../../../types";
 
-export default function ClinicalC6Imaging() {
+export default function ClinicalC5Radiology() {
   const { clinical, setClinical } = useClinicalStore();
 
   const handleUpdate = (field: keyof Clinical, val: string) =>
@@ -13,13 +11,13 @@ export default function ClinicalC6Imaging() {
 
   return (
     <div className="card">
-      <h4 className="mb-1">C6: Radiology & Imaging</h4>
+      <h4 className="mb-1">C5: Radiology & Imaging</h4>
       <div className="grid-2-col">
         <div className="input-group">
           <label>Skeletal Muscle Index (SMI)</label>
           <input
             type="text"
-            value={clinical.imaging_smi}
+            value={clinical.imaging_smi || ""}
             onChange={(e) => handleUpdate("imaging_smi", e.target.value)}
             placeholder="cm²/m²"
           />
@@ -28,7 +26,7 @@ export default function ClinicalC6Imaging() {
           <label>L3 Muscle Area</label>
           <input
             type="text"
-            value={clinical.imaging_muscleArea}
+            value={clinical.imaging_muscleArea || ""}
             onChange={(e) => handleUpdate("imaging_muscleArea", e.target.value)}
             placeholder="cm²"
           />
@@ -37,7 +35,7 @@ export default function ClinicalC6Imaging() {
           <label>Muscle Attenuation</label>
           <input
             type="text"
-            value={clinical.imaging_muscleAttenuation}
+            value={clinical.imaging_muscleAttenuation || ""}
             onChange={(e) =>
               handleUpdate("imaging_muscleAttenuation", e.target.value)
             }
@@ -48,7 +46,7 @@ export default function ClinicalC6Imaging() {
           <label>IMAT (Intermuscular Fat)</label>
           <input
             type="text"
-            value={clinical.imaging_imat}
+            value={clinical.imaging_imat || ""}
             onChange={(e) => handleUpdate("imaging_imat", e.target.value)}
           />
         </div>
@@ -56,7 +54,7 @@ export default function ClinicalC6Imaging() {
           <label>VAT (Visceral Fat Area)</label>
           <input
             type="text"
-            value={clinical.imaging_vat}
+            value={clinical.imaging_vat || ""}
             onChange={(e) => handleUpdate("imaging_vat", e.target.value)}
             placeholder="cm²"
           />
@@ -66,7 +64,7 @@ export default function ClinicalC6Imaging() {
         <label>Imaging / Radiology Notes</label>
         <textarea
           style={{ minHeight: "100px" }}
-          value={clinical.imaging_notes}
+          value={clinical.imaging_notes || ""}
           onChange={(e) => handleUpdate("imaging_notes", e.target.value)}
           placeholder="Details on myosteatosis, sarcopenia severity, or other imaging findings..."
         />

@@ -264,6 +264,11 @@ async function initSchema(db: Database): Promise<void> {
        VALUES (?, ?, 1, ?)`,
       [req.field_key, req.label, now]
     );
+    // Sync the label in case it was seeded with an old value
+    await db.execute(
+      `UPDATE submission_requirements SET label = ? WHERE field_key = ?`,
+      [req.label, req.field_key]
+    );
   }
 }
 
@@ -653,8 +658,11 @@ export async function submitNote(
     ascites:                  (clinicalData.ascites as string)               ?? null,
     gripStrength:             (clinicalData.gripStrength as string)          ?? null,
     giDistress:               (clinicalData.giDistress as string)            ?? null,
-    chewing:                  (clinicalData.chewing as string)               ?? null,
-    swallowing:               (clinicalData.swallowing as string)            ?? null,
+    giSymptoms:               clinicalData.giSymptoms                        ?? null,
+    bowelFunction:            (clinicalData.bowelFunction as string)         ?? null,
+    dentition:                (clinicalData.dentition as string)             ?? null,
+    swallowChewConcerns:      clinicalData.swallowChewConcerns               ?? null,
+    nicheConditionFlags:      clinicalData.nicheConditionFlags               ?? null,
     imaging_smi:              (clinicalData.imaging_smi as string)           ?? null,
     tempMax:                  (clinicalData.tempMax as string)               ?? null,
     ve:                       (clinicalData.ve as string)                    ?? null,

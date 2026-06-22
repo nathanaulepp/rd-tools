@@ -3,6 +3,7 @@ import React from "react";
 import { useLabsStore, sortColumns } from "../../../stores/useLabsStore";
 import { GLOBAL_LAB_CATALOG } from "../../../shared/data/biochemicalCatalog";
 import { DomainHeader } from "../../../shared/ui/DomainHeader";
+import { SectionHeader } from "../../../shared/ui/SectionHeader";
 import LabPresetToolbar from "./LabPresetToolbar";
 
 export default function BiochemicalDomain() {
@@ -17,6 +18,8 @@ export default function BiochemicalDomain() {
     updateColumnDate,
     updateColumnTime,
     removeLabFromView,
+    labNotes,
+    setLabNotes,
   } = useLabsStore();
 
   const sortedColumns = sortColumns(columns);
@@ -143,6 +146,26 @@ export default function BiochemicalDomain() {
             </table>
           </div>
         )}
+      </div>
+
+      <div style={{ marginTop: "1rem" }}>
+        <SectionHeader title="Notes" subtitle="Free-text notes on biochemical/lab findings" />
+        <textarea
+          value={labNotes}
+          onChange={(e) => setLabNotes(e.target.value)}
+          placeholder="Additional notes on lab trends, pending results, clinician interpretation, etc."
+          style={{
+            width: "100%",
+            minHeight: "100px",
+            padding: "0.5rem",
+            border: "1px solid var(--border)",
+            borderRadius: "6px",
+            fontSize: "0.85rem",
+            fontFamily: "inherit",
+            boxSizing: "border-box",
+            resize: "vertical",
+          }}
+        />
       </div>
     </div>
   );

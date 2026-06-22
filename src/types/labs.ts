@@ -13,6 +13,11 @@ export interface LabEntry {
 
 export type Labs = Record<string, LabEntry>; // keyed by catalog slug
 
+export interface LabsDomainState {
+  entries: Labs;
+  notes: string;
+}
+
 export interface LabPreset {
   id: string;
   name: string;

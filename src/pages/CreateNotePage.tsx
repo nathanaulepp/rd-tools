@@ -71,6 +71,14 @@ export default function CreateNotePage() {
   const [modalState, setModalState]       = React.useState<SubmitModalState>("confirm");
   const [missingFields, setMissingFields] = React.useState<string[]>([]);
 
+  // Reset modal state when opened
+  useEffect(() => {
+    if (submitModalOpen) {
+      setModalState("confirm");
+      setMissingFields([]);
+    }
+  }, [submitModalOpen]);
+
   const isSubmitted = noteStatus === "submitted";
 
   // AutosaveManager exposes flush via ref

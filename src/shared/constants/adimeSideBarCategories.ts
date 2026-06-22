@@ -1,15 +1,11 @@
-export const ASSESSMENT_CATEGORIES = [
-  { id: "A1-A7", title: "Body Measurements & Growth" },
-  { id: "A8", title: "DEXA" },
-];
 
 export const CLINICAL_CATEGORIES = [
   { id: "C1", title: "C1: Medical Context" },
   { id: "C2", title: "C2: Vital Signs & Screenings" },
-  { id: "C3", title: "C3: Medications" },
-  { id: "C4", title: "C4: GI & Systemic Function" },
-  { id: "C5", title: "C5: Nutrition Focused Physical Exam (NFPE)" },
-  { id: "C6", title: "C6: Radiology & Imaging" }
+  { id: "C3", title: "C3: GI & Systemic Function" },
+  { id: "C4", title: "C4: Nutrition Focused Physical Exam (NFPE)" },
+  { id: "C5", title: "C5: Radiology & Imaging" },
+  { id: "C6", title: "C6: Medications" }
 ];
 
 export const DIETARY_CATEGORIES = [

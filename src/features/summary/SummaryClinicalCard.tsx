@@ -145,9 +145,11 @@ export default function SummaryClinicalCard() {
         </div>
         <div>
           <SectionLabel>GI & Systemic</SectionLabel>
-          <CRow label="GI Distress" value={clinical?.giDistress} />
-          <CRow label="Chewing" value={clinical?.chewing} />
-          <CRow label="Swallowing" value={clinical?.swallowing} />
+          <CRow label="GI Symptoms" value={clinical?.giSymptoms?.filter(s => s !== "None").join(", ")} />
+          <CRow label="Bowel Function" value={clinical?.bowelFunction} />
+          <CRow label="GI Notes" value={clinical?.giDistress} />
+          <CRow label="Dentition" value={clinical?.dentition} />
+          <CRow label="Swallow/Chew Concerns" value={clinical?.swallowChewConcerns?.filter(c => c !== "No issues noted").join(", ")} />
           <CRow label="FEV1" value={clinical?.fev1} unit="% predicted" />
           <CRow label="TBSA Burned" value={clinical?.tbsa} unit="%" />
 

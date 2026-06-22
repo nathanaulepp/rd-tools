@@ -254,25 +254,32 @@ function buildContextualSuggestions(
     }
 
     // GI symptoms
-    if (clinical.giDistress && (p.includes("malnutrition") || p.includes("intake") || p.includes("gi") || p.includes("swallow") || p.includes("chewing"))) {
+    const activeGiSymptoms = (clinical.giSymptoms || []).filter(s => s !== "None");
+    const hasGiData = clinical.giDistress || activeGiSymptoms.length > 0 || clinical.bowelFunction;
+    if (hasGiData && (p.includes("malnutrition") || p.includes("intake") || p.includes("gi") || p.includes("swallow") || p.includes("chewing"))) {
+      const parts: string[] = [];
+      if (activeGiSymptoms.length > 0) parts.push(`Symptoms: ${activeGiSymptoms.join(", ")}`);
+      if (clinical.bowelFunction) parts.push(`Bowel: ${clinical.bowelFunction}`);
+      if (clinical.giDistress) parts.push(`Notes: ${clinical.giDistress}`);
       hints.push({
-        text: `GI distress reported: ${clinical.giDistress}`,
+        text: `GI distress/symptoms: ${parts.join("; ")}`,
         category: "Clinical/Physical",
       });
     }
 
-    // Swallowing
-    if (clinical.swallowing && (p.includes("swallow") || p.includes("chewing") || p.includes("oral intake") || p.includes("dysphagia"))) {
+    // Swallowing/Chewing Concerns
+    const activeSwallowChewConcerns = (clinical.swallowChewConcerns || []).filter(c => c !== "No issues noted");
+    if (activeSwallowChewConcerns.length > 0 && (p.includes("swallow") || p.includes("chewing") || p.includes("oral intake") || p.includes("dysphagia"))) {
       hints.push({
-        text: `Swallowing difficulty: ${clinical.swallowing}`,
+        text: `Swallowing/Chewing concern(s): ${activeSwallowChewConcerns.join(", ")}`,
         category: "Clinical/Physical",
       });
     }
 
-    // Chewing
-    if (clinical.chewing && (p.includes("chewing") || p.includes("oral") || p.includes("intake"))) {
+    // Dentition
+    if (clinical.dentition && clinical.dentition !== "Intact / Own Teeth" && (p.includes("chewing") || p.includes("oral") || p.includes("intake"))) {
       hints.push({
-        text: `Oral/chewing concern: ${clinical.chewing}`,
+        text: `Dentition: ${clinical.dentition}`,
         category: "Clinical/Physical",
       });
     }
@@ -684,7 +691,8 @@ function SignsSuggestions({ problem, currentSigns, onAppend, onRemove }: SignsSu
       clinical?.interosseous, clinical?.thighs, clinical?.calves,
       clinical?.orbital, clinical?.cheek, clinical?.tricepsFat, clinical?.midAxillary,
       clinical?.pittingEdema, clinical?.ascites, clinical?.gripStrength,
-      clinical?.giDistress, clinical?.swallowing, clinical?.chewing, clinical?.imaging_smi,
+      clinical?.giDistress, clinical?.giSymptoms, clinical?.bowelFunction,
+      clinical?.dentition, clinical?.swallowChewConcerns, clinical?.imaging_smi,
       calculatedMetrics?.ubwTimeframeDays,
     ]
   );

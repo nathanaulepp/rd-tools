@@ -22,7 +22,7 @@ export default function AnthroA8() {
 
   return (
     <div className="card">
-      <h4 className="mb-1">A8: Body Composition (DEXA)</h4>
+      <h4 className="mb-1">Body Composition (DEXA)</h4>
       <div className="mt-1">
         {dexaScans.length >= 2 && (
           <AlertBanner
