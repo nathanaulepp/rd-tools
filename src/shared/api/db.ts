@@ -659,7 +659,7 @@ export async function submitNote(
     gripStrength:             (clinicalData.gripStrength as string)          ?? null,
     giDistress:               (clinicalData.giDistress as string)            ?? null,
     giSymptoms:               clinicalData.giSymptoms                        ?? null,
-    bowelFunction:            (clinicalData.bowelFunction as string)         ?? null,
+    stoolType:                (clinicalData.stoolType as string)             ?? null,
     dentition:                (clinicalData.dentition as string)             ?? null,
     swallowChewConcerns:      clinicalData.swallowChewConcerns               ?? null,
     nicheConditionFlags:      clinicalData.nicheConditionFlags               ?? null,

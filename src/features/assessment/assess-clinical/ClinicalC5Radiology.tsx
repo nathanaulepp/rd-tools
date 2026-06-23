@@ -1,18 +1,26 @@
 // src/features/assessment/assess-clinical/ClinicalC5Radiology.tsx
 import React from "react";
 import { useClinicalStore } from "../../../stores/useClinicalStore";
+import { CollapseHeader } from "../../../shared/ui/CollapseHeader";
 import type { Clinical } from "../../../types";
 
 export default function ClinicalC5Radiology() {
   const { clinical, setClinical } = useClinicalStore();
+  const [expanded, setExpanded] = React.useState(false);
 
   const handleUpdate = (field: keyof Clinical, val: string) =>
     setClinical({ [field]: val } as Partial<Clinical>);
 
   return (
     <div className="card">
-      <h4 className="mb-1">C5: Radiology & Imaging</h4>
-      <div className="grid-2-col">
+      <CollapseHeader
+        label="C5: Radiology & Imaging"
+        expanded={expanded}
+        onToggle={() => setExpanded(!expanded)}
+      />
+      {expanded && (
+        <>
+          <div className="grid-2-col">
         <div className="input-group">
           <label>Skeletal Muscle Index (SMI)</label>
           <input
@@ -69,6 +77,8 @@ export default function ClinicalC5Radiology() {
           placeholder="Details on myosteatosis, sarcopenia severity, or other imaging findings..."
         />
       </div>
+        </>
+      )}
     </div>
   );
 }

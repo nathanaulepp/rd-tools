@@ -4,10 +4,6 @@ export const GI_SYMPTOM_OPTIONS = [
   "None", "Nausea", "Vomiting", "Diarrhea", "Constipation", "Abdominal Pain", "Distention", "Bloating"
 ];
 
-export const BOWEL_FUNCTION_OPTIONS = [
-  "Normal", "Loose BM", "Constipated", "Liquid", "Melena", "Ostomy Output"
-];
-
 export const DENTITION_OPTIONS = [
   "Intact / Own Teeth", "Edentulous", "Partial/Full Dentures (Fitting)",
   "Partial/Full Dentures (Poorly Fitting)", "Missing Molars/Incisors"

@@ -4,14 +4,24 @@ import { useClinicalStore } from "../../../stores/useClinicalStore";
 import type { Clinical } from "../../../types";
 import { ChipGroup } from "../../../shared/ui/ChipGroup";
 import { SelectInput } from "../../../shared/ui/SelectInput";
+import { CollapseHeader } from "../../../shared/ui/CollapseHeader";
 import { Field } from "../../../shared/ui/Field";
 import {
   GI_SYMPTOM_OPTIONS,
-  BOWEL_FUNCTION_OPTIONS,
   DENTITION_OPTIONS,
   SWALLOW_CHEW_OPTIONS,
   NICHE_CONDITION_OPTIONS,
 } from "../../../shared/constants/clinicalC4Options";
+
+const BRISTOL_SCALE = [
+  { type: "Type 1", desc: "Separate lumps", border: "#e74c3c", bg: "rgba(231, 76, 60, 0.1)" },
+  { type: "Type 2", desc: "Lumpy sausage", border: "#e74c3c", bg: "rgba(231, 76, 60, 0.1)" },
+  { type: "Type 3", desc: "Cracked sausage", border: "#2ecc71", bg: "rgba(46, 204, 113, 0.1)" },
+  { type: "Type 4", desc: "Smooth sausage", border: "#2ecc71", bg: "rgba(46, 204, 113, 0.1)" },
+  { type: "Type 5", desc: "Soft blobs", border: "#da7f2b", bg: "rgba(218, 127, 43, 0.1)" },
+  { type: "Type 6", desc: "Fluffy pieces", border: "#da7f2b", bg: "rgba(218, 127, 43, 0.1)" },
+  { type: "Type 7", desc: "Watery", border: "#e74c3c", bg: "rgba(231, 76, 60, 0.1)" },
+];
 
 const toggleExclusiveChip = (
   next: string[],
@@ -30,14 +40,21 @@ const toggleExclusiveChip = (
 
 export default function ClinicalC3GISystemic() {
   const { clinical, setClinical } = useClinicalStore();
+  const [expanded, setExpanded] = React.useState(true);
 
   const handleUpdate = (field: keyof Clinical, val: string | string[]) =>
     setClinical({ [field]: val } as Partial<Clinical>);
 
   return (
     <div className="card">
-      <h4 className="mb-1">C3: GI & Systemic Function</h4>
-      <div className="grid-2-col mb-1">
+      <CollapseHeader
+        label="C3: GI & Systemic Function"
+        expanded={expanded}
+        onToggle={() => setExpanded(!expanded)}
+      />
+      {expanded && (
+        <>
+          <div className="grid-2-col mb-1">
         {/* Column 1 — GI & Bowel Function */}
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <Field label="GI Symptoms (Checklist)">
@@ -52,12 +69,37 @@ export default function ClinicalC3GISystemic() {
               }}
             />
           </Field>
-          <Field label="Bowel Function">
-            <SelectInput
-              value={clinical.bowelFunction || ""}
-              onChange={(v) => handleUpdate("bowelFunction", v)}
-              options={BOWEL_FUNCTION_OPTIONS}
-            />
+          <Field label="Stool Type (Bristol Scale)">
+            <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+              {BRISTOL_SCALE.map((item) => {
+                const isSelected = clinical.stoolType === item.type;
+                return (
+                  <button
+                    key={item.type}
+                    type="button"
+                    style={{
+                      width: "52px",
+                      height: "64px",
+                      borderRadius: "6px",
+                      border: isSelected ? `1px solid ${item.border}` : "1px solid var(--border)",
+                      background: isSelected ? item.bg : "var(--bg-color)",
+                      cursor: "pointer",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      padding: "4px",
+                      color: "inherit",
+                    }}
+                    onClick={() => handleUpdate("stoolType", isSelected ? "" : item.type)}
+                  >
+                    <span style={{ fontSize: "0.6rem", opacity: 0.7 }}>{item.type}</span>
+                    <span style={{ fontSize: "0.6rem", lineHeight: "1.1", textAlign: "center" }}>{item.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
           </Field>
           <div className="input-group">
             <label>GI Notes</label>
@@ -138,6 +180,8 @@ export default function ClinicalC3GISystemic() {
           </div>
         )}
       </div>
+        </>
+      )}
     </div>
   );
 }

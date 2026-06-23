@@ -1,6 +1,7 @@
 // src/features/assessment/assess-clinical/ClinicalC4NFPE.tsx
 import React from "react";
 import { ChipGroup } from "../../../shared/ui/ChipGroup";
+import { CollapseHeader } from "../../../shared/ui/CollapseHeader";
 import { useClinicalStore } from "../../../stores/useClinicalStore";
 import type { Clinical } from "../../../types";
 
@@ -85,6 +86,8 @@ const MICRONUTRIENT_CATEGORIES = [
 
 export default function ClinicalC4NFPE() {
   const { clinical, setClinical } = useClinicalStore();
+  const [c4Expanded, setC4Expanded] = React.useState(false);
+  const [c45Expanded, setC45Expanded] = React.useState(false);
 
   const handleUpdate = (field: keyof Clinical, val: string | string[]) =>
     setClinical({ [field]: val } as Partial<Clinical>);
@@ -134,8 +137,13 @@ export default function ClinicalC4NFPE() {
       `}</style>
       {/* Unified 5-Column NFPE Table Card */}
       <div className="card mb-1">
-        <h4 className="mb-1">C4: Nutrition Focused Physical Exam (NFPE)</h4>
-        <div style={{ overflowX: "auto" }}>
+        <CollapseHeader
+          label="C4: Nutrition Focused Physical Exam (NFPE)"
+          expanded={c4Expanded}
+          onToggle={() => setC4Expanded(!c4Expanded)}
+        />
+        {c4Expanded && (
+          <div style={{ overflowX: "auto" }}>
           <table
             className="lab-table nfpe-table"
             style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}
@@ -212,12 +220,19 @@ export default function ClinicalC4NFPE() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* C45: Micronutrient Signs Card */}
       <div className="card mb-1">
-        <h4 className="mb-1">C45: Micronutrient Signs (Physical Exam)</h4>
-        <div className="grid-3-col">
+        <CollapseHeader
+          label="C45: Micronutrient Signs (Physical Exam)"
+          expanded={c45Expanded}
+          onToggle={() => setC45Expanded(!c45Expanded)}
+        />
+        {c45Expanded && (
+          <>
+            <div className="grid-3-col">
           {MICRONUTRIENT_CATEGORIES.map(({ area, options }) => {
             const key = area.replace(/^(.)/, (c: string) => c.toLowerCase()) as keyof Clinical;
             return (
@@ -242,6 +257,8 @@ export default function ClinicalC4NFPE() {
             placeholder="Add nuance for physical findings..."
           />
         </div>
+          </>
+        )}
       </div>
     </>
   );

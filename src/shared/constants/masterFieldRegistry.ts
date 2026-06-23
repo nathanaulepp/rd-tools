@@ -83,7 +83,7 @@ export const MASTER_DOMAINS = [
       { key: "gripStrength", label: "Grip Strength" },
       { key: "giDistress", label: "GI Distress" },
       { key: "giSymptoms", label: "GI Symptoms (Checklist)" },
-      { key: "bowelFunction", label: "Bowel Function" },
+      { key: "stoolType", label: "Stool Type" },
       { key: "dentition", label: "Dentition" },
       { key: "swallowChewConcerns", label: "Swallow/Chew Concerns" },
       { key: "nicheConditionFlags", label: "Specialized Population Flags" },

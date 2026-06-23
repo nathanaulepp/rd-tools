@@ -8,6 +8,7 @@ export type PedalEdema = "Yes" | "No" | "";
 
 export interface Clinical {
   // C1 — Medical Context
+  purposeOfVisit: string;
   chiefComplaint: string;
   medHx: string;
   familyHx: string;
@@ -30,7 +31,7 @@ export interface Clinical {
   fev1: string;    // FEV₁ % predicted — used in CF equation; cross-domain
   tbsa: string;    // Total body surface area burned — used in Curreri; cross-domain
   giSymptoms: string[];
-  bowelFunction: string;
+  stoolType: string;
   dentition: string;
   swallowChewConcerns: string[];
   nicheConditionFlags: string[];

@@ -1,18 +1,26 @@
 // src/features/assessment/assess-clinical/ClinicalC2VitalSigns.tsx
 import React from "react";
 import { useClinicalStore } from "../../../stores/useClinicalStore";
+import { CollapseHeader } from "../../../shared/ui/CollapseHeader";
 import type { Clinical } from "../../../types";
 
 export default function ClinicalC2VitalSigns() {
   const { clinical, setClinical } = useClinicalStore();
+  const [expanded, setExpanded] = React.useState(true);
 
   const handleUpdate = (field: keyof Clinical, val: string) =>
     setClinical({ [field]: val } as Partial<Clinical>);
 
   return (
     <div className="card">
-      <h4 className="mb-1">C2: Vital Signs & Screenings</h4>
-      <div className="grid-5-col">
+      <CollapseHeader
+        label="C2: Vital Signs & Screenings"
+        expanded={expanded}
+        onToggle={() => setExpanded(!expanded)}
+      />
+      {expanded && (
+        <>
+          <div className="grid-5-col">
         <div className="input-group">
           <label>Temp (°F)</label>
           <input
@@ -65,6 +73,8 @@ export default function ClinicalC2VitalSigns() {
           placeholder="e.g. MSS, malnutrition screening, etc."
         />
       </div>
+        </>
+      )}
     </div>
   );
 }

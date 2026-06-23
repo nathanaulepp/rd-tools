@@ -50,11 +50,12 @@ export const defaultDexaScans: DexaScan[] = [];
 export const defaultLabs: Labs = {};
 
 export const defaultClinical: Clinical = {
+  purposeOfVisit: "",
   chiefComplaint: "", medHx: "", familyHx: "", socialHx: "",
   allergiesIntolerances: "", medicalDevices: "", medications: "",
   temp: "", hr: "", spo2: "", bp: "", rr: "", screenings: "",
   giDistress: "", oralHygiene: "", fev1: "", tbsa: "",
-  giSymptoms: [], bowelFunction: "", dentition: "", swallowChewConcerns: [], nicheConditionFlags: [],
+  giSymptoms: [], stoolType: "", dentition: "", swallowChewConcerns: [], nicheConditionFlags: [],
   temples: "", clavicles: "", shoulders: "", scapula: "", interosseous: "", thighs: "", calves: "",
   orbital: "", cheek: "", tricepsFat: "", midAxillary: "",
   hair: [], eyes: [], mouthLips: [], tongue: [], teethGums: [], headNeck: [], nails: [], skin: [],

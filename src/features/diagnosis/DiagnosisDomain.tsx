@@ -255,11 +255,11 @@ function buildContextualSuggestions(
 
     // GI symptoms
     const activeGiSymptoms = (clinical.giSymptoms || []).filter(s => s !== "None");
-    const hasGiData = clinical.giDistress || activeGiSymptoms.length > 0 || clinical.bowelFunction;
+    const hasGiData = clinical.giDistress || activeGiSymptoms.length > 0 || clinical.stoolType;
     if (hasGiData && (p.includes("malnutrition") || p.includes("intake") || p.includes("gi") || p.includes("swallow") || p.includes("chewing"))) {
       const parts: string[] = [];
       if (activeGiSymptoms.length > 0) parts.push(`Symptoms: ${activeGiSymptoms.join(", ")}`);
-      if (clinical.bowelFunction) parts.push(`Bowel: ${clinical.bowelFunction}`);
+      if (clinical.stoolType) parts.push(`Stool Type: ${clinical.stoolType}`);
       if (clinical.giDistress) parts.push(`Notes: ${clinical.giDistress}`);
       hints.push({
         text: `GI distress/symptoms: ${parts.join("; ")}`,
@@ -691,7 +691,7 @@ function SignsSuggestions({ problem, currentSigns, onAppend, onRemove }: SignsSu
       clinical?.interosseous, clinical?.thighs, clinical?.calves,
       clinical?.orbital, clinical?.cheek, clinical?.tricepsFat, clinical?.midAxillary,
       clinical?.pittingEdema, clinical?.ascites, clinical?.gripStrength,
-      clinical?.giDistress, clinical?.giSymptoms, clinical?.bowelFunction,
+      clinical?.giDistress, clinical?.giSymptoms, clinical?.stoolType,
       clinical?.dentition, clinical?.swallowChewConcerns, clinical?.imaging_smi,
       calculatedMetrics?.ubwTimeframeDays,
     ]

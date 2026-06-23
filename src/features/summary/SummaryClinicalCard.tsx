@@ -146,7 +146,7 @@ export default function SummaryClinicalCard() {
         <div>
           <SectionLabel>GI & Systemic</SectionLabel>
           <CRow label="GI Symptoms" value={clinical?.giSymptoms?.filter(s => s !== "None").join(", ")} />
-          <CRow label="Bowel Function" value={clinical?.bowelFunction} />
+          <CRow label="Stool Type" value={clinical?.stoolType} />
           <CRow label="GI Notes" value={clinical?.giDistress} />
           <CRow label="Dentition" value={clinical?.dentition} />
           <CRow label="Swallow/Chew Concerns" value={clinical?.swallowChewConcerns?.filter(c => c !== "No issues noted").join(", ")} />
