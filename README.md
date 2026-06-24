@@ -28,20 +28,26 @@ By reducing time spent on charting, clinicians can expand their scope:
 
 ### Assessment
 #### Anthro
+- [ ] *patch* lbs adjusted body weight for amputees is broken
+- [ ] *patch* autosave for adj body weight for amputees
 - [ ] **add** DEXA scan functionality mapped and coded
 
 #### Biochemical
 - [ ] *no changes at this time*
 
 #### Clinical
+- [ ] **add** appetite to C3
+- [ ] **add** swallow and chew timeframe
 - [ ] **add** Automated drug-nutrient interactions
 
 #### Dietary
+- [ ] **add** ONS supplements to oral layout: (formula, amount, times per day)
 - [ ] **add** D2.1 automated estimated oral intake, integrating Multiple Pass Dietary Recall
+- [ ] **add** D2 checkbox of verified receiving current rx diet and supplements 
 - [x] **add** Build a modifiable EN formulary database into ./src/shared/api
 
 #### Standards
-- [ ] *no changes at this time*
+- [ ] *patch* adjusted body weight amputation for calorie calculation
 
 ### Diagnosis
 - [ ] **add** Differentials to guide continued/ordered assessment
