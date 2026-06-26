@@ -10,16 +10,6 @@ import DietaryD2Intake from "./DietaryD2Intake";
 import DietaryD3toD9 from "./DietaryD3toD9";
 
 export default function DietaryDomain() {
-  const activeSubDomain = useUIStore((s) => s.activeSubDomain);
-
-  React.useEffect(() => {
-    if (activeSubDomain && activeSubDomain.startsWith("D")) {
-      const el = document.getElementById(`dietary-${activeSubDomain}`);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }
-  }, [activeSubDomain]);
 
   return (
     <div className="fade-in">

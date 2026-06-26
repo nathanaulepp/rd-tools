@@ -3,6 +3,7 @@ import React, { CSSProperties } from "react";
 import { useNoteStore } from "../stores/useNoteStore";
 import {
   SummaryPatientBanner,
+  SummaryPatientHistoryCard,
   SummaryAnthroCard,
   SummaryBiochemCard,
   SummaryClinicalCard,
@@ -34,6 +35,7 @@ export default function ClinicalSummaryView({ handleExitToStart }: ClinicalSumma
       <SummaryPatientBanner handleExitToStart={handleExitToStart} />
 
       <div style={styles.page} className="printable-note">
+        <SummaryPatientHistoryCard />
         <SummaryAnthroCard />
         <SummaryBiochemCard />
         <SummaryClinicalCard />

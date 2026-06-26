@@ -14,6 +14,17 @@ export const MASTER_DOMAINS = [
     ]
   },
   {
+    id: "patientHistory",
+    title: "PH. Patient History",
+    fields: [
+      { key: "purposeOfVisit", label: "Purpose of Visit" },
+      { key: "chiefComplaint", label: "Chief Complaint" },
+      { key: "medHx",          label: "Medical History" },
+      { key: "familyHx",       label: "Family History" },
+      { key: "socialHx",       label: "Social History" },
+    ]
+  },
+  {
     id: "anthro",
     title: "A. Anthropometrics",
     fields: [
@@ -55,10 +66,6 @@ export const MASTER_DOMAINS = [
     id: "clinical",
     title: "C. Clinical & NFPE",
     fields: [
-      { key: "chiefComplaint", label: "Chief Complaint" },
-      { key: "medHx", label: "Medical History" },
-      { key: "familyHx", label: "Family History" },
-      { key: "socialHx", label: "Social History" },
       { key: "allergiesIntolerances", label: "Allergies & Intolerances" },
       { key: "medicalDevices", label: "Medical Devices" },
       { key: "medications", label: "Medications" },

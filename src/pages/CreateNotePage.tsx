@@ -29,6 +29,7 @@ import SubmitModal, { SubmitModalState }   from "../widgets/SubmitModal";
 import AutosaveManager, { AutosaveManagerRef } from "../widgets/AutosaveManager";
 
 // Domain features
+import PatientHistoryDomain from "../features/assessment/assess-patient-history/PatientHistoryDomain";
 import AnthroDomain          from "../features/assessment/assess-anthro/AnthroDomain";
 import BiochemicalDomain     from "../features/assessment/assess-biochemical/BiochemicalDomain";
 import ClinicalDomain        from "../features/assessment/assess-clinical/ClinicalDomain";
@@ -115,13 +116,7 @@ export default function CreateNotePage() {
     triggerSave();
   }, [activeDomain, activeSubDomain, saveAllDomains, showToast, diagnosis]);
 
-  // Scroll to the domain section when activeDomain changes via sidebar click
-  useEffect(() => {
-    const el = document.getElementById(`domain-${activeDomain}`);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [activeDomain]);
+
 
   // ── Submit ──────────────────────────────────────────────────────────────────
   const handleConfirmSubmit = async () => {
@@ -196,6 +191,9 @@ export default function CreateNotePage() {
         )}
 
         <div className="content-area">
+          <section id="domain-PH" style={{ scrollMarginTop: "1rem" }}>
+            <PatientHistoryDomain />
+          </section>
           <section id="domain-A" style={{ scrollMarginTop: "1rem" }}>
             <AnthroDomain />
           </section>

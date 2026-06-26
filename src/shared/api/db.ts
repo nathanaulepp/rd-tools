@@ -73,6 +73,7 @@ async function initSchema(db: Database): Promise<void> {
     { name: "monitor_evaluate", type: "TEXT" },
     { name: "standards",        type: "TEXT" },
     { name: "refeeding_screen", type: "TEXT" },
+    { name: "patient_history",   type: "TEXT" },
   ];
 
   for (const col of newColumns) {
@@ -332,6 +333,7 @@ export interface Note {
   monitor_evaluate: string | null;
   standards: string | null;
   refeeding_screen: string | null;
+  patient_history: string | null;
   created_at: string;
   submitted_at: string | null;
 }
@@ -465,6 +467,7 @@ export async function createNote(payload: {
     monitor_evaluate: null,
     standards:        null,
     refeeding_screen: null,
+    patient_history:  null,
     created_at:       new Date().toISOString(),
     submitted_at:     null,
   };
@@ -473,14 +476,14 @@ export async function createNote(payload: {
     `INSERT INTO notes
        (id, patient_id, encounter_id, note_date, admission_date, status, version,
         parent_note_id, anthro, labs, clinical, dietary, dexa_scans,
-        diagnosis, intervention, monitor_evaluate, standards,
+        diagnosis, intervention, monitor_evaluate, standards, patient_history,
         created_at, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       note.id, note.patient_id, note.encounter_id, note.note_date, note.admission_date,
       note.status, note.version, note.parent_note_id,
       note.anthro, note.labs, note.clinical, note.dietary, note.dexa_scans,
-      note.diagnosis, note.intervention, note.monitor_evaluate, note.standards,
+      note.diagnosis, note.intervention, note.monitor_evaluate, note.standards, note.patient_history,
       note.created_at, note.submitted_at,
     ]
   );
@@ -497,7 +500,7 @@ export async function autosaveNote(
   domain:
     | "anthro" | "labs" | "clinical" | "dietary" | "dexa_scans"
     | "diagnosis" | "intervention" | "monitor_evaluate" | "standards"
-    | "refeeding_screen" | "note_date" | "admission_date",
+    | "refeeding_screen" | "patient_history" | "note_date" | "admission_date",
   data: object | string
 ): Promise<void> {
   const db = await getDb();
@@ -505,7 +508,7 @@ export async function autosaveNote(
   const jsonDomains = [
     "anthro", "labs", "clinical", "dietary", "dexa_scans",
     "diagnosis", "intervention", "monitor_evaluate", "standards",
-    "refeeding_screen"
+    "refeeding_screen", "patient_history"
   ];
   const value = jsonDomains.includes(domain)
     ? JSON.stringify(data)
@@ -591,6 +594,7 @@ export async function submitNote(
   const diagnosisData    = tryParseJSON(note.diagnosis);
   const interventionData = tryParseJSON(note.intervention);
   const meData           = tryParseJSON(note.monitor_evaluate);
+  const patientHistoryData = tryParseJSON(note.patient_history);
 
   const fieldValues: Record<string, any> = {
     // Patient table fields
@@ -604,6 +608,13 @@ export async function submitNote(
     // Note table fields
     note_date:      note.note_date,
     admission_date: note.admission_date,
+
+    // Patient History domain (from note.patient_history JSON)
+    purposeOfVisit:           (patientHistoryData.purposeOfVisit as string)  ?? null,
+    chiefComplaint:           (patientHistoryData.chiefComplaint as string)  ?? null,
+    medHx:                    (patientHistoryData.medHx          as string)  ?? null,
+    familyHx:                 (patientHistoryData.familyHx       as string)  ?? null,
+    socialHx:                 (patientHistoryData.socialHx       as string)  ?? null,
 
     // Anthro (note.anthro JSON)
     ht:                (anthroData.ht as string)              ?? null,
@@ -631,10 +642,6 @@ export async function submitNote(
     dexaScans:         anthroData.dexaScans                   ?? null,
 
     // Clinical domain (from note.clinical JSON)
-    chiefComplaint:           (clinicalData.chiefComplaint as string)        ?? null,
-    medHx:                    (clinicalData.medHx as string)                 ?? null,
-    familyHx:                 (clinicalData.familyHx as string)              ?? null,
-    socialHx:                 (clinicalData.socialHx as string)              ?? null,
     allergiesIntolerances:    (clinicalData.allergiesIntolerances as string) ?? null,
     medicalDevices:           (clinicalData.medicalDevices as string)         ?? null,
     medications:              (clinicalData.medications as string)           ?? null,
@@ -930,6 +937,7 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
     monitor_evaluate: original.monitor_evaluate,
     standards:        original.standards,
     refeeding_screen: original.refeeding_screen,
+    patient_history:  original.patient_history,
     created_at:       new Date().toISOString(),
     submitted_at:     null,
   };
@@ -939,14 +947,14 @@ export async function createRevision(originalNoteId: string): Promise<Note | nul
        (id, patient_id, encounter_id, note_date, admission_date, status, version,
         parent_note_id, anthro, labs, clinical, dietary, dexa_scans,
         diagnosis, intervention, monitor_evaluate, standards,
-        refeeding_screen, created_at, submitted_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        refeeding_screen, patient_history, created_at, submitted_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       revision.id, revision.patient_id, revision.encounter_id, revision.note_date, revision.admission_date,
       revision.status, revision.version, revision.parent_note_id,
       revision.anthro, revision.labs, revision.clinical, revision.dietary, revision.dexa_scans,
       revision.diagnosis, revision.intervention, revision.monitor_evaluate, revision.standards,
-      revision.refeeding_screen, revision.created_at, revision.submitted_at,
+      revision.refeeding_screen, revision.patient_history, revision.created_at, revision.submitted_at,
     ]
   );
 

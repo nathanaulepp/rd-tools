@@ -51,8 +51,6 @@ export const defaultDexaScans: DexaScan[] = [];
 export const defaultLabs: Labs = {};
 
 export const defaultClinical: Clinical = {
-  purposeOfVisit: "",
-  chiefComplaint: "", medHx: "", familyHx: "", socialHx: "",
   allergiesIntolerances: "", medicalDevices: "", medications: "",
   temp: "", hr: "", spo2: "", bp: "", rr: "", screenings: "",
   giDistress: "", oralHygiene: "", fev1: "", tbsa: "",

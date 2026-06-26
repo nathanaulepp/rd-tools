@@ -10,7 +10,7 @@ import AnthroA8 from "./AnthroA8";
 export default function AnthroDomain() {
   return (
     <div className="fade-in">
-      <DomainHeader title="Anthropometrics & DEXA" />
+      <DomainHeader title="Anthropometrics" />
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         <AnthroA1A7 />
         <AnthroA8 />

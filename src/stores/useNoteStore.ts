@@ -38,6 +38,7 @@ export type AutosaveKey =
   | "intervention"
   | "monitor_evaluate"
   | "standards"
+  | "patient_history"
   | "note_date"
   | "admission_date";
 

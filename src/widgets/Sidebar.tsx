@@ -12,7 +12,7 @@ import {
   CLINICAL_CATEGORIES
 } from "../shared/constants/adimeSideBarCategories";
 
-export type DomainKey = "A" | "B" | "C" | "D" | "S" | "Dx" | "I" | "ME" | "RF";
+export type DomainKey = "PH" | "A" | "B" | "C" | "D" | "S" | "Dx" | "I" | "ME" | "RF";
 
 const SINGLE_DOMAINS: { key: DomainKey; label: string }[] = [
   { key: "Dx", label: "Dx. Nutrition Diagnosis" },
@@ -111,6 +111,12 @@ export default function Sidebar({
   const handleDomainClick = (domain: DomainKey) => {
     isScrollingRef.current = true;
     setActiveDomain(domain);
+
+    const el = document.getElementById(`domain-${domain}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
     if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
     scrollTimerRef.current = setTimeout(() => {
       isScrollingRef.current = false;
@@ -121,6 +127,14 @@ export default function Sidebar({
   const handleSubDomainClick = (subId: string) => {
     isScrollingRef.current = true;
     setActiveSubDomain(subId);
+
+    const activeDomain = useUIStore.getState().activeDomain;
+    const prefix = activeDomain === "C" ? "clinical-" : "dietary-";
+    const el = document.getElementById(`${prefix}${subId}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
     if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
     scrollTimerRef.current = setTimeout(() => {
       isScrollingRef.current = false;
@@ -140,6 +154,13 @@ export default function Sidebar({
       <SectionLabel>Assessment</SectionLabel>
 
       <div className="nav-section">
+        {/* PH — Patient History */}
+        <NavItem
+          label="PH. Patient History"
+          active={activeDomain === "PH"}
+          onClick={() => handleDomainClick("PH")}
+        />
+
         {/* A — Anthropometrics */}
         <NavItem
           label="A. Anthropometrics"

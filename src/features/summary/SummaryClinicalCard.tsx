@@ -134,10 +134,6 @@ export default function SummaryClinicalCard() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem" }}>
         <div>
           <SectionLabel>Medical Context</SectionLabel>
-          <CRow label="Chief Complaint" value={clinical?.chiefComplaint} />
-          <CRow label="Medical Hx" value={clinical?.medHx} />
-          <CRow label="Family Hx" value={clinical?.familyHx} />
-          <CRow label="Social Hx" value={clinical?.socialHx} />
           <CRow label="Allergies" value={clinical?.allergiesIntolerances} />
           <CRow label="Devices" value={clinical?.medicalDevices} />
           <CRow label="Screenings" value={clinical?.screenings} />

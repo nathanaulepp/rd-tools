@@ -22,6 +22,7 @@ import { checkRegistryDrift } from "../shared/utils/devDriftGuard";
 
 // Import all domain stores so their registerDomainReset/registerDomainGetter
 // side-effects fire at startup (before any note is opened).
+import "../stores/usePatientHistoryStore";
 import "../stores/useAnthroStore";
 import "../stores/useLabsStore";
 import "../stores/useClinicalStore";

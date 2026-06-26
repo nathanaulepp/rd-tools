@@ -1,7 +1,7 @@
 // src/features/assessment/assess-clinical/ClinicalDomain.tsx
 // Phase 5: Reads useUIStore directly. No props for domain state.
 
-import React, { useEffect } from "react";
+import React from "react";
 import { DomainHeader } from "../../../shared/ui/DomainHeader";
 import { useUIStore } from "../../../stores/useUIStore";
 
@@ -13,17 +13,6 @@ import ClinicalC5Radiology from "./ClinicalC5Radiology";
 import ClinicalC6Medications from "./ClinicalC6Medications";
 
 export default function ClinicalDomain() {
-  const activeSubDomain = useUIStore((s) => s.activeSubDomain);
-
-  useEffect(() => {
-    if (activeSubDomain) {
-      // Find the element by ID and scroll it into view smoothly
-      const el = document.getElementById(`clinical-${activeSubDomain}`);
-      if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-    }
-  }, [activeSubDomain]);
 
   return (
     <div className="fade-in">

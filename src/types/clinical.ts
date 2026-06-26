@@ -8,11 +8,6 @@ export type PedalEdema = "Yes" | "No" | "";
 
 export interface Clinical {
   // C1 — Medical Context
-  purposeOfVisit: string;
-  chiefComplaint: string;
-  medHx: string;
-  familyHx: string;
-  socialHx: string;
   allergiesIntolerances: string;
   medicalDevices: string;
   medications: string;

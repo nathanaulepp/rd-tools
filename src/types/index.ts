@@ -3,6 +3,7 @@
 // Usage: import type { Anthro, Clinical, Dietary } from '@/types';
 
 export type { PatientData } from "./patient";
+export type { PatientHistory } from "./patientHistory";
 export type {
   Anthro,
   DexaScan,

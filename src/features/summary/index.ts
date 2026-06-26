@@ -1,4 +1,5 @@
 export { default as SummaryPatientBanner } from "./SummaryPatientBanner";
+export { default as SummaryPatientHistoryCard } from "./SummaryPatientHistoryCard";
 export { default as SummaryAnthroCard } from "./SummaryAnthroCard";
 export { default as SummaryBiochemCard } from "./SummaryBiochemCard";
 export { default as SummaryClinicalCard } from "./SummaryClinicalCard";
