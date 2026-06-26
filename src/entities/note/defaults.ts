@@ -38,6 +38,7 @@ export const defaultAnthro: Anthro = {
   ubw: "", ubwDate: "",
   isFluidShift: false, edw: "", edwUnit: "kg",
   amputations: [],
+  ampSegments: [],
   waist: "", mac: "", calf: "", head: "", circUnit: "cm",
   triceps: "", subscapular: "", suprailiac: "", thigh: "", skinfoldUnit: "mm",
   past_ht: "", past_htUnit: "cm", past_wt: "", past_wtUnit: "kg",

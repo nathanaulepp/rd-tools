@@ -71,12 +71,15 @@ interface Props {
   onAmpDataChange?: (data: AmpData, intactWeightKg: number | null) => void;
   // Persisted amp data (parsed from store)
   initialData?: AmpData | null;
+  initialSelections?: { id: string; removedFraction: number }[]; // NEW
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function toKgLocal(val: number, unit: string): number {
   if (unit === "lbs") return val / 2.2046;
+  if (unit === "g")   return val / 1000;
+  if (unit === "oz")  return val / 35.274;
   return val;
 }
 
@@ -193,9 +196,12 @@ export const AmpSilhouetteWidget: React.FC<Props> = ({
   wtUnit,
   onAmpDataChange,
   initialData,
+  initialSelections,
 }) => {
   const [selections, setSelections] = useState<SegmentSelection[]>(
-    initialData?.segments ?? []
+    initialSelections && initialSelections.length > 0
+      ? initialSelections
+      : (initialData?.segments ?? [])
   );
   const [activeId, setActiveId] = useState<string | null>(null);
 

@@ -23,6 +23,7 @@ export interface Anthro {
 
   // Amputations
   amputations: string[];
+  ampSegments: { id: string; removedFraction: number }[];
 
   // Circumferences
   waist: string;

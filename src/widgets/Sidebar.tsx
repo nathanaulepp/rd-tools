@@ -43,11 +43,88 @@ export default function Sidebar({
 
   const isSubmitted = noteStatus === "submitted";
 
+  const isScrollingRef = React.useRef(false);
+  const scrollTimerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  React.useEffect(() => {
+    const domainSections = document.querySelectorAll<HTMLElement>("section[id^='domain-']");
+    const subSections = document.querySelectorAll<HTMLElement>("div[id^='clinical-'], div[id^='dietary-']");
+    if (!domainSections.length) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (isScrollingRef.current) return;  // ignore during programmatic scroll
+
+        const intersecting = entries.filter((e) => e.isIntersecting);
+        if (intersecting.length === 0) return;
+
+        // 1. Check top-level domain sections
+        const domainEntries = intersecting.filter((e) => e.target.id.startsWith("domain-"));
+        if (domainEntries.length > 0) {
+          const bestDomain = domainEntries.sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+          const key = bestDomain.target.id.replace("domain-", "") as DomainKey;
+          const currentDomain = useUIStore.getState().activeDomain;
+          if (currentDomain !== key) {
+            setActiveDomain(key);
+          }
+        }
+
+        // 2. Check sub-domain sections
+        const subEntries = intersecting.filter((e) => !e.target.id.startsWith("domain-"));
+        if (subEntries.length > 0) {
+          const bestSub = subEntries.sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+          const subId = bestSub.target.id;
+          
+          if (subId.startsWith("clinical-")) {
+            const subKey = subId.replace("clinical-", "");
+            const state = useUIStore.getState();
+            if (state.activeDomain === "C" && state.activeSubDomain !== subKey) {
+              setActiveSubDomain(subKey);
+            }
+          } else if (subId.startsWith("dietary-")) {
+            const subKey = subId.replace("dietary-", "");
+            const state = useUIStore.getState();
+            if (state.activeDomain === "D" && state.activeSubDomain !== subKey) {
+              setActiveSubDomain(subKey);
+            }
+          }
+        }
+      },
+      {
+        root: null,          // viewport
+        rootMargin: "-20% 0px -60% 0px",  // fire when within top 20% to 40% of viewport
+        threshold: [0, 0.1, 0.25, 0.5, 0.75, 1.0],
+      }
+    );
+
+    domainSections.forEach((el) => observer.observe(el));
+    subSections.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, [setActiveDomain, setActiveSubDomain]);
+
+  React.useEffect(() => {
+    return () => {
+      if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    };
+  }, []);
 
   const handleDomainClick = (domain: DomainKey) => {
+    isScrollingRef.current = true;
     setActiveDomain(domain);
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 1200); // clear after scroll animation completes (~800ms + buffer)
     if (window.innerWidth <= 768) setSidebarOpen(false);
+  };
+
+  const handleSubDomainClick = (subId: string) => {
+    isScrollingRef.current = true;
+    setActiveSubDomain(subId);
+    if (scrollTimerRef.current) clearTimeout(scrollTimerRef.current);
+    scrollTimerRef.current = setTimeout(() => {
+      isScrollingRef.current = false;
+    }, 1200); // clear after scroll animation completes (~800ms + buffer)
   };
 
   return (
@@ -91,7 +168,7 @@ export default function Sidebar({
                 key={cat.id}
                 label={cat.title}
                 active={activeSubDomain === cat.id}
-                onClick={() => setActiveSubDomain(cat.id)}
+                onClick={() => handleSubDomainClick(cat.id)}
               />
             ))}
           </div>
@@ -110,7 +187,7 @@ export default function Sidebar({
                 key={cat.id}
                 label={cat.title}
                 active={activeSubDomain === cat.id}
-                onClick={() => setActiveSubDomain(cat.id)}
+                onClick={() => handleSubDomainClick(cat.id)}
               />
             ))}
           </div>

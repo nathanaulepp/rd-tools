@@ -32,6 +32,7 @@ export const MASTER_DOMAINS = [
       { key: "edw",              label: "Estimated Dry Weight" },
       { key: "isFluidShift",     label: "Fluid Shift Flag" },
       { key: "amputations",      label: "Amputation Selections" },
+      { key: "ampSegments",      label: "Amputation Segment Data (Rich)" },
       { key: "circUnit",         label: "Circumference Unit" },
       { key: "past_ht",          label: "Past Height (Growth Velocity)" },
       { key: "past_wt",          label: "Past Weight (Growth Velocity)" },

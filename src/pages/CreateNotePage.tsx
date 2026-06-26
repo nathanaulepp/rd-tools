@@ -115,6 +115,14 @@ export default function CreateNotePage() {
     triggerSave();
   }, [activeDomain, activeSubDomain, saveAllDomains, showToast, diagnosis]);
 
+  // Scroll to the domain section when activeDomain changes via sidebar click
+  useEffect(() => {
+    const el = document.getElementById(`domain-${activeDomain}`);
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [activeDomain]);
+
   // ── Submit ──────────────────────────────────────────────────────────────────
   const handleConfirmSubmit = async () => {
     if (!noteId || !patientId) return;
@@ -188,15 +196,33 @@ export default function CreateNotePage() {
         )}
 
         <div className="content-area">
-          {activeDomain === "A" && <AnthroDomain />}
-          {activeDomain === "B" && <BiochemicalDomain />}
-          {activeDomain === "C" && <ClinicalDomain />}
-          {activeDomain === "D" && <DietaryDomain />}
-          {activeDomain === "S" && <NutritionStandardsDomain />}
-          {activeDomain === "RF" && <RefeedingDomain />}
-          {activeDomain === "Dx" && <DiagnosisDomain />}
-          {activeDomain === "I" && <InterventionDomain />}
-          {activeDomain === "ME" && <MonitorEvalDomain />}
+          <section id="domain-A" style={{ scrollMarginTop: "1rem" }}>
+            <AnthroDomain />
+          </section>
+          <section id="domain-B" style={{ scrollMarginTop: "1rem" }}>
+            <BiochemicalDomain />
+          </section>
+          <section id="domain-C" style={{ scrollMarginTop: "1rem" }}>
+            <ClinicalDomain />
+          </section>
+          <section id="domain-D" style={{ scrollMarginTop: "1rem" }}>
+            <DietaryDomain />
+          </section>
+          <section id="domain-S" style={{ scrollMarginTop: "1rem" }}>
+            <NutritionStandardsDomain />
+          </section>
+          <section id="domain-RF" style={{ scrollMarginTop: "1rem" }}>
+            <RefeedingDomain />
+          </section>
+          <section id="domain-Dx" style={{ scrollMarginTop: "1rem" }}>
+            <DiagnosisDomain />
+          </section>
+          <section id="domain-I" style={{ scrollMarginTop: "1rem" }}>
+            <InterventionDomain />
+          </section>
+          <section id="domain-ME" style={{ scrollMarginTop: "1rem" }}>
+            <MonitorEvalDomain />
+          </section>
         </div>
 
         <GlobalToast />

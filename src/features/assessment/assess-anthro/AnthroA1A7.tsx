@@ -19,13 +19,52 @@ export default function AnthroA1A7() {
   const calculatedMetrics = useCalculatedMetrics();
 
   const [intactWeightKg, setIntactWeightKg] = React.useState<number | null>(null);
-  const [isAmputee, setIsAmputee] = React.useState(false);
+  const [localIsAmputee, setLocalIsAmputee] = React.useState(false);
+  const isAmputee = (anthro.ampSegments?.length ?? 0) > 0 || localIsAmputee;
+
+  React.useEffect(() => {
+    if (anthro.ampSegments && anthro.ampSegments.length > 0) {
+      const SEGMENT_PCTS: Record<string, number> = {
+        r_hand: 0.7, r_forearm: 2.3, r_upper_arm: 2.8,
+        l_hand: 0.7, l_forearm: 2.3, l_upper_arm: 2.8,
+        r_foot: 1.5, r_lower_leg: 4.4, r_upper_leg: 10.0,
+        l_foot: 1.5, l_lower_leg: 4.4, l_upper_leg: 10.0,
+      };
+      const bedScaleKg = Number(anthro.wt) || 0;
+      let totalLost = 0;
+      for (const sel of anthro.ampSegments) {
+        totalLost += ((SEGMENT_PCTS[sel.id] ?? 0) / 100) * sel.removedFraction;
+      }
+      const remainder = 1 - totalLost;
+      if (bedScaleKg > 0 && remainder > 0) {
+        let wtKgVal = bedScaleKg;
+        if (anthro.wtUnit === "lbs") wtKgVal = bedScaleKg / 2.2046;
+        else if (anthro.wtUnit === "g") wtKgVal = bedScaleKg / 1000;
+        else if (anthro.wtUnit === "oz") wtKgVal = bedScaleKg / 35.274;
+        setIntactWeightKg(wtKgVal / remainder);
+      }
+    }
+  }, []); // run once on mount only
 
   const handleAmpDataChange = React.useCallback(
-    (_data: AmpData, intactKg: number | null) => {
+    (data: AmpData, intactKg: number | null) => {
       setIntactWeightKg(intactKg);
+      
+      const segments = data.segments;
+      setAnthro({
+        ampSegments: segments,
+        amputations: segments.map((sel) => {
+          const SEGMENT_LABELS: Record<string, string> = {
+            r_hand: "Hand", r_forearm: "Forearm", r_upper_arm: "Entire Arm",
+            l_hand: "Hand", l_forearm: "Forearm", l_upper_arm: "Entire Arm",
+            r_foot: "Foot", r_lower_leg: "BKA (Below Knee)", r_upper_leg: "AKA (Above Knee)",
+            l_foot: "Foot", l_lower_leg: "BKA (Below Knee)", l_upper_leg: "AKA (Above Knee)",
+          };
+          return SEGMENT_LABELS[sel.id] ?? sel.id;
+        }),
+      });
     },
-    []
+    [setAnthro]
   );
 
   const handleUpdate = (field: keyof Anthro, val: any) =>
@@ -226,7 +265,15 @@ export default function AnthroA1A7() {
                 type="checkbox"
                 id="isAmputee"
                 checked={isAmputee}
-                onChange={(e) => setIsAmputee(e.target.checked)}
+                onChange={(e) => {
+                  if (!e.target.checked) {
+                    setAnthro({ ampSegments: [], amputations: [] });
+                    setIntactWeightKg(null);
+                    setLocalIsAmputee(false);
+                  } else {
+                    setLocalIsAmputee(true);
+                  }
+                }}
                 style={{ width: "auto", margin: 0 }}
               />
               <label htmlFor="isAmputee" style={{ margin: 0, fontWeight: 700, cursor: "pointer" }}>
@@ -237,9 +284,10 @@ export default function AnthroA1A7() {
             {isAmputee && (
               <div className="fade-in">
                 <AmpSilhouetteWidget
-                  wtKg={calculatedMetrics.wtKg}
+                  wtKg={Number(anthro.wt) || 0}
                   wtUnit={anthro.wtUnit}
                   onAmpDataChange={handleAmpDataChange}
+                  initialSelections={anthro.ampSegments ?? []}
                 />
                 {intactWeightKg !== null && (
                   <div className="mt-1" style={{ fontSize: "0.8rem", fontWeight: 700, color: "#0f172a" }}>

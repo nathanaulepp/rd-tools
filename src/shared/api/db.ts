@@ -627,6 +627,7 @@ export async function submitNote(
     past_wtDate:       (anthroData.past_wtDate as string)     ?? null,
     past_headDate:     (anthroData.past_headDate as string)   ?? null,
     amputations:       anthroData.amputations                 ?? null,
+    ampSegments:       anthroData.ampSegments                 ?? null,
     dexaScans:         anthroData.dexaScans                   ?? null,
 
     // Clinical domain (from note.clinical JSON)
