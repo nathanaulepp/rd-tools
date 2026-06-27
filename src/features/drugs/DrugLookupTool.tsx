@@ -428,50 +428,116 @@ function ProductCombobox({
 
 // ── Product Badge shown after selection ───────────────────────────────────────
 
-function ProductBadge({ product, onClear }: { product: MedicationProduct; onClear: () => void }) {
+interface ProductBadgeProps {
+  product: MedicationProduct;
+  onClear: () => void;
+  showDoseFields: boolean;
+  order: MedicationOrder;
+  onField: (field: keyof Omit<MedicationOrder, "product">, val: string) => void;
+}
+
+function ProductBadge({ product, onClear, showDoseFields, order, onField }: ProductBadgeProps) {
   if (!product.displayName) return null;
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: "10px", background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "10px 12px", marginTop: "6px" }}>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontWeight: 700, fontSize: "0.9rem", color: "#1d4ed8" }}>{product.displayName}</div>
-        <div style={{ display: "flex", gap: "16px", marginTop: "4px", flexWrap: "wrap" }}>
-          {product.ingredient && (
-            <span style={metaStyle}>
-              <span style={metaLabelStyle}>Ingredient</span> {product.ingredient}
-            </span>
-          )}
-          {product.strengthValue != null && (
-            <span style={metaStyle}>
-              <span style={metaLabelStyle}>Strength</span> {product.strengthValue} {product.strengthUnit}
-            </span>
-          )}
-          {product.doseForm && (
-            <span style={metaStyle}>
-              <span style={metaLabelStyle}>Form</span> {product.doseForm}
-            </span>
-          )}
-          {product.rxcui && (
-            <span style={metaStyle}>
-              <span style={metaLabelStyle}>RxCUI</span>
-              <a
-                href={`https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm=${product.rxcui}`}
-                target="_blank"
-                rel="noreferrer"
-                style={{ color: "#3b82f6", textDecoration: "none" }}
-              >
-                {product.rxcui}
-              </a>
-            </span>
-          )}
+    <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "8px 12px", marginTop: "6px" }}>
+      {/* Top row: drug name + meta + Change button */}
+      <div style={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 700, fontSize: "0.88rem", color: "#1d4ed8" }}>{product.displayName}</div>
+          <div style={{ display: "flex", gap: "12px", marginTop: "2px", flexWrap: "wrap" }}>
+            {product.ingredient && (
+              <span style={metaStyle}>
+                <span style={metaLabelStyle}>Ingredient</span> {product.ingredient}
+              </span>
+            )}
+            {product.strengthValue != null && (
+              <span style={metaStyle}>
+                <span style={metaLabelStyle}>Strength</span> {product.strengthValue} {product.strengthUnit}
+              </span>
+            )}
+            {product.doseForm && (
+              <span style={metaStyle}>
+                <span style={metaLabelStyle}>Form</span> {product.doseForm}
+              </span>
+            )}
+            {product.rxcui && (
+              <span style={metaStyle}>
+                <span style={metaLabelStyle}>RxCUI</span>
+                <a
+                  href={`https://mor.nlm.nih.gov/RxNav/search?searchBy=RXCUI&searchTerm=${product.rxcui}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "#3b82f6", textDecoration: "none" }}
+                >
+                  {product.rxcui}
+                </a>
+              </span>
+            )}
+          </div>
         </div>
+        <button
+          onClick={onClear}
+          title="Change product"
+          style={{ background: "none", border: "1px solid #93c5fd", borderRadius: "4px", color: "#3b82f6", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", padding: "2px 8px", whiteSpace: "nowrap", flexShrink: 0 }}
+        >
+          Change
+        </button>
       </div>
-      <button
-        onClick={onClear}
-        title="Change product"
-        style={{ background: "none", border: "1px solid #93c5fd", borderRadius: "4px", color: "#3b82f6", fontSize: "0.72rem", fontWeight: 700, cursor: "pointer", padding: "2px 8px", whiteSpace: "nowrap" }}
-      >
-        Change
-      </button>
+
+      {/* Inline dose fields — only when showDoseFields is true */}
+      {showDoseFields && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 1fr 1fr 1fr", gap: "6px", marginTop: "8px", alignItems: "end" }}>
+          {/* Dose amount */}
+          <div>
+            <label style={metaLabelStyle}>Dose Amount</label>
+            <input
+              type="text"
+              value={order.doseAmount}
+              onChange={e => onField("doseAmount", e.target.value)}
+              placeholder="e.g. 2"
+              style={inlineBadgeInputStyle}
+            />
+          </div>
+          {/* Dose unit */}
+          <div>
+            <label style={metaLabelStyle}>Unit</label>
+            <select
+              value={order.doseUnit}
+              onChange={e => onField("doseUnit", e.target.value)}
+              style={inlineBadgeInputStyle}
+            >
+              {DOSE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </div>
+          {/* Route */}
+          <div>
+            <label style={metaLabelStyle}>Route</label>
+            <select value={order.route} onChange={e => onField("route", e.target.value)} style={inlineBadgeInputStyle}>
+              <option value="">—</option>
+              {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </div>
+          {/* Frequency */}
+          <div>
+            <label style={metaLabelStyle}>Frequency</label>
+            <select value={order.frequency} onChange={e => onField("frequency", e.target.value)} style={inlineBadgeInputStyle}>
+              <option value="">—</option>
+              {FREQUENCIES.map(f => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
+          {/* Clinical notes */}
+          <div>
+            <label style={metaLabelStyle}>Clinical Notes</label>
+            <input
+              type="text"
+              value={order.notes}
+              onChange={e => onField("notes", e.target.value)}
+              placeholder="Indication, interactions…"
+              style={inlineBadgeInputStyle}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -533,64 +599,15 @@ function OrderRow({
         />
       )}
 
-      {/* Product badge */}
+      {/* Product badge — dose fields now live inside it */}
       {hasProduct && (
         <ProductBadge
           product={order.product}
           onClear={() => onProductSelect({ rxcui: "", displayName: "", ingredient: "", strengthValue: null, strengthUnit: "", doseForm: "", tty: "SCD" })}
+          showDoseFields={showDoseFields}
+          order={order}
+          onField={onField}
         />
-      )}
-
-      {/* Prescription fields */}
-      {showDoseFields && hasProduct && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "0.5rem", marginTop: "0.65rem" }}>
-          <div>
-            <label style={labelStyle}>Dose Amount</label>
-            <div style={{ display: "flex", gap: "4px" }}>
-              <input
-                type="text"
-                value={order.doseAmount}
-                onChange={e => onField("doseAmount", e.target.value)}
-                placeholder="e.g. 2"
-                style={{ ...inputStyle, flex: 1, minWidth: 0 }}
-              />
-              <select
-                value={order.doseUnit}
-                onChange={e => onField("doseUnit", e.target.value)}
-                style={{ ...inputStyle, width: "90px", padding: "5px 4px" }}
-              >
-                {DOSE_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Route</label>
-            <select value={order.route} onChange={e => onField("route", e.target.value)} style={inputStyle}>
-              <option value="">—</option>
-              {ROUTES.map(r => <option key={r} value={r}>{r}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Frequency</label>
-            <select value={order.frequency} onChange={e => onField("frequency", e.target.value)} style={inputStyle}>
-              <option value="">—</option>
-              {FREQUENCIES.map(f => <option key={f} value={f}>{f}</option>)}
-            </select>
-          </div>
-
-          <div>
-            <label style={labelStyle}>Clinical Notes</label>
-            <input
-              type="text"
-              value={order.notes}
-              onChange={e => onField("notes", e.target.value)}
-              placeholder="Indication, interactions…"
-              style={inputStyle}
-            />
-          </div>
-        </div>
       )}
     </div>
   );
@@ -598,17 +615,7 @@ function OrderRow({
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
-const labelStyle: React.CSSProperties = {
-  fontSize: "0.68rem", fontWeight: 700, color: "#64748b",
-  textTransform: "uppercase", letterSpacing: "0.04em",
-  display: "block", marginBottom: "3px",
-};
 
-const inputStyle: React.CSSProperties = {
-  padding: "5px 8px", border: "1px solid #e2e8f0",
-  borderRadius: "4px", fontSize: "0.85rem",
-  width: "100%", boxSizing: "border-box", fontFamily: "inherit",
-};
 
 const metaStyle: React.CSSProperties = {
   fontSize: "0.78rem", color: "#334155",
@@ -618,6 +625,17 @@ const metaLabelStyle: React.CSSProperties = {
   fontWeight: 700, color: "#64748b", fontSize: "0.68rem",
   textTransform: "uppercase", letterSpacing: "0.03em",
   marginRight: "4px",
+};
+
+const inlineBadgeInputStyle: React.CSSProperties = {
+  padding: "4px 6px",
+  border: "1px solid #bfdbfe",
+  borderRadius: "4px",
+  fontSize: "0.82rem",
+  width: "100%",
+  boxSizing: "border-box",
+  fontFamily: "inherit",
+  background: "#fff",
 };
 
 // ── Main Component ────────────────────────────────────────────────────────────

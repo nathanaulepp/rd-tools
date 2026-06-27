@@ -1,10 +1,10 @@
-// src/features/formulary/EnteralFormulaManager.tsx
+// src/features/settings/formulary/EnteralFormulaManager.tsx
 // Full CRUD UI for the hospital enteral formulary.
 // Mounted as a tab inside SettingsPage.
 
 import React, { useEffect, useState } from "react";
-import { useEnteralFormulaStore } from "../../stores/useEnteralFormulaStore";
-import type { EnteralFormula, EnteralFormulaInput, EnteralPopulation } from "../../types/enteralFormula";
+import { useEnteralFormulaStore } from "../../../stores/useEnteralFormulaStore";
+import type { EnteralFormula, EnteralFormulaInput, EnteralPopulation } from "../../../types/enteralFormula";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
