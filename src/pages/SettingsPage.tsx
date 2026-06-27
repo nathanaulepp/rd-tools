@@ -1,6 +1,8 @@
 import { useState, CSSProperties } from "react";
 import { useEscapeBackout } from "../shared/utils/ShortcutContext";
-import EnteralFormulaManager from "../features/formulary/EnteralFormulaManager";
+import EnteralFormulaManager from "../features/settings/formulary/EnteralFormulaManager";
+import HospitalDietManager from "../features/settings/diets/HospitalDietManager";
+import DysphagiaModManager from "../features/settings/diets/DysphagiaModManager";
 import SubmissionRequirementsPanel from "../features/settings/SubmissionRequirementsPanel";
 import SchemaInfoPanel from "../features/settings/SchemaInfoPanel";
 import ChemistryTemplatesPanel from "../features/settings/ChemistryTemplatesPanel";
@@ -14,7 +16,7 @@ interface SettingsPageProps {
 export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
   useEscapeBackout(handleExitToStart);
 
-  const [activeTab, setActiveTab] = useState<"requirements" | "formulary" | "chemistry">("requirements");
+  const [activeTab, setActiveTab] = useState<"requirements" | "formulary" | "chemistry" | "diets">("requirements");
   const [toastMsg, setToastMsg] = useState("");
 
   const showToast = (msg: string) => {
@@ -36,10 +38,11 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
               { id: "requirements", label: "⚙ Submission Requirements" },
               { id: "formulary",    label: "🥤 Enteral Formulary" },
               { id: "chemistry",    label: "🧪 Chemistry Templates" },
+              { id: "diets",        label: "🍽️ Diet List" },
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as "requirements" | "formulary" | "chemistry")}
+                onClick={() => setActiveTab(tab.id as "requirements" | "formulary" | "chemistry" | "diets")}
                 style={{
                   padding: "6px 16px",
                   borderRadius: "8px",
@@ -58,7 +61,7 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
         </div>
       </header>
 
-      <div style={s.content}>
+      <div style={{ ...s.content, maxWidth: activeTab === "diets" ? "1200px" : "800px" }}>
         {activeTab === "requirements" ? (
           <>
             <SubmissionRequirementsPanel showToast={showToast} />
@@ -66,6 +69,23 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
           </>
         ) : activeTab === "chemistry" ? (
           <ChemistryTemplatesPanel showToast={showToast} />
+        ) : activeTab === "diets" ? (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1.5rem", alignItems: "start" }}>
+            <section style={s.section}>
+              <h3 style={s.sectionTitle}>Hospital Diet List</h3>
+              <p style={s.sectionDesc}>
+                Define the orderable diets available at your facility.
+              </p>
+              <HospitalDietManager />
+            </section>
+            <section style={s.section}>
+              <h3 style={s.sectionTitle}>Dysphagia Modifications</h3>
+              <p style={s.sectionDesc}>
+                Define texture and liquid consistency modifications (IDDSI levels and facility-specific labels).
+              </p>
+              <DysphagiaModManager />
+            </section>
+          </div>
         ) : (
           <section style={s.section}>
             <h3 style={s.sectionTitle}>Hospital Enteral Formulary</h3>

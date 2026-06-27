@@ -243,6 +243,94 @@ async function initSchema(db: Database): Promise<void> {
     }
   }
 
+  // Hospital diet list
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS hospital_diets (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      sort_order  INTEGER NOT NULL DEFAULT 0,
+      created_at  TEXT NOT NULL
+    )
+  `);
+
+  const defaultDiets = [
+    { name: "Regular" },
+    { name: "NPO" },
+    { name: "Full Liquid" },
+    { name: "Clear Liquid" },
+    { name: "Cardiac" },
+    { name: "Diabetic / Consistent CHO" },
+    { name: "Renal Low PRO" },
+    { name: "Renal High PRO" },
+    { name: "Low Na (2g)" },
+    { name: "Fat Restricted" },
+    { name: "Low Fiber" },
+    { name: "High Fiber" },
+    { name: "Gluten Free" },
+    { name: "Dairy Allergies" },
+    { name: "Peanut Allergy" },
+    { name: "Tree Nut Allergy" },
+    { name: "Fish Allergy" },
+    { name: "Shellfish Allergy" },
+    { name: "Egg Allergy" },
+    { name: "Wheat Allergy" },
+    { name: "Soy Allergy" },
+    { name: "Sesame Allergy" },
+  ];
+
+  // Only seed defaults if the table is completely empty.
+  // If the user has deleted defaults, that is intentional — do not re-insert.
+  const dietCount = await db.select<{ count: number }[]>(
+    `SELECT COUNT(*) as count FROM hospital_diets`
+  );
+  if (dietCount[0].count === 0) {
+    for (let i = 0; i < defaultDiets.length; i++) {
+      const d = defaultDiets[i];
+      await db.execute(
+        `INSERT INTO hospital_diets (id, name, sort_order, created_at)
+         VALUES (?, ?, ?, ?)`,
+        [uuid(), d.name, i, new Date().toISOString()]
+      );
+    }
+  }
+
+  // Dysphagia modification list
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS hospital_dysphagia_mods (
+      id          TEXT PRIMARY KEY,
+      name        TEXT NOT NULL,
+      sort_order  INTEGER NOT NULL DEFAULT 0,
+      created_at  TEXT NOT NULL
+    )
+  `);
+
+  const defaultDysphagiaMods = [
+    "Food (Level 7 — Regular)",
+    "Food (Level 6 — Soft & Bite-Sized)",
+    "Food (Level 5 — Minced & Moist)",
+    "Food (Level 4 — Pureed)",
+    "Food (Level 3 — Liquidized)",
+    "Liquid (Level 4 — Extremely Thick)",
+    "Liquid (Level 3 — Moderately Thick)",
+    "Liquid (Level 2 — Mildly Thick)",
+    "Liquid (Level 1 — Slightly Thick)",
+    "Liquid (Level 0 — Thin Liquids)",
+    "NPO — Dysphagia",
+  ];
+
+  const dysphagiaMobCount = await db.select<{ count: number }[]>(
+    `SELECT COUNT(*) as count FROM hospital_dysphagia_mods`
+  );
+  if (dysphagiaMobCount[0].count === 0) {
+    for (let i = 0; i < defaultDysphagiaMods.length; i++) {
+      await db.execute(
+        `INSERT INTO hospital_dysphagia_mods (id, name, sort_order, created_at)
+         VALUES (?, ?, ?, ?)`,
+        [uuid(), defaultDysphagiaMods[i], i, new Date().toISOString()]
+      );
+    }
+  }
+
   const now = new Date().toISOString();
 
   const defaultRequirements = [
@@ -356,6 +444,30 @@ export interface SubmissionRequirement {
 export interface SubmissionCheckResult {
   valid: boolean;
   missingFields: string[];
+}
+
+export interface HospitalDiet {
+  id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface HospitalDietInput {
+  name: string;
+  sort_order: number;
+}
+
+export interface HospitalDysphagiaMode {
+  id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface HospitalDysphagiaModInput {
+  name: string;
+  sort_order: number;
 }
 
 // ─── Patient commands ─────────────────────────────────────────────────────────
@@ -1157,3 +1269,79 @@ export async function addSubmissionRequirement(
     created_at:             row.created_at,
   };
   }
+
+// ─── Hospital Diet commands ───────────────────────────────────────────────────
+
+export async function getAllDiets(): Promise<HospitalDiet[]> {
+  const db = await getDb();
+  return await db.select<HospitalDiet[]>(
+    `SELECT * FROM hospital_diets ORDER BY sort_order ASC, name ASC`
+  );
+}
+
+export async function createDiet(input: HospitalDietInput): Promise<HospitalDiet> {
+  const db = await getDb();
+  const id = uuid();
+  const now = new Date().toISOString();
+  await db.execute(
+    `INSERT INTO hospital_diets (id, name, sort_order, created_at)
+     VALUES (?, ?, ?, ?)`,
+    [id, input.name, input.sort_order, now]
+  );
+  return { id, ...input, created_at: now };
+}
+
+export async function updateDiet(id: string, input: Partial<HospitalDietInput>): Promise<void> {
+  const db = await getDb();
+  const fields = Object.keys(input) as (keyof HospitalDietInput)[];
+  if (fields.length === 0) return;
+  const setClauses = fields.map(f => `${f} = ?`).join(", ");
+  const values = fields.map(f => input[f]);
+  await db.execute(
+    `UPDATE hospital_diets SET ${setClauses} WHERE id = ?`,
+    [...values, id]
+  );
+}
+
+export async function deleteDiet(id: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(`DELETE FROM hospital_diets WHERE id = ?`, [id]);
+}
+
+// ─── Dysphagia Modification commands ─────────────────────────────────────────
+
+export async function getAllDysphagiaeMods(): Promise<HospitalDysphagiaMode[]> {
+  const db = await getDb();
+  return await db.select<HospitalDysphagiaMode[]>(
+    `SELECT * FROM hospital_dysphagia_mods ORDER BY sort_order ASC, name ASC`
+  );
+}
+
+export async function createDysphagiaeMod(input: HospitalDysphagiaModInput): Promise<HospitalDysphagiaMode> {
+  const db = await getDb();
+  const id = uuid();
+  const now = new Date().toISOString();
+  await db.execute(
+    `INSERT INTO hospital_dysphagia_mods (id, name, sort_order, created_at)
+     VALUES (?, ?, ?, ?)`,
+    [id, input.name, input.sort_order, now]
+  );
+  return { id, ...input, created_at: now };
+}
+
+export async function updateDysphagiaeMod(id: string, input: Partial<HospitalDysphagiaModInput>): Promise<void> {
+  const db = await getDb();
+  const fields = Object.keys(input) as (keyof HospitalDysphagiaModInput)[];
+  if (fields.length === 0) return;
+  const setClauses = fields.map(f => `${f} = ?`).join(", ");
+  const values = fields.map(f => input[f]);
+  await db.execute(
+    `UPDATE hospital_dysphagia_mods SET ${setClauses} WHERE id = ?`,
+    [...values, id]
+  );
+}
+
+export async function deleteDysphagiaeMod(id: string): Promise<void> {
+  const db = await getDb();
+  await db.execute(`DELETE FROM hospital_dysphagia_mods WHERE id = ?`, [id]);
+}

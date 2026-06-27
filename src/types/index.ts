@@ -28,3 +28,5 @@ export type { MonitorEval, OutcomeProgress } from "./monitorEval";
 export type { Standards, EvaluationSnapshot } from "./standards";
 export type { RefeedingScreen, RiskLevel, WtLossSource, EnergyIntakeOption, ElectrolyteCriterion } from "./refeedingScreen";
 export type { EnteralFormula, EnteralFormulaInput } from "./enteralFormula";
+export type { HospitalDiet, HospitalDietInput } from '../shared/api/db';
+export type { HospitalDysphagiaMode, HospitalDysphagiaModInput } from '../shared/api/db';
