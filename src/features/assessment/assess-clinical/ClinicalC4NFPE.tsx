@@ -87,7 +87,6 @@ const MICRONUTRIENT_CATEGORIES = [
 export default function ClinicalC4NFPE() {
   const { clinical, setClinical } = useClinicalStore();
   const [c4Expanded, setC4Expanded] = React.useState(false);
-  const [c45Expanded, setC45Expanded] = React.useState(false);
 
   const handleUpdate = (field: keyof Clinical, val: string | string[]) =>
     setClinical({ [field]: val } as Partial<Clinical>);
@@ -138,125 +137,128 @@ export default function ClinicalC4NFPE() {
       {/* Unified 5-Column NFPE Table Card */}
       <div className="card mb-1">
         <CollapseHeader
-          label="C4: Nutrition Focused Physical Exam (NFPE)"
+          label="C3: Nutrition Focused Physical Exam (NFPE) & Micronutrient Signs"
           expanded={c4Expanded}
           onToggle={() => setC4Expanded(!c4Expanded)}
         />
         {c4Expanded && (
-          <div style={{ overflowX: "auto" }}>
-          <table
-            className="lab-table nfpe-table"
-            style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}
-          >
-            <thead>
-              <tr>
-                <th colSpan={2} style={{ padding: "0.5rem", fontSize: "0.7rem", width: "40%", border: "1px solid var(--border)" }}>
-                  Muscle Wasting (C41)
-                </th>
-                <th style={{ padding: "0.5rem", fontSize: "0.7rem", width: "20%", border: "1px solid var(--border)" }}>
-                  Subcutaneous Fat Loss (C42)
-                </th>
-                <th style={{ padding: "0.5rem", fontSize: "0.7rem", width: "20%", border: "1px solid var(--border)" }}>
-                  Fluid Accumulation (C43)
-                </th>
-                <th style={{ padding: "0.5rem", fontSize: "0.7rem", width: "20%", border: "1px solid var(--border)" }}>
-                  Functional Status (C44)
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {/* Row 1 */}
-              <tr>
-                {renderStandardCell("Temples", "temples", NFPE_OPTIONS, SEVERITY_MAP)}
-                {renderStandardCell("Clavicles", "clavicles", NFPE_OPTIONS, SEVERITY_MAP)}
-                {renderStandardCell("Orbital", "orbital", NFPE_OPTIONS, SEVERITY_MAP)}
-                {renderStandardCell("Pitting Edema", "pittingEdema", ["None", "+1", "+2", "+3", "+4"], SEVERITY_MAP)}
-                {renderStandardCell("Grip Strength", "gripStrength", ["WNL", "Measurably Reduced"], SEVERITY_MAP)}
-              </tr>
-
-              {/* Row 2 */}
-              <tr>
-                {renderStandardCell("Shoulders", "shoulders", NFPE_OPTIONS, SEVERITY_MAP)}
-                {renderStandardCell("Scapula", "scapula", NFPE_OPTIONS, SEVERITY_MAP)}
-                {renderStandardCell("Cheek", "cheek", NFPE_OPTIONS, SEVERITY_MAP)}
-                {renderStandardCell("Pedal Edema", "pedalEdema", ["No", "Yes"], SEVERITY_MAP)}
-                <td style={{ border: "1px solid var(--border)" }} />
-              </tr>
-
-              {/* Row 3 */}
-              <tr>
-                {renderStandardCell("Interosseous", "interosseous", NFPE_OPTIONS, SEVERITY_MAP)}
-                {renderStandardCell("Thighs", "thighs", NFPE_OPTIONS, SEVERITY_MAP)}
-                {renderStandardCell("Triceps", "tricepsFat", NFPE_OPTIONS, SEVERITY_MAP)}
-                {renderStandardCell("Ascites", "ascites", ["None", "Mild", "Moderate", "Severe"], SEVERITY_MAP)}
-                <td style={{ border: "1px solid var(--border)" }} />
-              </tr>
-
-              {/* Row 4 */}
-              <tr>
-                {renderStandardCell("Calves", "calves", NFPE_OPTIONS, SEVERITY_MAP)}
-                <td style={{ border: "1px solid var(--border)" }} />
-                {renderStandardCell("Mid-Axillary", "midAxillary", NFPE_OPTIONS, SEVERITY_MAP)}
-                <td style={{ verticalAlign: "top", padding: "0.5rem", border: "1px solid var(--border)" }}>
-                  {renderCellHeader("Edema Description")}
-                  <input
-                    type="text"
-                    value={clinical.edemaDescription || ""}
-                    onChange={(e) => handleUpdate("edemaDescription", e.target.value)}
-                    placeholder="e.g. bilateral legs"
-                    style={{
-                      width: "100%",
-                      padding: "0.25rem 0.4rem",
-                      fontSize: "0.75rem",
-                      borderRadius: "4px",
-                      border: "1px solid var(--border)",
-                      background: "transparent",
-                      color: "inherit",
-                    }}
-                  />
-                </td>
-                <td style={{ border: "1px solid var(--border)" }} />
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        )}
-      </div>
-
-      {/* C45: Micronutrient Signs Card */}
-      <div className="card mb-1">
-        <CollapseHeader
-          label="C45: Micronutrient Signs (Physical Exam)"
-          expanded={c45Expanded}
-          onToggle={() => setC45Expanded(!c45Expanded)}
-        />
-        {c45Expanded && (
           <>
-            <div className="grid-3-col">
-          {MICRONUTRIENT_CATEGORIES.map(({ area, options }) => {
-            const key = area.replace(/^(.)/, (c: string) => c.toLowerCase()) as keyof Clinical;
-            return (
-              <div className="input-group" key={area}>
-                <label>{area.replace(/([A-Z])/g, " $1").trim()}</label>
-                <ChipGroup
-                  options={options}
-                  value={(clinical as any)[key] || []}
-                  onChange={(v) => handleUpdate(key, v)}
-                  severityMap={SEVERITY_MAP}
+            <div style={{ overflowX: "auto" }}>
+              <table
+                className="lab-table nfpe-table"
+                style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}
+              >
+                <thead>
+                  <tr>
+                    <th colSpan={2} style={{ padding: "0.5rem", fontSize: "0.7rem", width: "40%", border: "1px solid var(--border)" }}>
+                      Muscle Wasting (C41)
+                    </th>
+                    <th style={{ padding: "0.5rem", fontSize: "0.7rem", width: "20%", border: "1px solid var(--border)" }}>
+                      Subcutaneous Fat Loss (C42)
+                    </th>
+                    <th style={{ padding: "0.5rem", fontSize: "0.7rem", width: "20%", border: "1px solid var(--border)" }}>
+                      Fluid Accumulation (C43)
+                    </th>
+                    <th style={{ padding: "0.5rem", fontSize: "0.7rem", width: "20%", border: "1px solid var(--border)" }}>
+                      Functional Status (C44)
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {/* Row 1 */}
+                  <tr>
+                    {renderStandardCell("Temples", "temples", NFPE_OPTIONS, SEVERITY_MAP)}
+                    {renderStandardCell("Clavicles", "clavicles", NFPE_OPTIONS, SEVERITY_MAP)}
+                    {renderStandardCell("Orbital", "orbital", NFPE_OPTIONS, SEVERITY_MAP)}
+                    {renderStandardCell("Pitting Edema", "pittingEdema", ["None", "+1", "+2", "+3", "+4"], SEVERITY_MAP)}
+                    {renderStandardCell("Grip Strength", "gripStrength", ["WNL", "Measurably Reduced"], SEVERITY_MAP)}
+                  </tr>
+
+                  {/* Row 2 */}
+                  <tr>
+                    {renderStandardCell("Shoulders", "shoulders", NFPE_OPTIONS, SEVERITY_MAP)}
+                    {renderStandardCell("Scapula", "scapula", NFPE_OPTIONS, SEVERITY_MAP)}
+                    {renderStandardCell("Cheek", "cheek", NFPE_OPTIONS, SEVERITY_MAP)}
+                    {renderStandardCell("Pedal Edema", "pedalEdema", ["No", "Yes"], SEVERITY_MAP)}
+                    <td style={{ border: "1px solid var(--border)" }} />
+                  </tr>
+
+                  {/* Row 3 */}
+                  <tr>
+                    {renderStandardCell("Interosseous", "interosseous", NFPE_OPTIONS, SEVERITY_MAP)}
+                    {renderStandardCell("Thighs", "thighs", NFPE_OPTIONS, SEVERITY_MAP)}
+                    {renderStandardCell("Triceps", "tricepsFat", NFPE_OPTIONS, SEVERITY_MAP)}
+                    {renderStandardCell("Ascites", "ascites", ["None", "Mild", "Moderate", "Severe"], SEVERITY_MAP)}
+                    <td style={{ border: "1px solid var(--border)" }} />
+                  </tr>
+
+                  {/* Row 4 */}
+                  <tr>
+                    {renderStandardCell("Calves", "calves", NFPE_OPTIONS, SEVERITY_MAP)}
+                    <td style={{ border: "1px solid var(--border)" }} />
+                    {renderStandardCell("Mid-Axillary", "midAxillary", NFPE_OPTIONS, SEVERITY_MAP)}
+                    <td style={{ verticalAlign: "top", padding: "0.5rem", border: "1px solid var(--border)" }}>
+                      {renderCellHeader("Edema Description")}
+                      <input
+                        type="text"
+                        value={clinical.edemaDescription || ""}
+                        onChange={(e) => handleUpdate("edemaDescription", e.target.value)}
+                        placeholder="e.g. bilateral legs"
+                        style={{
+                          width: "100%",
+                          padding: "0.25rem 0.4rem",
+                          fontSize: "0.75rem",
+                          borderRadius: "4px",
+                          border: "1px solid var(--border)",
+                          background: "transparent",
+                          color: "inherit",
+                        }}
+                      />
+                    </td>
+                    <td style={{ border: "1px solid var(--border)" }} />
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            {/* Micronutrient Signs — appended below the table inside the same card */}
+            <div style={{ marginTop: "1rem", borderTop: "1px solid var(--border)", paddingTop: "0.75rem" }}>
+              <div style={{
+                fontSize: "0.7rem",
+                fontWeight: 700,
+                color: "var(--text-muted)",
+                textTransform: "uppercase",
+                letterSpacing: "0.05em",
+                marginBottom: "0.5rem"
+              }}>
+                Micronutrient Signs
+              </div>
+              <div className="grid-3-col">
+                {MICRONUTRIENT_CATEGORIES.map(({ area, options }) => {
+                  const key = area.replace(/^(.)/, (c: string) => c.toLowerCase()) as keyof Clinical;
+                  return (
+                    <div className="input-group" key={area}>
+                      <label>{area.replace(/([A-Z])/g, " $1").trim()}</label>
+                      <ChipGroup
+                        options={options}
+                        value={(clinical as any)[key] || []}
+                        onChange={(v) => handleUpdate(key, v)}
+                        severityMap={SEVERITY_MAP}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="input-group mt-1">
+                <label>Clinical Notes (Nuance)</label>
+                <textarea
+                  style={{ minHeight: "100px" }}
+                  value={clinical.clinicalNotes || ""}
+                  onChange={(e) => handleUpdate("clinicalNotes", e.target.value)}
+                  placeholder="Add nuance for physical findings..."
                 />
               </div>
-            );
-          })}
-        </div>
-        <div className="input-group mt-1">
-          <label>Clinical Notes (Nuance)</label>
-          <textarea
-            style={{ minHeight: "100px" }}
-            value={clinical.clinicalNotes || ""}
-            onChange={(e) => handleUpdate("clinicalNotes", e.target.value)}
-            placeholder="Add nuance for physical findings..."
-          />
-        </div>
+            </div>
           </>
         )}
       </div>

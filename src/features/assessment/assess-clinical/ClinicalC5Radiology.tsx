@@ -14,7 +14,7 @@ export default function ClinicalC5Radiology() {
   return (
     <div className="card">
       <CollapseHeader
-        label="C5: Radiology & Imaging"
+        label="C4: Radiology & Imaging"
         expanded={expanded}
         onToggle={() => setExpanded(!expanded)}
       />

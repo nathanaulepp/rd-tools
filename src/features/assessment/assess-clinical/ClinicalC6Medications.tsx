@@ -13,7 +13,7 @@ export default function ClinicalC6Medications() {
   return (
     <div className="card">
       <DrugLookupTool
-        label="C6: Medications"
+        label="C5: Medications"
         value={clinical.medications || ""}
         onChange={(v) => handleUpdate("medications", v)}
         showDoseFields={true}

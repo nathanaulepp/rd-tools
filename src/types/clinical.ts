@@ -31,6 +31,39 @@ export interface Clinical {
   swallowChewConcerns: string[];
   nicheConditionFlags: string[];
 
+  // C2 (formerly C3) — GI expanded inputs
+  nauseaVas: string;                    // "0"–"10"
+  vomitingEpisodes: string;
+  vomitingDuration: string;
+  diarrheaEpisodes: string;
+  diarrheaDuration: string;
+  constipationDuration: string;
+  bloatingDuration: string;
+  abdominalPainType: string;            // "episodic" | "continuous" | ""
+  abdominalPainEpisodes: string;
+  abdominalPainDuration: string;
+  abdominalPainVas: string;
+  bmFrequency: string;
+  giComments: string;
+
+  // Mouth
+  dentitionStatus: string;              // single-select dropdown
+  dentitionModifiers: string[];         // multi-select
+  chewFunctionality: string;            // single-select dropdown
+  swallowFunctionality: string[];       // multi-select
+  mouthComments: string;
+
+  // Oral Hygiene structured
+  hasToothbrush: string;                // "yes" | "no" | ""
+  brushingFrequency: string;            // "BID" | "daily" | "some days" | "no" | ""
+  flossingFrequency: string;            // "daily" | "weekly" | "no" | ""
+  usesMouthwash: string;                // "yes" | "no" | ""
+  removesAppliances: string;            // "yes" | "no" | ""
+  cleansAppliances: string;             // "yes" | "no" | ""
+  fluorideToothpaste: string;           // "yes" | "no" | ""
+  spitsToothpaste: string;              // "yes" | "no" | ""
+  oralHygieneComments: string;
+
   // C5 — NFPE: Muscle wasting
   temples: NFPESeverity;
   clavicles: NFPESeverity;

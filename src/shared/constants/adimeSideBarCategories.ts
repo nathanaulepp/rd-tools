@@ -1,11 +1,10 @@
 
 export const CLINICAL_CATEGORIES = [
-  { id: "C1", title: "C1: Medical Context" },
-  { id: "C2", title: "C2: Vital Signs & Screenings" },
-  { id: "C3", title: "C3: GI & Systemic Function" },
-  { id: "C4", title: "C4: Nutrition Focused Physical Exam (NFPE)" },
-  { id: "C5", title: "C5: Radiology & Imaging" },
-  { id: "C6", title: "C6: Medications" }
+  { id: "C1", title: "C1: Vital Signs & Screenings" },
+  { id: "C2", title: "C2: GI & Systemic Function" },
+  { id: "C3", title: "C3: NFPE" },
+  { id: "C4", title: "C4: Radiology & Imaging" },
+  { id: "C5", title: "C5: Medications" },
 ];
 
 export const DIETARY_CATEGORIES = [

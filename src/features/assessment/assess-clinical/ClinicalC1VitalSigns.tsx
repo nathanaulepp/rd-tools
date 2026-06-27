@@ -1,10 +1,10 @@
-// src/features/assessment/assess-clinical/ClinicalC2VitalSigns.tsx
+// src/features/assessment/assess-clinical/ClinicalC1VitalSigns.tsx
 import React from "react";
 import { useClinicalStore } from "../../../stores/useClinicalStore";
 import { CollapseHeader } from "../../../shared/ui/CollapseHeader";
 import type { Clinical } from "../../../types";
 
-export default function ClinicalC2VitalSigns() {
+export default function ClinicalC1VitalSigns() {
   const { clinical, setClinical } = useClinicalStore();
   const [expanded, setExpanded] = React.useState(true);
 
@@ -14,7 +14,7 @@ export default function ClinicalC2VitalSigns() {
   return (
     <div className="card">
       <CollapseHeader
-        label="C2: Vital Signs & Screenings"
+        label="C1: Vital Signs & Screenings"
         expanded={expanded}
         onToggle={() => setExpanded(!expanded)}
       />
