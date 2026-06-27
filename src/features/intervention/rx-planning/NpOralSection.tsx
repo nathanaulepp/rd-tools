@@ -3,7 +3,7 @@
 // Reads/writes intervention.npOral via useInterventionStore directly — no props for state.
 // Depends on: interventionNpConstants, shared UI primitives.
 
-import React from "react";
+import React, { useState } from "react";
 import { useInterventionStore } from "../../../stores/useInterventionStore";
 import { Field }       from "../../../shared/ui/Field";
 import { NumInput }    from "../../../shared/ui/NumInput";
@@ -17,6 +17,8 @@ import {
 } from "../../../shared/constants/interventionNpConstants";
 import type { NpOralNutrition, NutrientModifier } from "../../../types/intervention";
 import type { ParsedTargets } from "../../../shared/utils/parseStandardsTargets";
+import { getAllDiets, getAllDysphagiaeMods } from "../../../shared/api/db";
+import type { HospitalDiet, HospitalDysphagiaMode } from "../../../types";
 
 // ── Internal sub-component: one dynamic nutrient modifier row ─────────────────
 
@@ -106,11 +108,167 @@ const FOODS_AND_PATTERNS_OPTIONS: string[] = [
   "Lactose free",
 ];
 
+// ── Diet Order Picker ─────────────────────────────────────────────────────────
+
+interface NpDietOrderPickerProps {
+  value: string;
+  onChange: (val: string) => void;
+}
+
+function NpDietOrderPicker({ value, onChange }: NpDietOrderPickerProps) {
+  const [diets, setDiets] = useState<HospitalDiet[]>([]);
+  const [dysphagiaMods, setDysphagiaMods] = useState<HospitalDysphagiaMode[]>([]);
+
+  React.useEffect(() => {
+    let active = true;
+    Promise.all([getAllDiets(), getAllDysphagiaeMods()])
+      .then(([dList, mList]) => {
+        if (active) {
+          setDiets(dList);
+          setDysphagiaMods(mList);
+        }
+      })
+      .catch((err) => console.error("Failed to load diets/mods in NpDietOrderPicker", err));
+    return () => { active = false; };
+  }, []);
+
+  const { baseDiet, dysphagiaMod, freetext } = React.useMemo(() => {
+    let baseDietVal = "";
+    let dysphagiaModVal = "";
+    let freetextVal = "";
+
+    if (value) {
+      const parenMatch = value.match(/\(([^)]+)\)$/);
+      let cleanedValue = value;
+      if (parenMatch) {
+        freetextVal = parenMatch[1];
+        cleanedValue = value.substring(0, value.lastIndexOf("(")).trim();
+      }
+
+      const parts = cleanedValue.split(" / ");
+      if (parts.length > 1) {
+        baseDietVal = parts[0].trim();
+        dysphagiaModVal = parts[1].trim();
+      } else if (parts.length === 1 && parts[0].trim()) {
+        const matchedBase = diets.find(
+          (d) => d.name.toLowerCase() === parts[0].trim().toLowerCase()
+        );
+        if (matchedBase) {
+          baseDietVal = matchedBase.name;
+        } else {
+          freetextVal = value;
+        }
+      }
+    }
+    return { baseDiet: baseDietVal, dysphagiaMod: dysphagiaModVal, freetext: freetextVal };
+  }, [value, diets]);
+
+  const handleBaseChange = (newBase: string) => {
+    let combined = newBase;
+    if (newBase && dysphagiaMod) {
+      combined += " / " + dysphagiaMod;
+    }
+    if (freetext) {
+      if (combined) {
+        combined += " (" + freetext + ")";
+      } else {
+        combined = freetext;
+      }
+    }
+    onChange(combined);
+  };
+
+  const handleDysphagiaChange = (newDysphagia: string) => {
+    let combined = baseDiet;
+    if (baseDiet) {
+      if (newDysphagia) {
+        combined += " / " + newDysphagia;
+      }
+    }
+    if (freetext) {
+      if (combined) {
+        combined += " (" + freetext + ")";
+      } else {
+        combined = freetext;
+      }
+    }
+    onChange(combined);
+  };
+
+  const handleFreetextChange = (newText: string) => {
+    let combined = "";
+    if (baseDiet) {
+      combined = baseDiet;
+      if (dysphagiaMod) {
+        combined += " / " + dysphagiaMod;
+      }
+      if (newText) {
+        combined += " (" + newText + ")";
+      }
+    } else {
+      combined = newText;
+    }
+    onChange(combined);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "100%" }}>
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <div style={{ flex: 1 }}>
+          <SelectInput
+            value={baseDiet}
+            onChange={handleBaseChange}
+            options={diets.map((d) => d.name)}
+            placeholder="— Select diet —"
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <SelectInput
+            value={dysphagiaMod}
+            onChange={handleDysphagiaChange}
+            options={dysphagiaMods.map((m) => m.name)}
+            placeholder="— None —"
+            disabled={!baseDiet}
+          />
+        </div>
+      </div>
+      <input
+        type="text"
+        value={freetext}
+        onChange={(e) => handleFreetextChange(e.target.value)}
+        placeholder="Override / additional notes"
+        style={{
+          padding: "5px 8px",
+          border: "1px solid #e2e8f0",
+          borderRadius: "4px",
+          fontSize: "0.85rem",
+          width: "100%",
+          boxSizing: "border-box",
+        }}
+      />
+    </div>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 export default function NpOralSection() {
   const { intervention, setIntervention } = useInterventionStore();
   const oral = intervention.npOral;
+
+  const [dysphagiaOptions, setDysphagiaOptions] = useState<string[]>([]);
+
+  React.useEffect(() => {
+    let active = true;
+    getAllDysphagiaeMods().then((mods) => {
+      if (active) {
+        setDysphagiaOptions(mods.map(m => m.name));
+      }
+    }).catch(err => {
+      console.error("Failed to load dysphagia options in NpOralSection", err);
+    });
+    return () => { active = false; };
+  }, []);
 
   function update(patch: Partial<NpOralNutrition>) {
     setIntervention({ npOral: { ...oral, ...patch } });
@@ -214,6 +372,14 @@ export default function NpOralSection() {
 
       {!oral.isNpo && (
         <>
+          {/* NP-1.1.0: Diet Order */}
+          <Field label="NP-1.1.0 — Diet Order">
+            <NpDietOrderPicker
+              value={oral.dietOrder || ""}
+              onChange={(v) => update({ dietOrder: v })}
+            />
+          </Field>
+
           {/* NP-1.1.1: Energy — with pull button */}
           <Field label="NP-1.1.1 — Energy (kcal/day)">
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -273,7 +439,7 @@ export default function NpOralSection() {
             <SelectInput
               value={oral.textureModification}
               onChange={(v) => update({ textureModification: v })}
-              options={NP_TEXTURE_OPTIONS}
+              options={dysphagiaOptions.length > 0 ? dysphagiaOptions : NP_TEXTURE_OPTIONS}
               placeholder="Select IDDSI level…"
             />
           </Field>

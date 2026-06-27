@@ -15,7 +15,8 @@ import { useDietaryStore } from "../../../stores/useDietaryStore";
 import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 import { useEnteralFormulaStore } from "../../../stores/useEnteralFormulaStore";
 import type { EnteralFormula } from "../../../types/enteralFormula";
-import type { Dietary } from "../../../types";
+import type { Dietary, HospitalDiet, HospitalDysphagiaMode } from "../../../types";
+import { getAllDiets, getAllDysphagiaeMods } from "../../../shared/api/db";
 import DietaryD14IVOrders from "./DietaryD14IVOrders";
 import PNPrescriptionMatrix from "./PNPrescriptionMatrix";
 
@@ -137,6 +138,182 @@ function ENModularPanel({ modulars, nextModularId, onUpdate }: ENModularPanelPro
 }
 
 // ─── D11: Oral Nutrition ──────────────────────────────────────────────────────
+interface DietOrderPickerProps {
+  value: string;
+  onChange: (val: string) => void;
+}
+
+function DietOrderPicker({ value, onChange }: DietOrderPickerProps) {
+  const [diets, setDiets] = useState<HospitalDiet[]>([]);
+  const [dysphagiaMods, setDysphagiaMods] = useState<HospitalDysphagiaMode[]>([]);
+
+  React.useEffect(() => {
+    let active = true;
+    const load = async () => {
+      try {
+        const [dList, mList] = await Promise.all([
+          getAllDiets(),
+          getAllDysphagiaeMods(),
+        ]);
+        if (active) {
+          setDiets(dList);
+          setDysphagiaMods(mList);
+        }
+      } catch (err) {
+        console.error("Failed to load diet orders", err);
+      }
+    };
+    load();
+    return () => { active = false; };
+  }, []);
+
+  const { baseDiet, dysphagiaMod, freetext } = React.useMemo(() => {
+    let baseDietVal = "";
+    let dysphagiaModVal = "";
+    let freetextVal = "";
+
+    if (value) {
+      const parenMatch = value.match(/\(([^)]+)\)$/);
+      let cleanedValue = value;
+      if (parenMatch) {
+        freetextVal = parenMatch[1];
+        cleanedValue = value.substring(0, value.lastIndexOf("(")).trim();
+      }
+
+      const parts = cleanedValue.split(" / ");
+      if (parts.length > 1) {
+        baseDietVal = parts[0].trim();
+        dysphagiaModVal = parts[1].trim();
+      } else if (parts.length === 1 && parts[0].trim()) {
+        const matchedBase = diets.find(
+          (d) => d.name.toLowerCase() === parts[0].trim().toLowerCase()
+        );
+        if (matchedBase) {
+          baseDietVal = matchedBase.name;
+        } else {
+          freetextVal = value;
+        }
+      }
+    }
+    return { baseDiet: baseDietVal, dysphagiaMod: dysphagiaModVal, freetext: freetextVal };
+  }, [value, diets]);
+
+  const handleBaseChange = (newBase: string) => {
+    let combined = newBase;
+    if (newBase && dysphagiaMod) {
+      combined += " / " + dysphagiaMod;
+    }
+    if (freetext) {
+      if (combined) {
+        combined += " (" + freetext + ")";
+      } else {
+        combined = freetext;
+      }
+    }
+    onChange(combined);
+  };
+
+  const handleDysphagiaChange = (newDysphagia: string) => {
+    let combined = baseDiet;
+    if (baseDiet) {
+      if (newDysphagia) {
+        combined += " / " + newDysphagia;
+      }
+    }
+    if (freetext) {
+      if (combined) {
+        combined += " (" + freetext + ")";
+      } else {
+        combined = freetext;
+      }
+    }
+    onChange(combined);
+  };
+
+  const handleFreetextChange = (newText: string) => {
+    let combined = "";
+    if (baseDiet) {
+      combined = baseDiet;
+      if (dysphagiaMod) {
+        combined += " / " + dysphagiaMod;
+      }
+      if (newText) {
+        combined += " (" + newText + ")";
+      }
+    } else {
+      combined = newText;
+    }
+    onChange(combined);
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
+      <div style={{ display: "flex", gap: "0.25rem" }}>
+        <select
+          value={baseDiet}
+          onChange={(e) => handleBaseChange(e.target.value)}
+          style={{
+            flex: 1,
+            padding: "4px 8px",
+            border: "1px solid #cbd5e0",
+            borderRadius: "4px",
+            fontSize: "0.8rem",
+            background: "#edf2f7",
+            minHeight: "32px",
+            boxSizing: "border-box",
+          }}
+        >
+          <option value="">— Select diet —</option>
+          {diets.map((d) => (
+            <option key={d.id} value={d.name}>
+              {d.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={dysphagiaMod}
+          onChange={(e) => handleDysphagiaChange(e.target.value)}
+          disabled={!baseDiet}
+          style={{
+            flex: 1,
+            padding: "4px 8px",
+            border: "1px solid #cbd5e0",
+            borderRadius: "4px",
+            fontSize: "0.8rem",
+            background: baseDiet ? "#edf2f7" : "#e2e8f0",
+            minHeight: "32px",
+            boxSizing: "border-box",
+          }}
+        >
+          <option value="">— None —</option>
+          {dysphagiaMods.map((m) => (
+            <option key={m.id} value={m.name}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <input
+          type="text"
+          value={freetext}
+          onChange={(e) => handleFreetextChange(e.target.value)}
+          placeholder="Override / additional notes"
+          style={{
+            padding: "4px 8px",
+            border: "1px solid #cbd5e0",
+            borderRadius: "4px",
+            fontSize: "0.75rem",
+            background: "#edf2f7",
+            boxSizing: "border-box",
+            height: "26px",
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
 interface D11OralProps { dietary: Dietary; setDietary: (d: Dietary) => void; }
 
 function D11Oral({ dietary, setDietary }: D11OralProps) {
@@ -148,8 +325,7 @@ function D11Oral({ dietary, setDietary }: D11OralProps) {
         <div style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr 0.9fr 0.9fr 0.9fr 0.9fr", gap: "0.35rem" }}>
           <div className="input-group">
             <label style={{ fontSize: "0.7rem", fontWeight: 700 }}>Current Rx Diet Order</label>
-            <textarea value={dietary.dietOrder || ""} onChange={e => handleUpdate("dietOrder", e.target.value)}
-              placeholder="e.g. Standard Diet, Regular" style={{ background: "#edf2f7", minHeight: "32px", fontSize: "0.8rem", padding: "4px 8px" }} />
+            <DietOrderPicker value={dietary.dietOrder || ""} onChange={val => handleUpdate("dietOrder", val)} />
           </div>
           <Field label="Calories (kcal/day)" style={{ gap: "2px" }}><NumInput value={dietary.oralCalories || ""} onChange={v => handleUpdate("oralCalories", v)} placeholder="e.g. 1800" style={{ padding: "4px 6px", fontSize: "0.8rem" }} /></Field>
           <Field label="Protein (g/day)" style={{ gap: "2px" }}><NumInput value={dietary.oralProtein || ""} onChange={v => handleUpdate("oralProtein", v)} placeholder="e.g. 75" style={{ padding: "4px 6px", fontSize: "0.8rem" }} /></Field>

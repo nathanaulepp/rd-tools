@@ -99,6 +99,7 @@ export const defaultDiagnosis: Diagnosis = {
 // ── NP sub-object defaults ────────────────────────────────────────────────────
 
 const defaultNpOral: NpOralNutrition = {
+  dietOrder: "",
   energyKcal: "",
   nutrientModifiers: [],
   foodsAndPatterns: [],

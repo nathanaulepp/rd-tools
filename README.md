@@ -3,7 +3,9 @@
 **Author:** Nathan Aulepp
 
 ## Overview
-This project aims to accelerate the completion of clinical dietitian charting work.
+This project aims to accelerate the completion of clinical dietitian charting work by integrating automated calculation tools not previously seen inside of the EHR system. The end products:
+- A worksheet template you can use as inspiration when advocating for better charting.
+- A readable free-text note that you copy into your chart.
 
 ### The Problem
 Charting is often considered by health administrators as having little-to-zero financial return. Consequently, it consumes valuable time that could be spent on higher-impact clinical tasks.
@@ -27,23 +29,26 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [ ] **add** Split panes function
 
 ### Assessment
+#### Patient Summary
+- [x] **add** transfer clinical context pieces into summary at beginning
+
 #### Anthro
-- [ ] *patch* lbs adjusted body weight for amputees is broken
-- [ ] *patch* autosave for adj body weight for amputees
+- [x] *patch* lbs adjusted body weight for amputees is broken
+- [x] *patch* autosave for adj body weight for amputees
 - [ ] **add** DEXA scan functionality mapped and coded
 
 #### Biochemical
 - [ ] *no changes at this time*
 
 #### Clinical
-- [ ] **add** appetite to C3
-- [ ] **add** swallow and chew timeframe
+- [x] **add** appetite to C3
+- [x] **add** swallow and chew timeframe
 - [ ] **add** Automated drug-nutrient interactions
 
 #### Dietary
 - [ ] **add** ONS supplements to oral layout: (formula, amount, times per day)
 - [ ] **add** D2.1 automated estimated oral intake, integrating Multiple Pass Dietary Recall
-- [ ] **add** D2 checkbox of verified receiving current rx diet and supplements 
+- [x] **add** D2 checkbox of verified receiving current rx diet and supplements 
 - [x] **add** Build a modifiable EN formulary database into ./src/shared/api
 
 #### Standards
