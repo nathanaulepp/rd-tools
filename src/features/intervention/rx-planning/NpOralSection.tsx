@@ -8,17 +8,15 @@ import { useInterventionStore } from "../../../stores/useInterventionStore";
 import { Field }       from "../../../shared/ui/Field";
 import { NumInput }    from "../../../shared/ui/NumInput";
 import { SelectInput } from "../../../shared/ui/SelectInput";
-import { ChipGroup }   from "../../../shared/ui/ChipGroup";
 import { PullFromStandardsButton } from "../../../shared/ui/PullFromStandardsButton";
 import {
   NP_NUTRIENT_OPTIONS,
   NP_NUTRIENT_UNITS,
-  NP_TEXTURE_OPTIONS,
 } from "../../../shared/constants/interventionNpConstants";
 import type { NpOralNutrition, NutrientModifier } from "../../../types/intervention";
 import type { ParsedTargets } from "../../../shared/utils/parseStandardsTargets";
 import { getAllDiets, getAllDysphagiaeMods } from "../../../shared/api/db";
-import type { HospitalDiet, HospitalDysphagiaMode } from "../../../types";
+import type { HospitalDiet } from "../../../types";
 
 // ── Internal sub-component: one dynamic nutrient modifier row ─────────────────
 
@@ -87,26 +85,7 @@ function NutrientRow({ row, onChange, onRemove }: NutrientRowProps) {
   );
 }
 
-// ── Foods and eating patterns ─────────────────────────────────────────────────
 
-const FOODS_AND_PATTERNS_OPTIONS: string[] = [
-  "General healthful diet",
-  "Mediterranean diet",
-  "Low sodium",
-  "Low fat",
-  "Low carbohydrate",
-  "High protein",
-  "High fiber",
-  "Heart healthy",
-  "Renal diet",
-  "Diabetic diet",
-  "Vegetarian",
-  "Vegan",
-  "Halal",
-  "Kosher",
-  "Gluten free",
-  "Lactose free",
-];
 
 // ── Diet Order Picker ─────────────────────────────────────────────────────────
 
@@ -117,24 +96,17 @@ interface NpDietOrderPickerProps {
 
 function NpDietOrderPicker({ value, onChange }: NpDietOrderPickerProps) {
   const [diets, setDiets] = useState<HospitalDiet[]>([]);
-  const [dysphagiaMods, setDysphagiaMods] = useState<HospitalDysphagiaMode[]>([]);
 
   React.useEffect(() => {
     let active = true;
-    Promise.all([getAllDiets(), getAllDysphagiaeMods()])
-      .then(([dList, mList]) => {
-        if (active) {
-          setDiets(dList);
-          setDysphagiaMods(mList);
-        }
-      })
-      .catch((err) => console.error("Failed to load diets/mods in NpDietOrderPicker", err));
+    getAllDiets()
+      .then((dList) => { if (active) setDiets(dList); })
+      .catch((err) => console.error("Failed to load diets in NpDietOrderPicker", err));
     return () => { active = false; };
   }, []);
 
-  const { baseDiet, dysphagiaMod, freetext } = React.useMemo(() => {
+  const { baseDiet, freetext } = React.useMemo(() => {
     let baseDietVal = "";
-    let dysphagiaModVal = "";
     let freetextVal = "";
 
     if (value) {
@@ -144,94 +116,42 @@ function NpDietOrderPicker({ value, onChange }: NpDietOrderPickerProps) {
         freetextVal = parenMatch[1];
         cleanedValue = value.substring(0, value.lastIndexOf("(")).trim();
       }
-
-      const parts = cleanedValue.split(" / ");
-      if (parts.length > 1) {
-        baseDietVal = parts[0].trim();
-        dysphagiaModVal = parts[1].trim();
-      } else if (parts.length === 1 && parts[0].trim()) {
-        const matchedBase = diets.find(
-          (d) => d.name.toLowerCase() === parts[0].trim().toLowerCase()
-        );
-        if (matchedBase) {
-          baseDietVal = matchedBase.name;
-        } else {
-          freetextVal = value;
-        }
+      const matchedBase = diets.find(
+        (d) => d.name.toLowerCase() === cleanedValue.toLowerCase()
+      );
+      if (matchedBase) {
+        baseDietVal = matchedBase.name;
+      } else if (cleanedValue) {
+        freetextVal = freetextVal || cleanedValue;
       }
     }
-    return { baseDiet: baseDietVal, dysphagiaMod: dysphagiaModVal, freetext: freetextVal };
+    return { baseDiet: baseDietVal, freetext: freetextVal };
   }, [value, diets]);
 
   const handleBaseChange = (newBase: string) => {
-    let combined = newBase;
-    if (newBase && dysphagiaMod) {
-      combined += " / " + dysphagiaMod;
-    }
     if (freetext) {
-      if (combined) {
-        combined += " (" + freetext + ")";
-      } else {
-        combined = freetext;
-      }
+      onChange(newBase ? `${newBase} (${freetext})` : freetext);
+    } else {
+      onChange(newBase);
     }
-    onChange(combined);
-  };
-
-  const handleDysphagiaChange = (newDysphagia: string) => {
-    let combined = baseDiet;
-    if (baseDiet) {
-      if (newDysphagia) {
-        combined += " / " + newDysphagia;
-      }
-    }
-    if (freetext) {
-      if (combined) {
-        combined += " (" + freetext + ")";
-      } else {
-        combined = freetext;
-      }
-    }
-    onChange(combined);
   };
 
   const handleFreetextChange = (newText: string) => {
-    let combined = "";
     if (baseDiet) {
-      combined = baseDiet;
-      if (dysphagiaMod) {
-        combined += " / " + dysphagiaMod;
-      }
-      if (newText) {
-        combined += " (" + newText + ")";
-      }
+      onChange(newText ? `${baseDiet} (${newText})` : baseDiet);
     } else {
-      combined = newText;
+      onChange(newText);
     }
-    onChange(combined);
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "100%" }}>
-      <div style={{ display: "flex", gap: "0.5rem" }}>
-        <div style={{ flex: 1 }}>
-          <SelectInput
-            value={baseDiet}
-            onChange={handleBaseChange}
-            options={diets.map((d) => d.name)}
-            placeholder="— Select diet —"
-          />
-        </div>
-        <div style={{ flex: 1 }}>
-          <SelectInput
-            value={dysphagiaMod}
-            onChange={handleDysphagiaChange}
-            options={dysphagiaMods.map((m) => m.name)}
-            placeholder="— None —"
-            disabled={!baseDiet}
-          />
-        </div>
-      </div>
+      <SelectInput
+        value={baseDiet}
+        onChange={handleBaseChange}
+        options={diets.map((d) => d.name)}
+        placeholder="— Select diet —"
+      />
       <input
         type="text"
         value={freetext}
@@ -256,13 +176,15 @@ export default function NpOralSection() {
   const { intervention, setIntervention } = useInterventionStore();
   const oral = intervention.npOral;
 
-  const [dysphagiaOptions, setDysphagiaOptions] = useState<string[]>([]);
+  const [foodConsistencyOptions, setFoodConsistencyOptions] = useState<string[]>([]);
+  const [liquidConsistencyOptions, setLiquidConsistencyOptions] = useState<string[]>([]);
 
   React.useEffect(() => {
     let active = true;
     getAllDysphagiaeMods().then((mods) => {
       if (active) {
-        setDysphagiaOptions(mods.map(m => m.name));
+        setFoodConsistencyOptions(mods.filter(m => m.category === "Food").map(m => m.name));
+        setLiquidConsistencyOptions(mods.filter(m => m.category === "Liquid").map(m => m.name));
       }
     }).catch(err => {
       console.error("Failed to load dysphagia options in NpOralSection", err);
@@ -424,24 +346,34 @@ export default function NpOralSection() {
             </button>
           </Field>
 
-          {/* NP-1.1.3: Foods and eating patterns */}
-          <Field label="NP-1.1.3 — Foods and Eating Patterns">
-            <ChipGroup
-              options={FOODS_AND_PATTERNS_OPTIONS}
-              value={oral.foodsAndPatterns}
-              onChange={(v) => update({ foodsAndPatterns: v as string[] })}
-              multiSelect={true}
-            />
-          </Field>
 
-          {/* NP-1.1.4: Texture modification */}
-          <Field label="NP-1.1.4 — Texture Modification">
-            <SelectInput
-              value={oral.textureModification}
-              onChange={(v) => update({ textureModification: v })}
-              options={dysphagiaOptions.length > 0 ? dysphagiaOptions : NP_TEXTURE_OPTIONS}
-              placeholder="Select IDDSI level…"
-            />
+
+          {/* NP-1.1.4: Texture / Liquid modification */}
+          <Field label="NP-1.1.4 — Texture & Liquid Modification">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem" }}>
+              <div>
+                <label style={{ fontSize: "0.72rem", fontWeight: 700, color: "#4a5568", display: "block", marginBottom: "3px" }}>
+                  Food Consistency
+                </label>
+                <SelectInput
+                  value={oral.textureModification}
+                  onChange={(v) => update({ textureModification: v })}
+                  options={foodConsistencyOptions}
+                  placeholder="— Food consistency —"
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: "0.72rem", fontWeight: 700, color: "#4a5568", display: "block", marginBottom: "3px" }}>
+                  Liquid Consistency
+                </label>
+                <SelectInput
+                  value={oral.liquidConsistency ?? ""}
+                  onChange={(v) => update({ liquidConsistency: v })}
+                  options={liquidConsistencyOptions}
+                  placeholder="— Liquid consistency —"
+                />
+              </div>
+            </div>
           </Field>
 
           {/* NP-1.1.5: Oral supplements */}

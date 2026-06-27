@@ -37,12 +37,12 @@ export default function SummaryInterventionCard() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2rem" }}>
             <div>
               <SummaryRow label="Oral Energy Target" value={intervention?.npOral?.energyKcal} unit="kcal" />
-              <SummaryRow label="Texture Modification" value={intervention?.npOral?.textureModification} />
+              <SummaryRow label="Food Consistency" value={intervention?.npOral?.textureModification} />
+              <SummaryRow label="Liquid Consistency" value={intervention?.npOral?.liquidConsistency} />
               <SummaryRow label="Oral Supplements" value={intervention?.npOral?.oralSupplements} />
             </div>
             <div>
               <SummaryRow label="NPO Status" value={intervention?.npOral?.isNpo ? "Yes" : null} />
-              <SummaryRow label="Foods & Patterns" value={intervention?.npOral?.foodsAndPatterns?.join(", ")} />
             </div>
           </div>
         </div>

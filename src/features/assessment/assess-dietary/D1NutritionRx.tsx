@@ -145,7 +145,8 @@ interface DietOrderPickerProps {
 
 function DietOrderPicker({ value, onChange }: DietOrderPickerProps) {
   const [diets, setDiets] = useState<HospitalDiet[]>([]);
-  const [dysphagiaMods, setDysphagiaMods] = useState<HospitalDysphagiaMode[]>([]);
+  const [foodMods, setFoodMods] = useState<HospitalDysphagiaMode[]>([]);
+  const [liquidMods, setLiquidMods] = useState<HospitalDysphagiaMode[]>([]);
 
   React.useEffect(() => {
     let active = true;
@@ -157,7 +158,8 @@ function DietOrderPicker({ value, onChange }: DietOrderPickerProps) {
         ]);
         if (active) {
           setDiets(dList);
-          setDysphagiaMods(mList);
+          setFoodMods(mList.filter(m => m.category === "Food"));
+          setLiquidMods(mList.filter(m => m.category === "Liquid"));
         }
       } catch (err) {
         console.error("Failed to load diet orders", err);
@@ -167,9 +169,10 @@ function DietOrderPicker({ value, onChange }: DietOrderPickerProps) {
     return () => { active = false; };
   }, []);
 
-  const { baseDiet, dysphagiaMod, freetext } = React.useMemo(() => {
+  const { baseDiet, foodMod, liquidMod, freetext } = React.useMemo(() => {
     let baseDietVal = "";
-    let dysphagiaModVal = "";
+    let foodModVal = "";
+    let liquidModVal = "";
     let freetextVal = "";
 
     if (value) {
@@ -181,9 +184,20 @@ function DietOrderPicker({ value, onChange }: DietOrderPickerProps) {
       }
 
       const parts = cleanedValue.split(" / ");
-      if (parts.length > 1) {
+      if (parts.length >= 3) {
         baseDietVal = parts[0].trim();
-        dysphagiaModVal = parts[1].trim();
+        // Determine which parts are food vs liquid by prefix
+        const mod1 = parts[1].trim();
+        const mod2 = parts[2].trim();
+        if (mod1.startsWith("Food")) { foodModVal = mod1; liquidModVal = mod2; }
+        else if (mod1.startsWith("Liquid") || mod1.startsWith("NPO")) { liquidModVal = mod1; foodModVal = mod2; }
+        else { foodModVal = mod1; liquidModVal = mod2; }
+      } else if (parts.length === 2) {
+        baseDietVal = parts[0].trim();
+        const mod = parts[1].trim();
+        if (mod.startsWith("Food")) foodModVal = mod;
+        else if (mod.startsWith("Liquid") || mod.startsWith("NPO")) liquidModVal = mod;
+        else foodModVal = mod; // legacy fallback
       } else if (parts.length === 1 && parts[0].trim()) {
         const matchedBase = diets.find(
           (d) => d.name.toLowerCase() === parts[0].trim().toLowerCase()
@@ -195,55 +209,31 @@ function DietOrderPicker({ value, onChange }: DietOrderPickerProps) {
         }
       }
     }
-    return { baseDiet: baseDietVal, dysphagiaMod: dysphagiaModVal, freetext: freetextVal };
+    return { baseDiet: baseDietVal, foodMod: foodModVal, liquidMod: liquidModVal, freetext: freetextVal };
   }, [value, diets]);
 
-  const handleBaseChange = (newBase: string) => {
-    let combined = newBase;
-    if (newBase && dysphagiaMod) {
-      combined += " / " + dysphagiaMod;
-    }
-    if (freetext) {
-      if (combined) {
-        combined += " (" + freetext + ")";
-      } else {
-        combined = freetext;
-      }
-    }
-    onChange(combined);
+  const buildValue = (base: string, food: string, liquid: string, notes: string): string => {
+    const parts = [base, food, liquid].filter(Boolean);
+    let combined = parts.join(" / ");
+    if (notes && combined) combined += " (" + notes + ")";
+    else if (notes) combined = notes;
+    return combined;
   };
 
-  const handleDysphagiaChange = (newDysphagia: string) => {
-    let combined = baseDiet;
-    if (baseDiet) {
-      if (newDysphagia) {
-        combined += " / " + newDysphagia;
-      }
-    }
-    if (freetext) {
-      if (combined) {
-        combined += " (" + freetext + ")";
-      } else {
-        combined = freetext;
-      }
-    }
-    onChange(combined);
+  const handleBaseChange = (newBase: string) => {
+    onChange(buildValue(newBase, foodMod, liquidMod, freetext));
+  };
+
+  const handleFoodModChange = (newFood: string) => {
+    onChange(buildValue(baseDiet, newFood, liquidMod, freetext));
+  };
+
+  const handleLiquidModChange = (newLiquid: string) => {
+    onChange(buildValue(baseDiet, foodMod, newLiquid, freetext));
   };
 
   const handleFreetextChange = (newText: string) => {
-    let combined = "";
-    if (baseDiet) {
-      combined = baseDiet;
-      if (dysphagiaMod) {
-        combined += " / " + dysphagiaMod;
-      }
-      if (newText) {
-        combined += " (" + newText + ")";
-      }
-    } else {
-      combined = newText;
-    }
-    onChange(combined);
+    onChange(buildValue(baseDiet, foodMod, liquidMod, newText));
   };
 
   return (
@@ -271,8 +261,8 @@ function DietOrderPicker({ value, onChange }: DietOrderPickerProps) {
           ))}
         </select>
         <select
-          value={dysphagiaMod}
-          onChange={(e) => handleDysphagiaChange(e.target.value)}
+          value={foodMod}
+          onChange={(e) => handleFoodModChange(e.target.value)}
           disabled={!baseDiet}
           style={{
             flex: 1,
@@ -285,31 +275,51 @@ function DietOrderPicker({ value, onChange }: DietOrderPickerProps) {
             boxSizing: "border-box",
           }}
         >
-          <option value="">— None —</option>
-          {dysphagiaMods.map((m) => (
+          <option value="">— Food mod —</option>
+          {foodMods.map((m) => (
+            <option key={m.id} value={m.name}>
+              {m.name}
+            </option>
+          ))}
+        </select>
+        <select
+          value={liquidMod}
+          onChange={(e) => handleLiquidModChange(e.target.value)}
+          disabled={!baseDiet}
+          style={{
+            flex: 1,
+            padding: "4px 8px",
+            border: "1px solid #cbd5e0",
+            borderRadius: "4px",
+            fontSize: "0.8rem",
+            background: baseDiet ? "#edf2f7" : "#e2e8f0",
+            minHeight: "32px",
+            boxSizing: "border-box",
+          }}
+        >
+          <option value="">— Liquid mod —</option>
+          {liquidMods.map((m) => (
             <option key={m.id} value={m.name}>
               {m.name}
             </option>
           ))}
         </select>
       </div>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <input
-          type="text"
-          value={freetext}
-          onChange={(e) => handleFreetextChange(e.target.value)}
-          placeholder="Override / additional notes"
-          style={{
-            padding: "4px 8px",
-            border: "1px solid #cbd5e0",
-            borderRadius: "4px",
-            fontSize: "0.75rem",
-            background: "#edf2f7",
-            boxSizing: "border-box",
-            height: "26px",
-          }}
-        />
-      </div>
+      <input
+        type="text"
+        value={freetext}
+        onChange={(e) => handleFreetextChange(e.target.value)}
+        placeholder="Override / additional notes"
+        style={{
+          padding: "4px 8px",
+          border: "1px solid #cbd5e0",
+          borderRadius: "4px",
+          fontSize: "0.75rem",
+          background: "#edf2f7",
+          boxSizing: "border-box",
+          height: "26px",
+        }}
+      />
     </div>
   );
 }
@@ -322,7 +332,7 @@ function D11Oral({ dietary, setDietary }: D11OralProps) {
     <div style={{ marginBottom: "0.5rem" }}>
       <div className="card" style={{ padding: "0.35rem 0.6rem" }}>
         <SectionHeader title="D11: Oral Diet & Intake" color="#3498db" />
-        <div style={{ display: "grid", gridTemplateColumns: "1.6fr 0.9fr 0.9fr 0.9fr 0.9fr 0.9fr", gap: "0.35rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "2.2fr 0.85fr 0.85fr 0.85fr 0.85fr 0.85fr", gap: "0.35rem" }}>
           <div className="input-group">
             <label style={{ fontSize: "0.7rem", fontWeight: 700 }}>Current Rx Diet Order</label>
             <DietOrderPicker value={dietary.dietOrder || ""} onChange={val => handleUpdate("dietOrder", val)} />

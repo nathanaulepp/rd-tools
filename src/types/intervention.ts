@@ -14,8 +14,8 @@ export interface NpOralNutrition {
   dietOrder: string;                     // NP-1.1.0
   energyKcal: string;                    // NP-1.1.1
   nutrientModifiers: NutrientModifier[]; // NP-1.1.2
-  foodsAndPatterns: string[];            // NP-1.1.3
-  textureModification: string;           // NP-1.1.4
+  textureModification: string;           // NP-1.1.4 food consistency
+  liquidConsistency: string;             // NP-1.1.4 liquid consistency
   oralSupplements: string;               // NP-1.1.5
   isNpo: boolean;                        // NP-1.1.6
   valuesInclusion: string;               // NP-1.1.7

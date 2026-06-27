@@ -63,15 +63,30 @@ interface ModFormProps {
   onCancel: () => void;
   isSaving: boolean;
   mode: "create" | "edit";
+  /** Pre-select a category when opening the form from a section's Add button */
+  inferredCategory?: "Food" | "Liquid" | "Other";
 }
 
-function ModForm({ initial, onSave, onCancel, isSaving, mode }: ModFormProps) {
-  const [form, setForm] = useState<HospitalDysphagiaModInput>(initial);
-  const isValid = form.name.trim().length > 0;
+type ModCategory = "Food" | "Liquid" | "Other";
+
+const CATEGORY_OPTIONS: { value: ModCategory; label: string; color: string }[] = [
+  { value: "Food",   label: "Food Consistency",   color: "#27ae60" },
+  { value: "Liquid", label: "Liquid Consistency",  color: "#2980b9" },
+  { value: "Other",  label: "Other",               color: "#64748b" },
+];
+
+function ModForm({ initial, onSave, onCancel, isSaving, mode, inferredCategory }: ModFormProps) {
+  const [category, setCategory] = useState<ModCategory>(
+    inferredCategory ?? (initial as any).category ?? "Food"
+  );
+  const [bareName, setBareName] = useState(initial.name);
+  const isValid = bareName.trim().length > 0;
+
+  const activeColor = CATEGORY_OPTIONS.find(o => o.value === category)?.color ?? "#8e44ad";
 
   return (
     <div style={{
-      border: "1px solid #e9d5ff",
+      border: `1px solid ${activeColor}40`,
       borderRadius: 10,
       padding: "1rem 1.25rem",
       background: mode === "create" ? "#faf5ff" : "#fffdf5",
@@ -79,21 +94,58 @@ function ModForm({ initial, onSave, onCancel, isSaving, mode }: ModFormProps) {
     }}>
       <div style={{
         fontWeight: 800, fontSize: "0.85rem", color: "#1e293b",
-        marginBottom: "0.85rem", borderLeft: "3px solid #8e44ad", paddingLeft: 8,
+        marginBottom: "0.85rem", borderLeft: `3px solid ${activeColor}`, paddingLeft: 8,
       }}>
         {mode === "create" ? "➕ Add Modification" : "✏️ Edit Modification"}
       </div>
 
+      {/* Category selector */}
+      <div style={{ marginBottom: "0.75rem" }}>
+        <label style={labelStyle}>Category *</label>
+        <div style={{ display: "flex", gap: "0.5rem" }}>
+          {CATEGORY_OPTIONS.map(opt => (
+            <button
+              key={opt.value}
+              onClick={() => setCategory(opt.value)}
+              style={{
+                padding: "5px 14px",
+                borderRadius: 20,
+                border: `2px solid ${opt.color}`,
+                background: category === opt.value ? opt.color : "transparent",
+                color: category === opt.value ? "#fff" : opt.color,
+                fontWeight: 700,
+                fontSize: "0.78rem",
+                cursor: "pointer",
+                transition: "all 0.15s",
+              }}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Name input */}
       <div style={{ marginBottom: "0.85rem" }}>
         <label style={labelStyle}>Modification Name *</label>
         <input
           type="text"
-          value={form.name}
-          onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))}
-          placeholder="e.g. Level 5 — Minced & Moist"
+          value={bareName}
+          onChange={e => setBareName(e.target.value)}
+          placeholder={
+            category === "Food"   ? "e.g. Mechanical Soft, Level 5 — Minced & Moist" :
+            category === "Liquid" ? "e.g. Mildly Thick, Level 2" :
+            "e.g. NPO"
+          }
           style={inputStyle}
           autoFocus
         />
+        {bareName.trim() && (
+          <div style={{ fontSize: "0.7rem", color: "#94a3b8", marginTop: 4 }}>
+            Will save as: <strong style={{ color: activeColor }}>{bareName.trim()}</strong>
+            <span style={{ marginLeft: 6, color: activeColor }}>({category})</span>
+          </div>
+        )}
       </div>
 
       <div style={{ display: "flex", gap: "0.5rem", justifyContent: "flex-end" }}>
@@ -101,9 +153,9 @@ function ModForm({ initial, onSave, onCancel, isSaving, mode }: ModFormProps) {
           Cancel
         </button>
         <button
-          onClick={() => onSave(form)}
+          onClick={() => onSave({ ...initial, name: bareName.trim(), category })}
           disabled={!isValid || isSaving}
-          style={{ ...btnPrimary, opacity: !isValid || isSaving ? 0.6 : 1 }}
+          style={{ ...btnPrimary, background: activeColor, opacity: !isValid || isSaving ? 0.6 : 1 }}
         >
           {isSaving ? "Saving…" : mode === "create" ? "Save" : "Save Changes"}
         </button>
@@ -196,6 +248,7 @@ export default function DysphagiaModManager() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
+  const [createCategory, setCreateCategory] = useState<"Food" | "Liquid" | "Other" | undefined>(undefined);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState("");
@@ -288,7 +341,7 @@ export default function DysphagiaModManager() {
         </div>
         {!showCreate && (
           <button
-            onClick={() => { setShowCreate(true); setEditingId(null); }}
+            onClick={() => { setShowCreate(true); setCreateCategory(undefined); setEditingId(null); }}
             style={btnPrimary}
           >
             ＋ Add Modification
@@ -307,11 +360,12 @@ export default function DysphagiaModManager() {
 
       {showCreate && (
         <ModForm
-          initial={{ name: "", sort_order: 0 }}
+          initial={{ name: "", category: createCategory || "Food", sort_order: 0 }}
           onSave={handleCreate}
-          onCancel={() => setShowCreate(false)}
+          onCancel={() => { setShowCreate(false); setCreateCategory(undefined); }}
           isSaving={isSaving}
           mode="create"
+          inferredCategory={createCategory}
         />
       )}
 
@@ -332,29 +386,83 @@ export default function DysphagiaModManager() {
         </div>
       )}
 
-      {!isLoading && mods.map((mod, idx) => (
-        editingId === mod.id ? (
-          <ModForm
-            key={mod.id}
-            initial={{ name: mod.name, sort_order: mod.sort_order }}
-            onSave={input => handleUpdate(mod.id, input)}
-            onCancel={() => setEditingId(null)}
-            isSaving={isSaving}
-            mode="edit"
-          />
-        ) : (
-          <ModRow
-            key={mod.id}
-            mod={mod}
-            isFirst={idx === 0}
-            isLast={idx === mods.length - 1}
-            onEdit={() => { setEditingId(mod.id); setShowCreate(false); }}
-            onDelete={() => handleDelete(mod.id, mod.name)}
-            onMoveUp={() => handleMove(idx, "up")}
-            onMoveDown={() => handleMove(idx, "down")}
-          />
-        )
-      ))}
+      {!isLoading && (() => {
+        const foodMods = mods.filter(m => m.category === "Food");
+        const liquidMods = mods.filter(m => m.category === "Liquid");
+        const otherMods = mods.filter(m => m.category === "Other");
+
+        const renderSection = (label: string, color: string, subset: HospitalDysphagiaMode[], sectionCategory: "Food" | "Liquid" | "Other") => (
+          <div style={{ marginBottom: "1.25rem" }}>
+            <div style={{
+              display: "flex", alignItems: "center",
+              justifyContent: "space-between",
+              marginBottom: "0.5rem",
+            }}>
+              <div style={{
+                fontSize: "0.72rem", fontWeight: 800, textTransform: "uppercase",
+                letterSpacing: "0.06em", color, borderLeft: `3px solid ${color}`,
+                paddingLeft: 8,
+              }}>
+                {label}
+              </div>
+              {!showCreate && (
+                <button
+                  onClick={() => {
+                    setCreateCategory(sectionCategory);
+                    setShowCreate(true);
+                    setEditingId(null);
+                  }}
+                  style={{
+                    background: "transparent", border: `1px solid ${color}`,
+                    color, borderRadius: 6, padding: "2px 10px",
+                    fontSize: "0.72rem", fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  + Add
+                </button>
+              )}
+            </div>
+            {subset.length === 0 && (
+              <div style={{ fontSize: "0.78rem", color: "#94a3b8", fontStyle: "italic", paddingLeft: 8 }}>
+                No entries yet.
+              </div>
+            )}
+            {subset.map((mod) => {
+              const idx = mods.indexOf(mod);
+              return editingId === mod.id ? (
+                <ModForm
+                  key={mod.id}
+                  initial={{ name: mod.name, category: mod.category, sort_order: mod.sort_order }}
+                  onSave={input => handleUpdate(mod.id, input)}
+                  onCancel={() => setEditingId(null)}
+                  isSaving={isSaving}
+                  mode="edit"
+                  inferredCategory={mod.category}
+                />
+              ) : (
+                <ModRow
+                  key={mod.id}
+                  mod={mod}
+                  isFirst={idx === 0}
+                  isLast={idx === mods.length - 1}
+                  onEdit={() => { setEditingId(mod.id); setShowCreate(false); }}
+                  onDelete={() => handleDelete(mod.id, mod.name)}
+                  onMoveUp={() => handleMove(idx, "up")}
+                  onMoveDown={() => handleMove(idx, "down")}
+                />
+              );
+            })}
+          </div>
+        );
+
+        return (
+          <>
+            {renderSection("Food Consistency", "#27ae60", foodMods, "Food")}
+            {renderSection("Liquid Consistency", "#2980b9", liquidMods, "Liquid")}
+            {otherMods.length > 0 && renderSection("Other", "#64748b", otherMods, "Other")}
+          </>
+        );
+      })()}
 
       <div style={{
         position: "fixed", bottom: "1.5rem", left: "50%",

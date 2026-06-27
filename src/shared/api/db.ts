@@ -262,7 +262,7 @@ async function initSchema(db: Database): Promise<void> {
     { name: "Diabetic / Consistent CHO" },
     { name: "Renal Low PRO" },
     { name: "Renal High PRO" },
-    { name: "Low Na (2g)" },
+    { name: "Low Na (<2g)" },
     { name: "Fat Restricted" },
     { name: "Low Fiber" },
     { name: "High Fiber" },
@@ -299,23 +299,29 @@ async function initSchema(db: Database): Promise<void> {
     CREATE TABLE IF NOT EXISTS hospital_dysphagia_mods (
       id          TEXT PRIMARY KEY,
       name        TEXT NOT NULL,
+      category    TEXT NOT NULL DEFAULT 'Food',
       sort_order  INTEGER NOT NULL DEFAULT 0,
       created_at  TEXT NOT NULL
     )
   `);
 
-  const defaultDysphagiaMods = [
-    "Food (Level 7 — Regular)",
-    "Food (Level 6 — Soft & Bite-Sized)",
-    "Food (Level 5 — Minced & Moist)",
-    "Food (Level 4 — Pureed)",
-    "Food (Level 3 — Liquidized)",
-    "Liquid (Level 4 — Extremely Thick)",
-    "Liquid (Level 3 — Moderately Thick)",
-    "Liquid (Level 2 — Mildly Thick)",
-    "Liquid (Level 1 — Slightly Thick)",
-    "Liquid (Level 0 — Thin Liquids)",
-    "NPO — Dysphagia",
+  // Idempotent migration: add category column to existing databases
+  try {
+    await db.execute(`ALTER TABLE hospital_dysphagia_mods ADD COLUMN category TEXT NOT NULL DEFAULT 'Food'`);
+  } catch (_e) {}
+
+  const defaultDysphagiaMods: { name: string; category: "Food" | "Liquid" | "Other" }[] = [
+    { name: "Level 7 — Regular",        category: "Food" },
+    { name: "Level 6 — Soft & Bite-Sized", category: "Food" },
+    { name: "Level 5 — Minced & Moist", category: "Food" },
+    { name: "Level 4 — Pureed",         category: "Food" },
+    { name: "Level 3 — Liquidized",     category: "Food" },
+    { name: "Level 4 — Extremely Thick", category: "Liquid" },
+    { name: "Level 3 — Moderately Thick", category: "Liquid" },
+    { name: "Level 2 — Mildly Thick",   category: "Liquid" },
+    { name: "Level 1 — Slightly Thick", category: "Liquid" },
+    { name: "Level 0 — Thin Liquids",   category: "Liquid" },
+    { name: "NPO",                       category: "Liquid" },
   ];
 
   const dysphagiaMobCount = await db.select<{ count: number }[]>(
@@ -323,10 +329,11 @@ async function initSchema(db: Database): Promise<void> {
   );
   if (dysphagiaMobCount[0].count === 0) {
     for (let i = 0; i < defaultDysphagiaMods.length; i++) {
+      const d = defaultDysphagiaMods[i];
       await db.execute(
-        `INSERT INTO hospital_dysphagia_mods (id, name, sort_order, created_at)
-         VALUES (?, ?, ?, ?)`,
-        [uuid(), defaultDysphagiaMods[i], i, new Date().toISOString()]
+        `INSERT INTO hospital_dysphagia_mods (id, name, category, sort_order, created_at)
+         VALUES (?, ?, ?, ?, ?)`,
+        [uuid(), d.name, d.category, i, new Date().toISOString()]
       );
     }
   }
@@ -461,12 +468,14 @@ export interface HospitalDietInput {
 export interface HospitalDysphagiaMode {
   id: string;
   name: string;
+  category: "Food" | "Liquid" | "Other";
   sort_order: number;
   created_at: string;
 }
 
 export interface HospitalDysphagiaModInput {
   name: string;
+  category: "Food" | "Liquid" | "Other";
   sort_order: number;
 }
 
@@ -1312,9 +1321,13 @@ export async function deleteDiet(id: string): Promise<void> {
 
 export async function getAllDysphagiaeMods(): Promise<HospitalDysphagiaMode[]> {
   const db = await getDb();
-  return await db.select<HospitalDysphagiaMode[]>(
+  const rows = await db.select<any[]>(
     `SELECT * FROM hospital_dysphagia_mods ORDER BY sort_order ASC, name ASC`
   );
+  return rows.map(r => ({
+    ...r,
+    category: (r.category ?? "Food") as "Food" | "Liquid" | "Other",
+  }));
 }
 
 export async function createDysphagiaeMod(input: HospitalDysphagiaModInput): Promise<HospitalDysphagiaMode> {
@@ -1322,9 +1335,9 @@ export async function createDysphagiaeMod(input: HospitalDysphagiaModInput): Pro
   const id = uuid();
   const now = new Date().toISOString();
   await db.execute(
-    `INSERT INTO hospital_dysphagia_mods (id, name, sort_order, created_at)
-     VALUES (?, ?, ?, ?)`,
-    [id, input.name, input.sort_order, now]
+    `INSERT INTO hospital_dysphagia_mods (id, name, category, sort_order, created_at)
+     VALUES (?, ?, ?, ?, ?)`,
+    [id, input.name, input.category ?? "Food", input.sort_order, now]
   );
   return { id, ...input, created_at: now };
 }
