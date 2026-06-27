@@ -90,8 +90,8 @@ function NutrientRow({ row, onChange, onRemove }: NutrientRowProps) {
 // ── Diet Order Picker ─────────────────────────────────────────────────────────
 
 interface NpDietOrderPickerProps {
-  value: string;
-  onChange: (val: string) => void;
+  value: string[];
+  onChange: (val: string[]) => void;
 }
 
 function NpDietOrderPicker({ value, onChange }: NpDietOrderPickerProps) {
@@ -105,67 +105,41 @@ function NpDietOrderPicker({ value, onChange }: NpDietOrderPickerProps) {
     return () => { active = false; };
   }, []);
 
-  const { baseDiet, freetext } = React.useMemo(() => {
-    let baseDietVal = "";
-    let freetextVal = "";
+  const selected = Array.isArray(value) ? value : (value ? [value] : []);
 
-    if (value) {
-      const parenMatch = value.match(/\(([^)]+)\)$/);
-      let cleanedValue = value;
-      if (parenMatch) {
-        freetextVal = parenMatch[1];
-        cleanedValue = value.substring(0, value.lastIndexOf("(")).trim();
-      }
-      const matchedBase = diets.find(
-        (d) => d.name.toLowerCase() === cleanedValue.toLowerCase()
-      );
-      if (matchedBase) {
-        baseDietVal = matchedBase.name;
-      } else if (cleanedValue) {
-        freetextVal = freetextVal || cleanedValue;
-      }
-    }
-    return { baseDiet: baseDietVal, freetext: freetextVal };
-  }, [value, diets]);
-
-  const handleBaseChange = (newBase: string) => {
-    if (freetext) {
-      onChange(newBase ? `${newBase} (${freetext})` : freetext);
-    } else {
-      onChange(newBase);
-    }
-  };
-
-  const handleFreetextChange = (newText: string) => {
-    if (baseDiet) {
-      onChange(newText ? `${baseDiet} (${newText})` : baseDiet);
-    } else {
-      onChange(newText);
-    }
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const chosen = Array.from(e.target.selectedOptions).map(o => o.value);
+    onChange(chosen);
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "100%" }}>
-      <SelectInput
-        value={baseDiet}
-        onChange={handleBaseChange}
-        options={diets.map((d) => d.name)}
-        placeholder="— Select diet —"
-      />
-      <input
-        type="text"
-        value={freetext}
-        onChange={(e) => handleFreetextChange(e.target.value)}
-        placeholder="Override / additional notes"
+      <select
+        multiple
+        value={selected}
+        onChange={handleChange}
         style={{
-          padding: "5px 8px",
+          width: "100%",
+          padding: "4px 6px",
           border: "1px solid #e2e8f0",
           borderRadius: "4px",
           fontSize: "0.85rem",
-          width: "100%",
           boxSizing: "border-box",
+          minHeight: "90px",
+          fontFamily: "inherit",
         }}
-      />
+      >
+        {diets.map((d) => (
+          <option key={d.id} value={d.name}>
+            {d.name}
+          </option>
+        ))}
+      </select>
+      {selected.length > 0 && (
+        <div style={{ fontSize: "0.7rem", color: "#64748b", fontStyle: "italic" }}>
+          {selected.length} diet{selected.length !== 1 ? "s" : ""} selected — Ctrl/Cmd+click to deselect
+        </div>
+      )}
     </div>
   );
 }
@@ -297,7 +271,7 @@ export default function NpOralSection() {
           {/* NP-1.1.0: Diet Order */}
           <Field label="NP-1.1.0 — Diet Order">
             <NpDietOrderPicker
-              value={oral.dietOrder || ""}
+              value={oral.dietOrder ?? []}
               onChange={(v) => update({ dietOrder: v })}
             />
           </Field>

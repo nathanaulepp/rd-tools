@@ -15,7 +15,7 @@ export interface Dietary {
   eeiTimeframe: string;
 
   // D1 — Oral Nutrition Rx (written by D1NutritionRx)
-  dietOrder: string;
+  dietOrder: string[];
   oralCalories: string;
   oralProtein: string;
   oralCho: string;

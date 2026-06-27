@@ -15,8 +15,8 @@ import { useDietaryStore } from "../../../stores/useDietaryStore";
 import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 import { useEnteralFormulaStore } from "../../../stores/useEnteralFormulaStore";
 import type { EnteralFormula } from "../../../types/enteralFormula";
-import type { Dietary, HospitalDiet, HospitalDysphagiaMode } from "../../../types";
-import { getAllDiets, getAllDysphagiaeMods } from "../../../shared/api/db";
+import type { Dietary, HospitalDiet } from "../../../types";
+import { getAllDiets } from "../../../shared/api/db";
 import DietaryD14IVOrders from "./DietaryD14IVOrders";
 import PNPrescriptionMatrix from "./PNPrescriptionMatrix";
 
@@ -139,27 +139,20 @@ function ENModularPanel({ modulars, nextModularId, onUpdate }: ENModularPanelPro
 
 // ─── D11: Oral Nutrition ──────────────────────────────────────────────────────
 interface DietOrderPickerProps {
-  value: string;
-  onChange: (val: string) => void;
+  value: string[];
+  onChange: (val: string[]) => void;
 }
 
 function DietOrderPicker({ value, onChange }: DietOrderPickerProps) {
   const [diets, setDiets] = useState<HospitalDiet[]>([]);
-  const [foodMods, setFoodMods] = useState<HospitalDysphagiaMode[]>([]);
-  const [liquidMods, setLiquidMods] = useState<HospitalDysphagiaMode[]>([]);
 
   React.useEffect(() => {
     let active = true;
     const load = async () => {
       try {
-        const [dList, mList] = await Promise.all([
-          getAllDiets(),
-          getAllDysphagiaeMods(),
-        ]);
+        const dList = await getAllDiets();
         if (active) {
           setDiets(dList);
-          setFoodMods(mList.filter(m => m.category === "Food"));
-          setLiquidMods(mList.filter(m => m.category === "Liquid"));
         }
       } catch (err) {
         console.error("Failed to load diet orders", err);
@@ -169,157 +162,42 @@ function DietOrderPicker({ value, onChange }: DietOrderPickerProps) {
     return () => { active = false; };
   }, []);
 
-  const { baseDiet, foodMod, liquidMod, freetext } = React.useMemo(() => {
-    let baseDietVal = "";
-    let foodModVal = "";
-    let liquidModVal = "";
-    let freetextVal = "";
+  const selected = Array.isArray(value) ? value : (value ? [value as unknown as string] : []);
 
-    if (value) {
-      const parenMatch = value.match(/\(([^)]+)\)$/);
-      let cleanedValue = value;
-      if (parenMatch) {
-        freetextVal = parenMatch[1];
-        cleanedValue = value.substring(0, value.lastIndexOf("(")).trim();
-      }
-
-      const parts = cleanedValue.split(" / ");
-      if (parts.length >= 3) {
-        baseDietVal = parts[0].trim();
-        // Determine which parts are food vs liquid by prefix
-        const mod1 = parts[1].trim();
-        const mod2 = parts[2].trim();
-        if (mod1.startsWith("Food")) { foodModVal = mod1; liquidModVal = mod2; }
-        else if (mod1.startsWith("Liquid") || mod1.startsWith("NPO")) { liquidModVal = mod1; foodModVal = mod2; }
-        else { foodModVal = mod1; liquidModVal = mod2; }
-      } else if (parts.length === 2) {
-        baseDietVal = parts[0].trim();
-        const mod = parts[1].trim();
-        if (mod.startsWith("Food")) foodModVal = mod;
-        else if (mod.startsWith("Liquid") || mod.startsWith("NPO")) liquidModVal = mod;
-        else foodModVal = mod; // legacy fallback
-      } else if (parts.length === 1 && parts[0].trim()) {
-        const matchedBase = diets.find(
-          (d) => d.name.toLowerCase() === parts[0].trim().toLowerCase()
-        );
-        if (matchedBase) {
-          baseDietVal = matchedBase.name;
-        } else {
-          freetextVal = value;
-        }
-      }
-    }
-    return { baseDiet: baseDietVal, foodMod: foodModVal, liquidMod: liquidModVal, freetext: freetextVal };
-  }, [value, diets]);
-
-  const buildValue = (base: string, food: string, liquid: string, notes: string): string => {
-    const parts = [base, food, liquid].filter(Boolean);
-    let combined = parts.join(" / ");
-    if (notes && combined) combined += " (" + notes + ")";
-    else if (notes) combined = notes;
-    return combined;
-  };
-
-  const handleBaseChange = (newBase: string) => {
-    onChange(buildValue(newBase, foodMod, liquidMod, freetext));
-  };
-
-  const handleFoodModChange = (newFood: string) => {
-    onChange(buildValue(baseDiet, newFood, liquidMod, freetext));
-  };
-
-  const handleLiquidModChange = (newLiquid: string) => {
-    onChange(buildValue(baseDiet, foodMod, newLiquid, freetext));
-  };
-
-  const handleFreetextChange = (newText: string) => {
-    onChange(buildValue(baseDiet, foodMod, liquidMod, newText));
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const chosen = Array.from(e.target.selectedOptions).map(o => o.value);
+    onChange(chosen);
   };
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-      <div style={{ display: "flex", gap: "0.25rem" }}>
-        <select
-          value={baseDiet}
-          onChange={(e) => handleBaseChange(e.target.value)}
-          style={{
-            flex: 1,
-            padding: "4px 8px",
-            border: "1px solid #cbd5e0",
-            borderRadius: "4px",
-            fontSize: "0.8rem",
-            background: "#edf2f7",
-            minHeight: "32px",
-            boxSizing: "border-box",
-          }}
-        >
-          <option value="">— Select diet —</option>
-          {diets.map((d) => (
-            <option key={d.id} value={d.name}>
-              {d.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={foodMod}
-          onChange={(e) => handleFoodModChange(e.target.value)}
-          disabled={!baseDiet}
-          style={{
-            flex: 1,
-            padding: "4px 8px",
-            border: "1px solid #cbd5e0",
-            borderRadius: "4px",
-            fontSize: "0.8rem",
-            background: baseDiet ? "#edf2f7" : "#e2e8f0",
-            minHeight: "32px",
-            boxSizing: "border-box",
-          }}
-        >
-          <option value="">— Food mod —</option>
-          {foodMods.map((m) => (
-            <option key={m.id} value={m.name}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-        <select
-          value={liquidMod}
-          onChange={(e) => handleLiquidModChange(e.target.value)}
-          disabled={!baseDiet}
-          style={{
-            flex: 1,
-            padding: "4px 8px",
-            border: "1px solid #cbd5e0",
-            borderRadius: "4px",
-            fontSize: "0.8rem",
-            background: baseDiet ? "#edf2f7" : "#e2e8f0",
-            minHeight: "32px",
-            boxSizing: "border-box",
-          }}
-        >
-          <option value="">— Liquid mod —</option>
-          {liquidMods.map((m) => (
-            <option key={m.id} value={m.name}>
-              {m.name}
-            </option>
-          ))}
-        </select>
-      </div>
-      <input
-        type="text"
-        value={freetext}
-        onChange={(e) => handleFreetextChange(e.target.value)}
-        placeholder="Override / additional notes"
+      <select
+        multiple
+        value={selected}
+        onChange={handleChange}
         style={{
-          padding: "4px 8px",
+          width: "100%",
+          padding: "4px 6px",
           border: "1px solid #cbd5e0",
           borderRadius: "4px",
-          fontSize: "0.75rem",
+          fontSize: "0.8rem",
           background: "#edf2f7",
+          minHeight: "90px",
           boxSizing: "border-box",
-          height: "26px",
+          fontFamily: "inherit",
         }}
-      />
+      >
+        {diets.map((d) => (
+          <option key={d.id} value={d.name}>
+            {d.name}
+          </option>
+        ))}
+      </select>
+      {selected.length > 0 && (
+        <div style={{ fontSize: "0.68rem", color: "#64748b", fontStyle: "italic" }}>
+          {selected.length} diet{selected.length !== 1 ? "s" : ""} selected — Ctrl/Cmd+click to deselect
+        </div>
+      )}
     </div>
   );
 }
@@ -327,7 +205,7 @@ function DietOrderPicker({ value, onChange }: DietOrderPickerProps) {
 interface D11OralProps { dietary: Dietary; setDietary: (d: Dietary) => void; }
 
 function D11Oral({ dietary, setDietary }: D11OralProps) {
-  const handleUpdate = (field: string, val: string) => setDietary({ ...dietary, [field]: val });
+  const handleUpdate = (field: string, val: any) => setDietary({ ...dietary, [field]: val });
   return (
     <div style={{ marginBottom: "0.5rem" }}>
       <div className="card" style={{ padding: "0.35rem 0.6rem" }}>
@@ -335,7 +213,10 @@ function D11Oral({ dietary, setDietary }: D11OralProps) {
         <div style={{ display: "grid", gridTemplateColumns: "2.2fr 0.85fr 0.85fr 0.85fr 0.85fr 0.85fr", gap: "0.35rem" }}>
           <div className="input-group">
             <label style={{ fontSize: "0.7rem", fontWeight: 700 }}>Current Rx Diet Order</label>
-            <DietOrderPicker value={dietary.dietOrder || ""} onChange={val => handleUpdate("dietOrder", val)} />
+            <DietOrderPicker
+              value={Array.isArray(dietary.dietOrder) ? dietary.dietOrder : (dietary.dietOrder ? [dietary.dietOrder as unknown as string] : [])}
+              onChange={val => handleUpdate("dietOrder", val)}
+            />
           </div>
           <Field label="Calories (kcal/day)" style={{ gap: "2px" }}><NumInput value={dietary.oralCalories || ""} onChange={v => handleUpdate("oralCalories", v)} placeholder="e.g. 1800" style={{ padding: "4px 6px", fontSize: "0.8rem" }} /></Field>
           <Field label="Protein (g/day)" style={{ gap: "2px" }}><NumInput value={dietary.oralProtein || ""} onChange={v => handleUpdate("oralProtein", v)} placeholder="e.g. 75" style={{ padding: "4px 6px", fontSize: "0.8rem" }} /></Field>

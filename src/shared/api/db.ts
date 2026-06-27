@@ -815,7 +815,9 @@ export async function submitNote(
     skin:                     clinicalData.skin                              ?? null,
 
     // Dietary domain (from note.dietary JSON)
-    dietOrder:                (dietaryData.dietOrder as string)              ?? null,
+    dietOrder:                Array.isArray(dietaryData.dietOrder)
+                                ? (dietaryData.dietOrder as string[]).join(", ")
+                                : (dietaryData.dietOrder as string ?? null),
     oralCalories:             (dietaryData.oralCalories as string)           ?? null,
     oralProtein:              (dietaryData.oralProtein as string)            ?? null,
     oralWater:                (dietaryData.oralWater as string)              ?? null,
