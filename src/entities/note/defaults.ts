@@ -87,6 +87,7 @@ export const defaultDietary: Dietary = {
   herbalCAM: "", supplements: "",
   ivOrders: [],
   ivNextId: 1,
+  verifiedRxDiet: false,
 };
 
 export const defaultDiagnosis: Diagnosis = {

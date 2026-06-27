@@ -156,7 +156,7 @@ export default function Sidebar({
       <div className="nav-section">
         {/* PH — Patient History */}
         <NavItem
-          label="PH. Patient History"
+          label="Patient History"
           active={activeDomain === "PH"}
           onClick={() => handleDomainClick("PH")}
         />

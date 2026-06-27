@@ -1,6 +1,8 @@
 // src-tauri/src/lib.rs
 // via eval() on the WebviewWindow.
 
+mod rxnorm;
+
 #[tauri::command]
 async fn export_note_pdf(webview: tauri::WebviewWindow) -> Result<(), String> {
     // Evaluate JavaScript on the frontend to trigger the native print dialog.
@@ -15,7 +17,12 @@ async fn export_note_pdf(webview: tauri::WebviewWindow) -> Result<(), String> {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_sql::Builder::default().build())
-        .invoke_handler(tauri::generate_handler![export_note_pdf])
+        .plugin(tauri_plugin_store::Builder::default().build())
+        .invoke_handler(tauri::generate_handler![
+            export_note_pdf,
+            rxnorm::sync_rxnorm,
+            rxnorm::rxnorm_sync_status,
+        ])
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(

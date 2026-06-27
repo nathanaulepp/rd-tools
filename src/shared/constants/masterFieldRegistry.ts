@@ -15,7 +15,7 @@ export const MASTER_DOMAINS = [
   },
   {
     id: "patientHistory",
-    title: "PH. Patient History",
+    title: "Patient History",
     fields: [
       { key: "purposeOfVisit", label: "Purpose of Visit" },
       { key: "chiefComplaint", label: "Chief Complaint" },
@@ -181,6 +181,7 @@ export const MASTER_DOMAINS = [
       { key: "ivOrders",         label: "IV Orders" },
       { key: "enState",          label: "Enteral Nutrition Orders" },
       { key: "pnState",          label: "Parenteral Nutrition Orders" },
+      { key: "verifiedRxDiet",   label: "Verified Rx Diet & Supplements" },
     ]
   },
   {

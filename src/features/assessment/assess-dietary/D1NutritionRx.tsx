@@ -697,7 +697,9 @@ const SECTIONS = [
   { id: "D14", label: "D14 – IV Orders",  color: "#0891b2" },
 ];
 
-// ─── D15: Read-Only Totals Summary ────────────────────────────────────────────
+// ─── D15: Read-Only Totals Summary (compact) ─────────────────────────────────
+// Drop-in replacement for the D15TotalsSummary function inside D1NutritionRx.tsx
+// Replaces the two-row layout with a single dense strip.
 
 interface D15Props {
   dietary: import("../../../types").Dietary;
@@ -725,146 +727,86 @@ function D15TotalsSummary({ dietary, enState, pnState }: D15Props) {
 
   const oralFluidMl = helper.num(dietary.oralWater);
 
-  const labelStyle: React.CSSProperties = {
-    fontSize: "0.65rem",
-    color: "#718096",
-    fontWeight: 700,
-    textTransform: "uppercase",
-    letterSpacing: "0.05em",
-    marginBottom: "2px",
-  };
+  const cell = (label: string, value: string | number, unit: string, color: string) => (
+    <div style={{ display: "flex", alignItems: "baseline", gap: "3px", whiteSpace: "nowrap" }}>
+      <span style={{ fontSize: "0.62rem", fontWeight: 700, color: "#94a3b8", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+        {label}
+      </span>
+      <span style={{ fontSize: "0.9rem", fontWeight: 800, color }}>{value}</span>
+      <span style={{ fontSize: "0.62rem", color: "#94a3b8" }}>{unit}</span>
+    </div>
+  );
+
+  const dot = <span style={{ color: "#cbd5e1", fontSize: "0.7rem", flexShrink: 0 }}>•</span>;
+
+  const fluidParts = [
+    oralFluidMl > 0   && `Oral ${Math.round(oralFluidMl)} mL`,
+    enFreeWater > 0   && `EN free ${Math.round(enFreeWater)} mL`,
+    enFlush > 0       && `flush ${Math.round(enFlush)} mL`,
+    pnFreeWater > 0   && `PN free ${Math.round(pnFreeWater)} mL`,
+  ].filter(Boolean).join("  ·  ");
 
   return (
     <div
       className="card"
       style={{
-        marginTop: "1.5rem",
+        marginTop: "0.75rem",
+        padding: "6px 12px",
         borderTop: "2px solid #2c3e50",
         background: "#f8fafc",
-        padding: "0.5rem 0.75rem",
       }}
     >
-      {/* Title & Badge Row */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: "0.5rem",
-          borderBottom: "1px dashed #e2e8f0",
-          paddingBottom: "0.35rem",
-        }}
-      >
-        <span
-          style={{
-            fontWeight: 700,
-            fontSize: "0.78rem",
-            color: "var(--primary)",
-            textTransform: "uppercase",
-            letterSpacing: "0.5px",
-          }}
-        >
-          D15: Total Daily Intake Summary
+      <div style={{ display: "flex", alignItems: "center", gap: "0", flexWrap: "wrap" }}>
+
+        {/* Label */}
+        <span style={{
+          fontSize: "0.62rem", fontWeight: 800, textTransform: "uppercase",
+          letterSpacing: "0.06em", color: "#475569", marginRight: "14px", whiteSpace: "nowrap",
+        }}>
+          D15
         </span>
-        <span
-          style={{
-            fontSize: "0.58rem",
-            fontWeight: 800,
-            textTransform: "uppercase",
-            letterSpacing: "0.06em",
-            padding: "2px 8px",
-            borderRadius: "4px",
-            background: "#f0fdf4",
-            color: "#166534",
-            border: "1px solid #bbf7d0",
-          }}
-        >
-          READ ONLY
+
+        {/* Macros + fluids inline */}
+        <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", flex: 1 }}>
+
+          {cell(
+            "Energy",
+            Math.round(totalKcal),
+            ivKcal > 0 ? `kcal  (+${Math.round(ivKcal)} IV)` : "kcal",
+            "#e67e22"
+          )}
+          {dot}
+          {cell("Protein", Math.round(totalProt * 10) / 10, "g", "#8e44ad")}
+          {dot}
+          {cell("CHO", Math.round(totalCho * 10) / 10, "g", "#d69e2e")}
+          {dot}
+          {cell(
+            "Fat",
+            Math.round(totalFat * 10) / 10,
+            ivFat > 0 ? `g  (+${Math.round(ivFat * 10) / 10}g IV)` : "g",
+            "#c05621"
+          )}
+          {dot}
+          {cell("Fluids", Math.round(totalFluid), "mL", "#1e40af")}
+
+          {/* Fluid breakdown — only shown when there's something to break down */}
+          {fluidParts && (
+            <span style={{ fontSize: "0.68rem", color: "#94a3b8", marginLeft: "4px" }}>
+              ({fluidParts})
+            </span>
+          )}
+        </div>
+
+        {/* READ ONLY badge — pushed right */}
+        <span style={{
+          fontSize: "0.55rem", fontWeight: 800, textTransform: "uppercase",
+          letterSpacing: "0.06em", padding: "2px 7px", borderRadius: "4px",
+          background: "#f0fdf4", color: "#166534", border: "1px solid #bbf7d0",
+          marginLeft: "10px", flexShrink: 0,
+        }}>
+          Read only
         </span>
-      </div>
 
-      {/* EHR Flowsheet Grid Strip */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          flexWrap: "wrap",
-          gap: "1rem",
-          padding: "0.25rem 0",
-        }}
-      >
-        {/* Energy */}
-        <div style={{ flex: 1, minWidth: "120px" }}>
-          <div style={labelStyle}>Energy</div>
-          <div style={{ fontSize: "1rem", fontWeight: 700, color: "#e67e22" }}>
-            {Math.round(totalKcal)}{" "}
-            <span style={{ fontSize: "0.7rem", fontWeight: 500, color: "#718096" }}>
-              kcal/d {ivKcal > 0 ? `(incl. ${Math.round(ivKcal)} IV)` : ""}
-            </span>
-          </div>
-        </div>
-
-        {/* Protein */}
-        <div style={{ flex: 1, minWidth: "90px", borderLeft: "1px solid #e2e8f0", paddingLeft: "1rem" }}>
-          <div style={labelStyle}>Protein</div>
-          <div style={{ fontSize: "1rem", fontWeight: 700, color: "#8e44ad" }}>
-            {Math.round(totalProt * 10) / 10}{" "}
-            <span style={{ fontSize: "0.7rem", fontWeight: 500, color: "#718096" }}>g/d</span>
-          </div>
-        </div>
-
-        {/* CHO */}
-        <div style={{ flex: 1, minWidth: "90px", borderLeft: "1px solid #e2e8f0", paddingLeft: "1rem" }}>
-          <div style={labelStyle}>Carbohydrate</div>
-          <div style={{ fontSize: "1rem", fontWeight: 700, color: "#d69e2e" }}>
-            {Math.round(totalCho * 10) / 10}{" "}
-            <span style={{ fontSize: "0.7rem", fontWeight: 500, color: "#718096" }}>g/d</span>
-          </div>
-        </div>
-
-        {/* Fat */}
-        <div style={{ flex: 1, minWidth: "90px", borderLeft: "1px solid #e2e8f0", paddingLeft: "1rem" }}>
-          <div style={labelStyle}>Fat</div>
-          <div style={{ fontSize: "1rem", fontWeight: 700, color: "#c05621" }}>
-            {Math.round(totalFat * 10) / 10}{" "}
-            <span style={{ fontSize: "0.7rem", fontWeight: 500, color: "#718096" }}>
-              g/d {ivFat > 0 ? `(incl. ${Math.round(ivFat * 10) / 10}g IV)` : ""}
-            </span>
-          </div>
-        </div>
-
-        {/* Fluids */}
-        <div style={{ flex: 1.5, minWidth: "155px", borderLeft: "1px solid #e2e8f0", paddingLeft: "1rem" }}>
-          <div style={labelStyle}>Total Fluids</div>
-          <div style={{ fontSize: "1rem", fontWeight: 700, color: "#1e40af" }}>
-            {Math.round(totalFluid)}{" "}
-            <span style={{ fontSize: "0.7rem", fontWeight: 500, color: "#718096" }}>mL/d</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Fluid breakdown substrip */}
-      <div
-        style={{
-          marginTop: "0.5rem",
-          paddingTop: "0.35rem",
-          borderTop: "1px solid #e2e8f0",
-          fontSize: "0.68rem",
-          color: "#475569",
-          display: "flex",
-          gap: "8px",
-          flexWrap: "wrap",
-          alignItems: "center",
-        }}
-      >
-        <span>Oral: <strong>{Math.round(oralFluidMl)}</strong> mL</span>
-        <span>•</span>
-        <span>EN Free: <strong>{Math.round(enFreeWater)}</strong> mL</span>
-        <span>•</span>
-        <span>EN Flush: <strong>{Math.round(enFlush)}</strong> mL</span>
-        <span>•</span>
-        <span>PN Free: <strong>{Math.round(pnFreeWater)}</strong> mL</span>
       </div>
     </div>
   );

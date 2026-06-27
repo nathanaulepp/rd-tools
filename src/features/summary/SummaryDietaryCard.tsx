@@ -35,6 +35,11 @@ export default function SummaryDietaryCard() {
           <SummaryRow label="Diet Order" value={dietary?.dietOrder} />
           <SummaryRow label="Estimated Calories" value={dietary?.oralCalories} unit="kcal/d" />
           <SummaryRow label="Estimated Protein" value={dietary?.oralProtein} unit="g/d" />
+          {dietary?.verifiedRxDiet && (
+            <div style={{ color: "#16a34a", fontSize: "0.85rem", marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.25rem", fontWeight: 500 }}>
+              ✓ Verified receiving current Rx diet and supplements as ordered
+            </div>
+          )}
         </div>
         <div>
           <h4 style={styles.subGroup}>Behavioral & Access</h4>

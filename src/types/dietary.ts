@@ -18,9 +18,7 @@ export interface Dietary {
   dietOrder: string;
   oralCalories: string;
   oralProtein: string;
-  /** Optional — squished into the D11 input row. Used in D15 macro totals. */
   oralCho: string;
-  /** Optional — squished into the D11 input row. Used in D15 macro totals. */
   oralFat: string;
   oralWater: string;
 
@@ -64,6 +62,7 @@ export interface Dietary {
 
   ivOrders: IVOrder[];
   ivNextId: number;
+  verifiedRxDiet?: boolean;
 }
 
 export type IVOrderType =

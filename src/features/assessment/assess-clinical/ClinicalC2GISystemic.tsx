@@ -49,6 +49,7 @@ const toggleExclusiveChip = (
 export default function ClinicalC2GISystemic() {
   const { clinical, setClinical } = useClinicalStore();
   const [expanded, setExpanded] = React.useState(true);
+  const [oralHygieneExpanded, setOralHygieneExpanded] = React.useState(false);
 
   const handleUpdate = (field: keyof Clinical, val: any) =>
     setClinical({ [field]: val } as Partial<Clinical>);
@@ -370,85 +371,104 @@ export default function ClinicalC2GISystemic() {
 
           {/* Section C — Oral Hygiene */}
           <div style={sectionStyle}>
-            <div style={sectionTitleStyle}>Section C — Oral Hygiene</div>
-            <div className="grid-2-col">
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <Field label="Has Toothbrush in Hospital">
-                  <SelectInput
-                    value={clinical.hasToothbrush || ""}
-                    onChange={(v) => handleUpdate("hasToothbrush", v)}
-                    options={YES_NO_OPTIONS}
-                    placeholder="Select..."
-                  />
-                </Field>
-                <Field label="Brushing Frequency">
-                  <SelectInput
-                    value={clinical.brushingFrequency || ""}
-                    onChange={(v) => handleUpdate("brushingFrequency", v)}
-                    options={BRUSHING_FREQUENCY_OPTIONS}
-                    placeholder="Select..."
-                  />
-                </Field>
-                <Field label="Flossing Frequency">
-                  <SelectInput
-                    value={clinical.flossingFrequency || ""}
-                    onChange={(v) => handleUpdate("flossingFrequency", v)}
-                    options={FLOSSING_FREQUENCY_OPTIONS}
-                    placeholder="Select..."
-                  />
-                </Field>
-                <Field label="Uses Mouthwash">
-                  <SelectInput
-                    value={clinical.usesMouthwash || ""}
-                    onChange={(v) => handleUpdate("usesMouthwash", v)}
-                    options={YES_NO_OPTIONS}
-                    placeholder="Select..."
-                  />
-                </Field>
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                <Field label="Removes Oral Appliances on Schedule">
-                  <SelectInput
-                    value={clinical.removesAppliances || ""}
-                    onChange={(v) => handleUpdate("removesAppliances", v)}
-                    options={YES_NO_OPTIONS}
-                    placeholder="Select..."
-                  />
-                </Field>
-                <Field label="Cleans Oral Appliances">
-                  <SelectInput
-                    value={clinical.cleansAppliances || ""}
-                    onChange={(v) => handleUpdate("cleansAppliances", v)}
-                    options={YES_NO_OPTIONS}
-                    placeholder="Select..."
-                  />
-                </Field>
-                <Field label="Fluoride Toothpaste">
-                  <SelectInput
-                    value={clinical.fluorideToothpaste || ""}
-                    onChange={(v) => handleUpdate("fluorideToothpaste", v)}
-                    options={YES_NO_OPTIONS}
-                    placeholder="Select..."
-                  />
-                </Field>
-                <Field label="Spits Out Toothpaste">
-                  <SelectInput
-                    value={clinical.spitsToothpaste || ""}
-                    onChange={(v) => handleUpdate("spitsToothpaste", v)}
-                    options={YES_NO_OPTIONS}
-                    placeholder="Select..."
-                  />
-                </Field>
-              </div>
+            <div
+              style={{
+                ...sectionTitleStyle,
+                cursor: "pointer",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                userSelect: "none"
+              }}
+              onClick={() => setOralHygieneExpanded(!oralHygieneExpanded)}
+            >
+              <span>Section C — Oral Hygiene</span>
+              <span style={{ fontSize: "0.8rem", color: "#718096" }}>
+                {oralHygieneExpanded ? "▲ Collapse" : "▼ Expand"}
+              </span>
             </div>
-            <Field label="Oral Hygiene Comments">
-              <textarea
-                style={textareaStyle}
-                value={clinical.oralHygieneComments || ""}
-                onChange={(e) => handleUpdate("oralHygieneComments", e.target.value)}
-                placeholder="Oral hygiene notes..."
-              />
-            </Field>
+            {oralHygieneExpanded && (
+              <>
+                <div className="grid-2-col">
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <Field label="Has Toothbrush in Hospital">
+                      <SelectInput
+                        value={clinical.hasToothbrush || ""}
+                        onChange={(v) => handleUpdate("hasToothbrush", v)}
+                        options={YES_NO_OPTIONS}
+                        placeholder="Select..."
+                      />
+                    </Field>
+                    <Field label="Brushing Frequency">
+                      <SelectInput
+                        value={clinical.brushingFrequency || ""}
+                        onChange={(v) => handleUpdate("brushingFrequency", v)}
+                        options={BRUSHING_FREQUENCY_OPTIONS}
+                        placeholder="Select..."
+                      />
+                    </Field>
+                    <Field label="Flossing Frequency">
+                      <SelectInput
+                        value={clinical.flossingFrequency || ""}
+                        onChange={(v) => handleUpdate("flossingFrequency", v)}
+                        options={FLOSSING_FREQUENCY_OPTIONS}
+                        placeholder="Select..."
+                      />
+                    </Field>
+                    <Field label="Uses Mouthwash">
+                      <SelectInput
+                        value={clinical.usesMouthwash || ""}
+                        onChange={(v) => handleUpdate("usesMouthwash", v)}
+                        options={YES_NO_OPTIONS}
+                        placeholder="Select..."
+                      />
+                    </Field>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <Field label="Removes Oral Appliances on Schedule">
+                      <SelectInput
+                        value={clinical.removesAppliances || ""}
+                        onChange={(v) => handleUpdate("removesAppliances", v)}
+                        options={YES_NO_OPTIONS}
+                        placeholder="Select..."
+                      />
+                    </Field>
+                    <Field label="Cleans Oral Appliances">
+                      <SelectInput
+                        value={clinical.cleansAppliances || ""}
+                        onChange={(v) => handleUpdate("cleansAppliances", v)}
+                        options={YES_NO_OPTIONS}
+                        placeholder="Select..."
+                      />
+                    </Field>
+                    <Field label="Fluoride Toothpaste">
+                      <SelectInput
+                        value={clinical.fluorideToothpaste || ""}
+                        onChange={(v) => handleUpdate("fluorideToothpaste", v)}
+                        options={YES_NO_OPTIONS}
+                        placeholder="Select..."
+                      />
+                    </Field>
+                    <Field label="Spits Out Toothpaste">
+                      <SelectInput
+                        value={clinical.spitsToothpaste || ""}
+                        onChange={(v) => handleUpdate("spitsToothpaste", v)}
+                        options={YES_NO_OPTIONS}
+                        placeholder="Select..."
+                      />
+                    </Field>
+                  </div>
+                </div>
+                <Field label="Oral Hygiene Comments">
+                  <textarea
+                    style={textareaStyle}
+                    value={clinical.oralHygieneComments || ""}
+                    onChange={(e) => handleUpdate("oralHygieneComments", e.target.value)}
+                    placeholder="Oral hygiene notes..."
+                  />
+                </Field>
+              </>
+            )}
           </div>
 
           {/* Section D — Allergies & Medical Devices */}

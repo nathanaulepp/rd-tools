@@ -42,6 +42,20 @@ export default function DietaryD2Intake() {
 
   return (
     <>
+      <div className="card" style={{ marginBottom: "0.4rem" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: "8px", cursor: "pointer", userSelect: "none" }}>
+          <input
+            type="checkbox"
+            checked={!!(dietary as any)?.verifiedRxDiet}
+            onChange={(e) => handleUpdate("verifiedRxDiet" as keyof Dietary, e.target.checked)}
+            style={{ width: "15px", height: "15px", accentColor: "var(--accent)", cursor: "pointer", flexShrink: 0 }}
+          />
+          <span style={{ fontSize: "0.82rem", fontWeight: 600, color: "var(--secondary)" }}>
+            Verified patient is receiving current Rx diet and supplements as ordered
+          </span>
+        </label>
+      </div>
+
       <div className="card">
         <div className="flex-between mb-1">
           <h4 style={{ margin: 0 }}>D21: 24-Hour Recall / Intake Journals</h4>
