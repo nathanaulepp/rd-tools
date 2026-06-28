@@ -6,8 +6,6 @@ import DysphagiaModManager from "../features/settings/diets/DysphagiaModManager"
 import SubmissionRequirementsPanel from "../features/settings/SubmissionRequirementsPanel";
 import SchemaInfoPanel from "../features/settings/SchemaInfoPanel";
 import ChemistryTemplatesPanel from "../features/settings/ChemistryTemplatesPanel";
-import RxNormSettingsPanel from "../features/settings/RxNormSettingsPanel";
-
 // ─── Components ───────────────────────────────────────────────────────────────
 
 interface SettingsPageProps {
@@ -17,7 +15,7 @@ interface SettingsPageProps {
 export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
   useEscapeBackout(handleExitToStart);
 
-  const [activeTab, setActiveTab] = useState<"requirements" | "rxnorm" | "formulary" | "chemistry" | "diets">("requirements");
+  const [activeTab, setActiveTab] = useState<"requirements" | "formulary" | "chemistry" | "diets">("requirements");
   const [toastMsg, setToastMsg] = useState("");
 
   const showToast = (msg: string) => {
@@ -37,14 +35,13 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
           <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
             {[
               { id: "requirements", label: "⚙ Submission Requirements" },
-              { id: "rxnorm",       label: "Medication Search" },
               { id: "formulary",    label: "Enteral Formulary" },
               { id: "chemistry",    label: "Chemistry Templates" },
               { id: "diets",        label: "Diet List" },
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as "requirements" | "rxnorm" | "formulary" | "chemistry" | "diets")}
+                onClick={() => setActiveTab(tab.id as "requirements" | "formulary" | "chemistry" | "diets")}
                 style={{
                   padding: "6px 16px",
                   borderRadius: "8px",
@@ -69,8 +66,6 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
             <SubmissionRequirementsPanel showToast={showToast} />
             <SchemaInfoPanel />
           </>
-        ) : activeTab === "rxnorm" ? (
-          <RxNormSettingsPanel />
         ) : activeTab === "chemistry" ? (
           <ChemistryTemplatesPanel showToast={showToast} />
         ) : activeTab === "diets" ? (

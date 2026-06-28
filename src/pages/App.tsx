@@ -12,7 +12,6 @@
 import { useEffect } from "react";
 import "./App.css";
 import { getDb, getLabPresets } from "../shared/api/db";
-import { bootRxNormSync } from "../features/drugs/rxnormSync";
 import { useUIStore }     from "../stores/useUIStore";
 import { useLabsStore }   from "../stores/useLabsStore";
 import RouteRenderer      from "../widgets/RouteRenderer";
@@ -54,7 +53,6 @@ export default function App() {
       .catch((err) => console.error("Failed to load lab presets:", err));
 
     // Pre-warm the RxNorm drug database in the background.
-    bootRxNormSync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // intentionally empty — runs once on mount only
 

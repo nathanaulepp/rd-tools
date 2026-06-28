@@ -116,6 +116,97 @@ async function searchProductsLocal(
   }));
 }
 
+/**
+ * Fetches SCD concepts matching the query directly from the NLM RxNorm Web API.
+ */
+async function searchRxNavOnline(query: string): Promise<MedicationProduct[]> {
+  if (query.trim().length < 2) return [];
+
+  // Run spelling correction matching and RxTerms prefix autocomplete in parallel
+  const approxUrl = `https://rxnav.nlm.nih.gov/REST/approximateTerm.json?term=${encodeURIComponent(query)}&maxEntries=5`;
+  const rxTermsUrl = `https://clinicaltables.nlm.nih.gov/api/rxterms/v3/search?terms=${encodeURIComponent(query)}&ef=RXCUIS`;
+
+  const candidateRxcuis = new Set<string>();
+
+  try {
+    const [approxRes, rxTermsRes] = await Promise.all([
+      fetch(approxUrl, { headers: { Accept: "application/json" } }).catch(() => null),
+      fetch(rxTermsUrl, { headers: { Accept: "application/json" } }).catch(() => null),
+    ]);
+
+    if (approxRes && approxRes.ok) {
+      const approxJson = await approxRes.json();
+      const candidates = approxJson.approximateGroup?.candidate || [];
+      for (const c of candidates) {
+        if (c.rxcui) candidateRxcuis.add(c.rxcui);
+      }
+    }
+
+    if (rxTermsRes && rxTermsRes.ok) {
+      const rxTermsJson = await rxTermsRes.json();
+      const rxcuisList = rxTermsJson[2]?.RXCUIS || [];
+      for (const list of rxcuisList) {
+        if (Array.isArray(list)) {
+          for (const rxcui of list) {
+            if (rxcui) candidateRxcuis.add(rxcui);
+          }
+        }
+      }
+    }
+  } catch (e) {
+    console.warn("Parallel online candidates search failed:", e);
+  }
+
+  const rxcuis = Array.from(candidateRxcuis);
+  if (rxcuis.length === 0) return [];
+
+  const productsMap = new Map<string, MedicationProduct>();
+
+  // Fetch related SCD concepts for each candidate RxCUI in parallel
+  await Promise.all(
+    rxcuis.slice(0, 10).map(async (rxcui: string) => {
+      try {
+        const relUrl = `https://rxnav.nlm.nih.gov/REST/rxcui/${rxcui}/related.json?tty=SCD`;
+        const relRes = await fetch(relUrl, { headers: { Accept: "application/json" } });
+        if (!relRes.ok) return;
+
+        const relJson = await relRes.json();
+        const groups = relJson.relatedGroup?.conceptGroup || [];
+        
+        for (const g of groups) {
+          if (g.tty !== "SCD") continue;
+          const concepts = g.conceptProperties || [];
+          for (const c of concepts) {
+            if (!c.rxcui || !c.name || productsMap.has(c.rxcui)) continue;
+
+            const name = c.name;
+            const strengthMatch = name.match(/(\d+(?:\.\d+)?)\s*(MG|MCG|MEQ|MMOL|IU|ML|%)/i);
+            const strengthValue = strengthMatch ? parseFloat(strengthMatch[1]) : null;
+            const strengthUnit = strengthMatch ? strengthMatch[2].toUpperCase() : "";
+            const ingredient = strengthMatch ? name.slice(0, name.indexOf(strengthMatch[0])).trim() : name;
+            const doseFormMatch = name.match(/\b(Tablet|Capsule|Solution|Suspension|Injection|Patch|Cream|Ointment|Powder|Suppository|Inhaler|Spray|Drops?|Gel|Lotion|Syrup)\b/i);
+            const doseForm = doseFormMatch ? doseFormMatch[1] : "";
+
+            productsMap.set(c.rxcui, {
+              rxcui: c.rxcui,
+              displayName: name,
+              ingredient,
+              strengthValue,
+              strengthUnit,
+              doseForm,
+              tty: "SCD",
+            });
+          }
+        }
+      } catch (e) {
+        console.warn(`Failed to resolve related SCDs for rxcui ${rxcui}:`, e);
+      }
+    })
+  );
+
+  return Array.from(productsMap.values());
+}
+
 // ── In-memory Fallback (browser / dev) ────────────────────────────────────────
 
 const DEV_INGREDIENTS = [
@@ -180,7 +271,6 @@ function useProductSearch(query: string) {
   const [results, setResults] = useState<MedicationProduct[]>([]);
   const [loading, setLoading] = useState(false);
   const [isTauri, setIsTauri] = useState<boolean | null>(null);
-  const [synced, setSynced] = useState(false);
   const [syncMsg, setSyncMsg] = useState<string | null>(null);
   const dbRef = useRef<Database | null>(null);
 
@@ -211,27 +301,11 @@ function useProductSearch(query: string) {
             tty            TEXT NOT NULL DEFAULT 'SCD'
           )
         `);
-
-        const rows = await db.select<Array<{ cnt: number }>>(
-          "SELECT COUNT(*) as cnt FROM rxnorm_products"
-        );
-        const count = rows[0]?.cnt ?? 0;
-        if (!active) return;
-
-        if (count === 0) {
-          setSyncMsg("Medication search is unavailable; manual entry is still available");
-        } else {
-          setSyncMsg(null);
-        }
-        setSynced(true);
       } catch (e) {
         if (!isTauriEnv) {
           if (!active) return;
           setIsTauri(false);
-          setSyncMsg("Dev mode: using RxNorm API fallback");
-          getDevProducts().then(() => {
-            if (active) setSynced(true);
-          });
+          getDevProducts();
         }
       }
     };
@@ -243,7 +317,7 @@ function useProductSearch(query: string) {
 
   // Handle query changes
   useEffect(() => {
-    if (!synced || query.length < 2) {
+    if (isTauri === null || query.trim().length < 2) {
       setResults([]);
       return;
     }
@@ -252,35 +326,68 @@ function useProductSearch(query: string) {
     const timer = setTimeout(async () => {
       setLoading(true);
       try {
-        if (isTauri && dbRef.current) {
-          const rows = await searchProductsLocal(dbRef.current, query);
-          if (!cancelled) setResults(rows);
-        } else if (isTauri === false) {
-          const all = await getDevProducts();
-          const q = query.toLowerCase();
-          const filtered = all
-            .filter(p => p.displayName.toLowerCase().includes(q))
-            .sort((a, b) => {
-              const aS = a.displayName.toLowerCase().startsWith(q) ? 0 : 1;
-              const bS = b.displayName.toLowerCase().startsWith(q) ? 0 : 1;
-              return aS - bS || a.displayName.localeCompare(b.displayName);
-            })
-            .slice(0, 50);
-          if (!cancelled) setResults(filtered);
+        // 1. Try Online Web Search first
+        const onlineResults = await searchRxNavOnline(query);
+        if (!cancelled) {
+          setResults(onlineResults);
+          setSyncMsg(null); // Clear offline warnings
         }
-      } catch (err) {
-        console.error("Search failed:", err);
-        if (!cancelled) setResults([]);
+      } catch (onlineError) {
+        console.warn("RxNav online search failed, trying fallback:", onlineError);
+        try {
+          if (isTauri && dbRef.current) {
+            // Check if local database has any rows first
+            const countRows = await dbRef.current.select<Array<{ cnt: number }>>(
+              "SELECT COUNT(*) as cnt FROM rxnorm_products"
+            );
+            const count = countRows[0]?.cnt ?? 0;
+
+            if (count > 0) {
+              const localResults = await searchProductsLocal(dbRef.current, query);
+              if (!cancelled) {
+                setResults(localResults);
+                setSyncMsg("Using offline medication index");
+              }
+            } else {
+              if (!cancelled) {
+                setResults([]);
+                setSyncMsg("Medication search is unavailable; manual entry is still available");
+              }
+            }
+          } else {
+            // Browser fallback
+            const all = await getDevProducts();
+            const q = query.toLowerCase();
+            const filtered = all
+              .filter(p => p.displayName.toLowerCase().includes(q))
+              .sort((a, b) => {
+                const aS = a.displayName.toLowerCase().startsWith(q) ? 0 : 1;
+                const bS = b.displayName.toLowerCase().startsWith(q) ? 0 : 1;
+                return aS - bS || a.displayName.localeCompare(b.displayName);
+              })
+              .slice(0, 50);
+            if (!cancelled) {
+              setResults(filtered);
+              setSyncMsg("Using offline medication index");
+            }
+          }
+        } catch (localError) {
+          console.error("Local search fallback failed:", localError);
+          if (!cancelled) {
+            setResults([]);
+            setSyncMsg("Medication search is unavailable; manual entry is still available");
+          }
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
-    }, 200);
+    }, 300); // 300ms debounce to prevent API rate-limiting
 
     return () => {
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [query, synced, isTauri]);
+  }, [query, isTauri]);
 
   return { results, loading, syncMsg };
 }
