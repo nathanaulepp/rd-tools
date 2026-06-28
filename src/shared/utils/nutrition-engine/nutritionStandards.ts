@@ -4,7 +4,6 @@
 
 
 import type {
-  EvalStatus,
   EvalResult,
   NutritionEvaluation,
   ConditionKey,
@@ -13,9 +12,10 @@ import type {
   EvaluationSnapshot,
 } from "../../../types/standards";
 
-import type { ConditionResult, SharedEvalContext } from "../../../types/nutritionEngine";
-import { evaluateAdultCondition } from "./nutritionStandardsAdult";
-import { evaluatePedsCondition }  from "./nutritionStandardsPeds";
+import { useEquationEngineStore } from "../../../stores/useEquationEngineStore";
+import { buildPatientScope } from "../equation-engine/buildPatientScope";
+import { evaluateExpression } from "../equation-engine/mathResolver";
+import type { CustomCondition, PatientScope } from "../../../types/equationEngine";
 import {
   calcIBW,
   calcBSA,
@@ -32,7 +32,7 @@ import {
   evalStatus,
   fmtRange,
   isPedsAge,
-} from "./nutritionStandardsMath";
+} from "../clinicalMath";
 
 // Re-export math helpers for backward compatibility with other files (e.g. useCalculatedMetrics)
 export {
@@ -366,63 +366,7 @@ export const CONDITION_VARIANTS: Partial<Record<ConditionKey, { key: string; lab
   ],
 };
 
-// ─── Extra inputs ─────────────────────────────────────────────────────────────
 
-export const CONDITION_EXTRA_INPUTS: Partial<Record<ConditionKey, {
-  key: string;
-  label: string;
-  type: "number" | "select" | "checkbox";
-  options?: string[];
-  hint?: string;
-  autoPullFrom?: string;
-  minAge?: number;
-  maxAge?: number;
-  sex?: "M" | "F";
-  onlyForVariants?: string[];
-}[]>> = {
-  critical_illness: [
-    { key: "isMechVent", label: "Mechanically Ventilated", type: "checkbox", minAge: 18 },
-    { key: "tempMax",    label: "Max Temp past 24h (°F)",      type: "number", hint: "Required for PSU 2003b / PSU 2010", autoPullFrom: "clinical.tempMax", minAge: 18 },
-    { key: "ve",         label: "Minute Ventilation Ve (L/min)", type: "number", hint: "Required for PSU 2003b / PSU 2010", autoPullFrom: "clinical.ve", minAge: 18 },
-  ],
-  cystic_fibrosis: [
-    { key: "fev1Pct",               label: "FEV₁ % Predicted",                  type: "number", autoPullFrom: "clinical.fev1" },
-    { key: "isPancreaticSufficient", label: "Pancreatic Sufficient",              type: "checkbox" },
-    { key: "cfa",                   label: "Coefficient of Fat Absorption (CFA)", type: "number", hint: "Default 0.85 if no stool collection" },
-  ],
-  burns: [
-    { key: "tbsaPct",       label: "TBSA Burned (%)",                   type: "number", autoPullFrom: "clinical.tbsa" },
-    { key: "pbd",           label: "Post-Burn Day (PBD)",               type: "number", hint: "Required for Milner and Toronto", minAge: 18 },
-    { key: "caloricIntake", label: "Current Caloric Intake (kcal/day)", type: "number", hint: "Required for Toronto equation", minAge: 18, onlyForVariants: ["adult_toronto"] },
-    { key: "coreTemp",      label: "Core Temperature (°C)",             type: "number", hint: "Required for Toronto equation", minAge: 18, onlyForVariants: ["adult_toronto"] },
-  ],
-  trauma: [
-    { key: "exudateVolumeL", label: "Exudate Volume (L)", type: "number", hint: "Required for open abdomen adjustment", onlyForVariants: ["open_abdomen"] },
-  ],
-  sickle_cell: [
-    { key: "hgb", label: "Hemoglobin (g/dL)", type: "number", autoPullFrom: "labs.Hgb" },
-  ],
-  heart_failure: [
-    { key: "pal", label: "Physical Activity Level (PAL)", type: "number", hint: "1.2 = sedentary, 1.5 = lightly active", minAge: 18 },
-  ],
-  ckd_5d: [
-    { key: "urineOutputMlDay", label: "Urine Output (mL/day)", type: "number" },
-  ],
-  pressure_injuries: [
-    { key: "targetKcal", label: "Prescribed kcal/day (for fluid calc)", type: "number" },
-  ],
-  aki: [
-    { key: "urineOutputMlDay", label: "Urine Output (mL/day)", type: "number", hint: "Required for pediatric fluid calculation" },
-  ],
-  oncology: [
-    { key: "isUndernourished", label: "Undernourished / Catch-up Growth Needed", type: "checkbox" },
-  ],
-  short_bowel: [
-    { key: "hasPreservedColon",    label: "Preserved Colon (increases water absorption)",    type: "checkbox" },
-    { key: "remainingBowelShort",  label: "Remaining Bowel < 40 cm or Excessive Output",     type: "checkbox" },
-    { key: "growthSuboptimal",     label: "Suboptimal Growth Trajectory",                    type: "checkbox", maxAge: 17.9 },
-  ],
-};
 
 // ─── Main Evaluation Engine ───────────────────────────────────────────────────
 //
@@ -436,127 +380,48 @@ export interface EvaluateResult {
   snapshot: EvaluationSnapshot;
 }
 
-export function evaluateNutritionRx(opts: EvalOptions): EvaluateResult {
-  const { variant, patient, currentRx, extraInputs = {} } = opts;
+export async function evaluateNutritionRx(opts: EvalOptions): Promise<EvaluateResult> {
+  const { variant, patient } = opts;
   const condition: ConditionKey = opts.condition === "cancer" ? "oncology" : opts.condition;
 
   const sexRaw = (patient as any).sex as "M" | "F" | "";
   const sex: "M" | "F" = sexRaw === "F" ? "F" : "M";
 
-  const { wtKg, htCm, ageYears, bmi, icMeasuredKcal, icCaf, weightLabel } = patient;
-  const ageDays: number = (patient as any).ageDays ?? ageYears * 365.25;
+  const { ageYears } = patient;
   const isPeds = isPedsAge(ageYears);
 
-  const ibwKg = calcIBW(htCm, sex);
-  const ree   = calcMSJ(wtKg, htCm, ageYears, sex);
+  // ── New engine path ───────────────────────────────────────────────────────
+  const { isLoaded, loadConditions } = useEquationEngineStore.getState();
+  if (!isLoaded) await loadConditions();
 
-  // ── Build RuntimeContext ──────────────────────────────────────────────────
-  const ctx = buildRuntimeContext(opts, sex);
+  const allConditions = useEquationEngineStore.getState().conditions;
 
-  // ── IC override pre-computation ──────────────────────────────────────────
-  const useIC       = !!icMeasuredKcal && icMeasuredKcal > 0;
-  const activeIcCaf = icCaf || 1.0;
-  const icFloor     = useIC ? icMeasuredKcal * activeIcCaf        : 0;
-  const icCeiling   = useIC ? icMeasuredKcal * (activeIcCaf + 0.1) : 0;
+  // Find matching leaf node by walking the tree:
+  // Match strategy: find a leaf whose name loosely matches the variant,
+  // under a child that matches "Adult" or "Pediatric",
+  // under a root that matches the condition label.
+  const conditionLabel = CONDITION_LABELS[condition as keyof typeof CONDITION_LABELS];
+  const matchedLeaf = findMatchingLeaf(allConditions, conditionLabel, variant || "", isPeds);
 
-  // ── Bridge: SharedEvalContext for sub-engines ─────────────────────────────
-  // Sub-engines still receive the old shape. Migrating them to RuntimeContext
-  // directly is a future pass (the switch cases are unchanged for Milestone 1).
-  const sharedCtx: SharedEvalContext = {
-    wtKg:        ctx.$wtKg,
-    htCm:        ctx.$htCm,
-    ageYears:    ctx.$ageYears,
-    ageDays:     ctx.$ageDays,
-    sex,
-    bmi:         ctx.$bmi,
-    ibwKg:       ctx.$ibwKg,
-    ree,
-    useIC,
-    icFloor,
-    icCeiling,
-    activeIcCaf,
-  };
-
-  // ── Delegate to the correct sub-engine ───────────────────────────────────
-  const cr: ConditionResult = isPeds
-    ? evaluatePedsCondition({ ...opts, condition }, sharedCtx)
-    : evaluateAdultCondition({ ...opts, condition }, sharedCtx);
-
-  // ── IC global override ────────────────────────────────────────────────────
-  let { kcalLow, kcalHigh, eeKcal, eeSource, cafUsed } = cr;
-  if (useIC) {
-    eeKcal   = icFloor;
-    eeSource = "IC";
-    cafUsed  = activeIcCaf;
-    kcalLow  = icFloor;
-    kcalHigh = icCeiling;
+  if (matchedLeaf) {
+    return await evaluateWithNewEngine(matchedLeaf, opts, isPeds, sex);
   }
 
-  const { protLow, protHigh, protFixed, fluidLow, fluidHigh, fluidNote,
-          wtForKcal, wtLabel, wtForProt, afUsed, flags } = cr;
-
-  // ── Build result rows ─────────────────────────────────────────────────────
-  const results: EvalResult[] = [];
-
-  if (kcalLow > 0 && kcalHigh > 0) {
-    results.push({
-      label:   "Energy",
-      target:  fmtRange(kcalLow, kcalHigh, "kcal/day"),
-      current: currentRx.kcalPerDay,
-      unit:    "kcal/day",
-      status:  evalStatus(currentRx.kcalPerDay, kcalLow, kcalHigh),
-      note: eeSource === "IC"
-        ? `Based on Indirect Calorimetry (${icMeasuredKcal} kcal) × CAF ${activeIcCaf}`
-        : `Based on ${wtLabel} (${Math.round(wtForKcal)} kg) via ${eeSource}`,
-    });
-  }
-
-  if (protLow > 0 || protFixed !== null) {
-    const pLow  = protFixed ?? protLow;
-    const pHigh = protFixed ?? protHigh;
-    results.push({
-      label:   "Protein",
-      target:  fmtRange(pLow, pHigh, "g/day"),
-      current: currentRx.proteinGPerDay,
-      unit:    "g/day",
-      status:  evalStatus(currentRx.proteinGPerDay, pLow, pHigh),
-      note: protFixed
-        ? `Fixed RDA target (${protFixed} g/day)`
-        : `Based on ${wtForProt === ibwKg ? "IBW (Hamwi)" : wtLabel} (${Math.round(wtForProt)} kg)`,
-    });
-  }
-
-  if (fluidLow !== null && fluidHigh !== null && currentRx.fluidMlPerDay !== undefined) {
-    results.push({
-      label:   "Fluid",
-      target:  fmtRange(fluidLow, fluidHigh, "mL/day"),
-      current: currentRx.fluidMlPerDay,
-      unit:    "mL/day",
-      status:  evalStatus(currentRx.fluidMlPerDay, fluidLow, fluidHigh),
-      note:    fluidNote,
-    });
-  } else if (fluidNote) {
-    flags.push(`Fluid: ${fluidNote}`);
-  }
-
-  // ── Assemble NutritionEvaluation ──────────────────────────────────────────
+  // No matching leaf found in condition store
+  console.warn(`evaluateNutritionRx: no matching leaf for condition="${condition}" variant="${variant}"`);
   const evaluation: NutritionEvaluation = {
-    ibwKg,
-    reeKcal:     Math.round(ree),
-    eeKcal:      Math.round(eeKcal),
-    eeSource,
-    afUsed,
-    cafUsed,
-    weightUsed:  Math.round(wtForKcal * 10) / 10,
-    weightLabel: wtLabel,
+    ibwKg: calcIBW(patient.htCm, sex),
+    reeKcal: Math.round(calcMSJ(patient.wtKg, patient.htCm, patient.ageYears, sex)),
+    eeKcal: 0,
+    eeSource: "MSJ×AF" as any,
+    weightUsed: patient.wtKg,
+    weightLabel: "Actual Wt",
     isPediatric: isPeds,
-    results,
-    flags,
+    results: [],
+    flags: ["⚠ No matching condition found in equation engine. Please check condition configuration in Settings."],
   };
-
-  // ── Build EvaluationSnapshot ──────────────────────────────────────────────
-  const snapshot = buildSnapshot(evaluation, ctx, condition, variant || "");
-
+  const ctx = buildRuntimeContext(opts, sex);
+  const snapshot = buildSnapshot(evaluation, ctx, opts.condition, opts.variant || "");
   return { evaluation, snapshot };
 }
 
@@ -578,23 +443,172 @@ export const MSJ_ACTIVITY_FACTORS: { label: string; af: number; description: str
   { label: "Extra active",      af: 1.9,   description: "Very hard exercise / physical job" },
 ];
 
-// ─── Development Validation ──────────────────────────────────────────────────
 
-if (import.meta.env.DEV) {
-  for (const [condKey, fields] of Object.entries(CONDITION_EXTRA_INPUTS)) {
-    const validVariantKeys = new Set(
-      (CONDITION_VARIANTS[condKey as ConditionKey] ?? []).map(v => v.key)
-    );
-    for (const field of fields ?? []) {
-      for (const v of field.onlyForVariants ?? []) {
-        if (!validVariantKeys.has(v)) {
-          console.warn(
-            `CONDITION_EXTRA_INPUTS["${condKey}"].${field.key}: ` +
-            `onlyForVariants contains unknown variant key "${v}"`
-          );
+
+function findMatchingLeaf(
+  conditions: CustomCondition[],
+  conditionLabel: string,
+  variant: string,
+  isPeds: boolean
+): CustomCondition | null {
+  // Find root by name match
+  const root = conditions.find(c =>
+    c.parentId === null &&
+    c.name.toLowerCase().includes(conditionLabel?.toLowerCase?.() ?? "")
+  );
+  if (!root) return null;
+
+  // Find adult/pediatric child
+  const ageLabel = isPeds ? "pediatric" : "adult";
+  const child = conditions.find(c =>
+    c.parentId === root.id &&
+    c.name.toLowerCase().includes(ageLabel)
+  );
+  if (!child) return null;
+
+  // Find leaf by variant match, or take first leaf if no variant
+  const leaves = conditions.filter(c => c.parentId === child.id);
+  if (leaves.length === 0) return null;
+  if (!variant) return leaves[0];
+
+  const matched = leaves.find(l =>
+    l.name.toLowerCase().includes(variant.toLowerCase().replace(/_/g, " "))
+  );
+  return matched ?? leaves[0];
+}
+
+async function evaluateWithNewEngine(
+  leaf: CustomCondition,
+  opts: EvalOptions,
+  isPeds: boolean,
+  sex: "M" | "F"
+): Promise<EvaluateResult> {
+  const { patient, currentRx, extraInputs = {} } = opts;
+
+  // Build patient scope and merge extra inputs
+  const baseScope = buildPatientScope();
+  const scope: PatientScope = { ...baseScope };
+  for (const [k, v] of Object.entries(extraInputs)) {
+    const num = typeof v === "number" ? v : parseFloat(v as string);
+    scope[k] = isNaN(num) ? undefined : num;
+  }
+
+  // IC override
+  const useIC = !!patient.icMeasuredKcal && patient.icMeasuredKcal > 0;
+  const activeIcCaf = patient.icCaf || 1.0;
+  const icFloor = useIC ? patient.icMeasuredKcal! * activeIcCaf : 0;
+  const icCeiling = useIC ? patient.icMeasuredKcal! * (activeIcCaf + 0.1) : 0;
+
+  const results: EvalResult[] = [];
+  const flags: string[] = [];
+  let eeKcal = 0;
+  let eeSource = leaf.name;
+
+  // Collect condition-level notes
+  if (leaf.notes) {
+    for (const note of leaf.notes) {
+      if (note.conditionId) flags.push(note.noteText);
+    }
+  }
+
+  // Group equations by nutrient
+  const equations = leaf.equations ?? [];
+  const byNutrient: Record<string, typeof equations> = {};
+  for (const eq of equations) {
+    if (!byNutrient[eq.nutrient]) byNutrient[eq.nutrient] = [];
+    byNutrient[eq.nutrient].push(eq);
+  }
+
+  for (const [nutrient, eqs] of Object.entries(byNutrient)) {
+    const lowerEq = eqs.find(e =>
+      e.displayLabel.toLowerCase().includes("lower") ||
+      e.displayLabel.toLowerCase().includes("low") ||
+      eqs.length === 1
+    ) ?? eqs[0];
+
+    const upperEq = eqs.find(e =>
+      e.displayLabel.toLowerCase().includes("upper") ||
+      e.displayLabel.toLowerCase().includes("high")
+    ) ?? lowerEq;
+
+    let low: number | null = null;
+    let high: number | null = null;
+
+    const lowResult = evaluateExpression(lowerEq.expression, scope);
+    const highResult = evaluateExpression(upperEq.expression, scope);
+
+    if (lowResult.error) flags.push(`⚠ ${lowerEq.displayLabel}: ${lowResult.error}`);
+    else low = lowResult.value;
+
+    if (highResult.error) flags.push(`⚠ ${upperEq.displayLabel}: ${highResult.error}`);
+    else high = highResult.value;
+
+    // Collect equation-level notes
+    for (const eq of eqs) {
+      if (eq.notes) {
+        for (const note of eq.notes) {
+          if (note.equationId) flags.push(note.noteText);
         }
       }
     }
+
+    if (low === null && high === null) continue;
+    const resolvedLow = low ?? high ?? 0;
+    const resolvedHigh = high ?? low ?? 0;
+
+    // IC override for energy
+    let finalLow = resolvedLow;
+    let finalHigh = resolvedHigh;
+    if (nutrient === "energy" && useIC) {
+      finalLow = icFloor;
+      finalHigh = icCeiling;
+      eeSource = "IC";
+    }
+    if (nutrient === "energy") eeKcal = (finalLow + finalHigh) / 2;
+
+    const currentVal = nutrient === "energy"
+      ? currentRx.kcalPerDay
+      : nutrient === "protein"
+      ? currentRx.proteinGPerDay
+      : nutrient === "fluid"
+      ? (currentRx.fluidMlPerDay ?? 0)
+      : 0;
+
+    if (finalLow > 0 || finalHigh > 0) {
+      results.push({
+        label: nutrient.charAt(0).toUpperCase() + nutrient.slice(1),
+        target: fmtRange(finalLow, finalHigh, lowerEq.unit),
+        current: currentVal,
+        unit: lowerEq.unit,
+        status: evalStatus(currentVal, finalLow, finalHigh),
+        note: `${leaf.name} — ${lowerEq.displayLabel}`,
+      });
+    }
   }
+
+  const ibwKg = calcIBW(patient.htCm, sex);
+  const ree = calcMSJ(patient.wtKg, patient.htCm, patient.ageYears, sex);
+
+  const evaluation: NutritionEvaluation = {
+    ibwKg,
+    reeKcal: Math.round(ree),
+    eeKcal: Math.round(eeKcal),
+    eeSource: eeSource as any,
+    weightUsed: patient.wtKg,
+    weightLabel: "Actual Wt",
+    isPediatric: isPeds,
+    results,
+    flags,
+  };
+
+  const ctx = buildRuntimeContext(opts, sex);
+  const snapshot = buildSnapshot(
+    evaluation,
+    ctx,
+    opts.condition,
+    opts.variant || ""
+  );
+
+  return { evaluation, snapshot };
 }
 

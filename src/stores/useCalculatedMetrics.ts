@@ -8,19 +8,20 @@
 import { useAnthroStore } from "./useAnthroStore";
 import { useNoteStore } from "./useNoteStore";
 import { useStandardsStore } from "./useStandardsStore";
-import { calcIBW, calcBSA, calcMSJ, calcHolidaySegar } from "../shared/utils/nutrition-engine/nutritionStandards";
-import { 
-  calculatePediatricHealthyEER, 
-  calculatePediatricHealthyProtein 
-} from "../shared/utils/pediatricHealthyMath";
-import { classifyPediatricWeightStatus } from "../shared/utils/pediatricWeightStatus";
 import {
+  calcIBW,
+  calcBSA,
+  calcMSJ,
+  calcHolidaySegar,
+  calcPediatricInsensibleLoss,
+  calculatePediatricHealthyEER,
+  calculatePediatricHealthyProtein,
   calculateSchofieldWH,
   getPediatricStressFactor,
   calculatePediatricDiseaseProtein,
   calculatePediatricAKIEnergy,
-  calculatePediatricInsensibleLoss
-} from "../shared/utils/pediatricDiseaseMath";
+} from "../shared/utils/clinicalMath";
+import { classifyPediatricWeightStatus } from "../shared/utils/pediatricWeightStatus";
 
 // ─── Amputation lookup table ──────────────────────────────────────────────────
 
@@ -265,7 +266,7 @@ export function useCalculatedMetrics(): CalculatedMetrics {
         
         // AKI Fluid Target: Measured Output + Insensible Losses (400 x BSA)
         const bsa = calcBSA(htCm, wtKg);
-        const insensible = calculatePediatricInsensibleLoss(bsa);
+        const insensible = calcPediatricInsensibleLoss(bsa);
         const output = parseFloat(standards.extraInputs.urineOutputMlDay) || 0;
         pediatricFluid = output + insensible;
       } else {

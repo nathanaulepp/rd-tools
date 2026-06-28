@@ -7,9 +7,6 @@ import {
   calcIBW,
   calcMSJ,
   calcSchofieldBMR,
-  CONDITION_LABELS,
-  CONDITION_VARIANTS,
-  CONDITION_EXTRA_INPUTS,
   IC_ACTIVITY_FACTORS,
   MSJ_ACTIVITY_FACTORS,
 } from "../../../shared/utils/nutrition-engine/nutritionStandards";
@@ -28,9 +25,10 @@ import { useNoteStore } from "../../../stores/useNoteStore";
 import { useDietaryStore } from "../../../stores/useDietaryStore";
 import { useClinicalStore } from "../../../stores/useClinicalStore";
 import { useLabsStore, sortColumns } from "../../../stores/useLabsStore";
-import { GLOBAL_LAB_CATALOG } from "../../../shared/data/biochemicalCatalog";
 import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 import { classifyPediatricWeightStatus } from "../../../shared/utils/pediatricWeightStatus";
+import { useEquationEngineStore } from "../../../stores/useEquationEngineStore";
+import type { ConditionId, CustomCondition, ConditionExtraInput } from "../../../types/equationEngine";
 import * as helper from "../assess-dietary/helper";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -275,62 +273,28 @@ function PSUBanner({ eeSource }: { eeSource: string }) {
   return null;
 }
 
-// ─── Extra-input renderer ──────────────────────────────────────────────────────
+// ─── Dynamic Extra-input renderer ──────────────────────────────────────────────
 
-interface ExtraInputRendererProps {
-  condition: ConditionKey | "";
-  variant: string;
-  extraInputs: Record<string, string>;
-  setExtraInputs: (ei: Record<string, string>) => void;
-  ageYears: number;
-  sex: "M" | "F";
-}
-
-function ExtraInputRenderer({
-  condition,
-  variant,
+function DynamicExtraInputRenderer({
   extraInputs,
-  setExtraInputs,
-  ageYears,
-  sex,
-}: ExtraInputRendererProps) {
-  const { clinical, setClinical } = useClinicalStore();
-  const { labs, setLabs, columns } = useLabsStore();
+  values,
+  onChange,
+}: {
+  extraInputs: ConditionExtraInput[];
+  values: Record<string, string>;
+  onChange: (key: string, value: string) => void;
+}) {
+  const { clinical } = useClinicalStore();
+  const { labs, columns } = useLabsStore();
 
-  if (!condition) return null;
-  const fields = CONDITION_EXTRA_INPUTS[condition as ConditionKey] || [];
-  if (fields.length === 0) return null;
+  if (extraInputs.length === 0) return null;
 
-  const handleChange = (key: string, value: string, autoPullFrom?: string) => {
-    setExtraInputs({ ...extraInputs, [key]: value });
-
-    if (autoPullFrom) {
-      const [domain, fieldKey] = autoPullFrom.split(".");
-      if (domain === "clinical") {
-        setClinical({ [fieldKey]: value } as any);
-      } else if (domain === "labs") {
-        const sortedCols = sortColumns(columns);
-        const colId = sortedCols[sortedCols.length - 1]?.id;
-        if (colId) {
-          const existing = labs[fieldKey] ?? {
-            unit: GLOBAL_LAB_CATALOG[fieldKey]?.defaultUnit ?? "",
-            loincCode: GLOBAL_LAB_CATALOG[fieldKey]?.loinc ?? "",
-            loincName: GLOBAL_LAB_CATALOG[fieldKey]?.name ?? fieldKey,
-            values: {},
-          };
-          setLabs({
-            ...labs,
-            [fieldKey]: {
-              ...existing,
-              values: {
-                ...existing.values,
-                [colId]: value,
-              },
-            },
-          });
-        }
-      }
-    }
+  const AUTO_PULL_MAP: Record<string, string> = {
+    tempMax: "clinical.tempMax",
+    ve: "clinical.ve",
+    fev1Pct: "clinical.fev1",
+    tbsaPct: "clinical.tbsa",
+    hgb: "labs.Hgb",
   };
 
   const getAutoPulledValue = (autoPullFrom?: string): string => {
@@ -347,44 +311,33 @@ function ExtraInputRenderer({
 
   return (
     <>
-      {fields.map(f => {
-        // Metadata-driven visibility checks
-        if (f.minAge !== undefined && ageYears < f.minAge) return null;
-        if (f.maxAge !== undefined && ageYears > f.maxAge) return null;
-        if (f.sex && f.sex !== sex) return null;
-        if (f.onlyForVariants && !f.onlyForVariants.includes(variant)) return null;
+      {extraInputs.map(field => {
+        const autoPullFrom = AUTO_PULL_MAP[field.slug];
+        const autoPulledRaw = getAutoPulledValue(autoPullFrom);
+        const currentVal = values[field.slug] ?? autoPulledRaw;
+        const isPulled = !values[field.slug] && !!autoPulledRaw;
 
-        // PSU fields only show when mech vent is checked
-        if (condition === "critical_illness" && (f.key === "tempMax" || f.key === "ve")) {
-          if (extraInputs.isMechVent !== "true") return null;
-        }
-
-        const autoPulledRaw = getAutoPulledValue(f.autoPullFrom);
-        const currentVal = extraInputs[f.key] ?? autoPulledRaw;
-
-        if (f.type === "checkbox") {
+        if (field.inputType === "boolean") {
           return (
-            <div key={f.key} className="input-group" style={{ flexDirection: "row", alignItems: "center", gap: "8px" }}>
+            <div key={field.id} className="input-group" style={{ flexDirection: "row", alignItems: "center", gap: "8px" }}>
               <input
                 type="checkbox"
-                id={`extra-${f.key}`}
+                id={`extra-${field.slug}`}
                 checked={currentVal === "true"}
-                onChange={e => handleChange(f.key, e.target.checked ? "true" : "false", f.autoPullFrom)}
+                onChange={e => onChange(field.slug, e.target.checked ? "true" : "false")}
                 style={{ width: "auto", margin: 0 }}
               />
-              <label htmlFor={`extra-${f.key}`} style={{ margin: 0, fontSize: "0.8rem", fontWeight: 600, color: "#334155", cursor: "pointer", textTransform: "none" }}>
-                {f.label}
+              <label htmlFor={`extra-${field.slug}`} style={{ margin: 0, fontSize: "0.8rem", fontWeight: 600, color: "#334155", cursor: "pointer", textTransform: "none" }}>
+                {field.displayLabel}
               </label>
             </div>
           );
         }
 
-        const isPulled = !extraInputs[f.key] && !!autoPulledRaw;
-
         return (
-          <div key={f.key} className="input-group">
+          <div key={field.id} className="input-group">
             <label style={{ ...tinyLabelStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>{f.label}</span>
+              <span>{field.displayLabel}</span>
               {isPulled && (
                 <span style={{ fontSize: "0.6rem", background: "#dbeafe", color: "#1d4ed8", borderRadius: "4px", padding: "1px 5px", fontWeight: 700 }}>
                   auto-pulled
@@ -394,15 +347,17 @@ function ExtraInputRenderer({
             <input
               type="number"
               value={currentVal}
-              onChange={e => handleChange(f.key, e.target.value, f.autoPullFrom)}
-              placeholder={f.hint || ""}
+              onChange={e => onChange(field.slug, e.target.value)}
+              placeholder={field.hintText || ""}
               style={{
                 ...inputStyle,
                 borderColor: isPulled ? "#93c5fd" : "#e2e8f0",
                 background: isPulled ? "#eff6ff" : "#fff",
               }}
             />
-            {f.hint && <span style={{ fontSize: "0.62rem", color: "#94a3b8", marginTop: 2 }}>{f.hint}</span>}
+            {field.hintText && (
+              <span style={{ fontSize: "0.62rem", color: "#94a3b8", marginTop: 2 }}>{field.hintText}</span>
+            )}
           </div>
         );
       })}
@@ -431,13 +386,84 @@ export default function NutritionStandardsDomain() {
   const isPeds = ageYears < 18;
   const bmi = useMemo(() => parseFloat(calculatedMetrics?.bmi) || 0, [calculatedMetrics?.bmi]);
 
-  const [condition, setCondition] = useState<ConditionKey | "">(standards.condition || "");
-  const [variant, setVariant] = useState(standards.variant || "");
+  const engineConditions = useEquationEngineStore(s => s.conditions);
+  const engineIsLoaded = useEquationEngineStore(s => s.isLoaded);
+
+  useEffect(() => {
+    if (!engineIsLoaded) useEquationEngineStore.getState().loadConditions();
+  }, [engineIsLoaded]);
+
+  const [selectedLeafId, setSelectedLeafId] = useState<string>(standards.condition || "");
   const [icKcal, setIcKcal] = useState(standards.icKcal || "");
   const [icCaf, setIcCaf] = useState(standards.icCaf || "1.0");
   const [extraInputs, setExtraInputs] = useState<Record<string, string>>(standards.extraInputs || {});
 
   const [evaluation, setEvaluation] = useState<NutritionEvaluation | null>(null);
+
+  const isRootVisible = useCallback((root: CustomCondition) => {
+    const nameLower = root.name.toLowerCase();
+    if (nameLower.includes("pregnancy") || nameLower.includes("lactation") || nameLower.includes("breastfeeding")) {
+      if (sex === "M") return false;
+      if (ageYears > 0 && ageYears < 12) return false;
+    }
+    if (nameLower.includes("bpd") || nameLower.includes("bronchopulmonary")) {
+      if (ageYears >= 18) return false;
+    }
+    return true;
+  }, [sex, ageYears]);
+
+  const rootNodes = useMemo(() => {
+    return engineConditions
+      .filter(c => c.parentId === null)
+      .filter(isRootVisible)
+      .sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [engineConditions, isRootVisible]);
+
+  const getLeavesUnderRoot = useCallback((rootId: string): CustomCondition[] => {
+    const findLeaves = (nodeId: string): CustomCondition[] => {
+      const children = engineConditions.filter(c => c.parentId === nodeId);
+      if (children.length === 0) {
+        const node = engineConditions.find(c => c.id === nodeId);
+        return node ? [node] : [];
+      }
+      const leaves: CustomCondition[] = [];
+      for (const child of children) {
+        leaves.push(...findLeaves(child.id));
+      }
+      return leaves;
+    };
+
+    const rootChildren = engineConditions.filter(c => c.parentId === rootId);
+    const leaves: CustomCondition[] = [];
+    for (const child of rootChildren) {
+      leaves.push(...findLeaves(child.id));
+    }
+    return leaves.sort((a, b) => a.sortOrder - b.sortOrder);
+  }, [engineConditions]);
+
+  // Derive legacy keys from selected leaf node's lineage
+  const { legacyConditionKey, legacyVariantKey, selectedLeaf } = useMemo(() => {
+    const leaf = engineConditions.find(c => c.id === selectedLeafId);
+    if (!leaf) {
+      return { legacyConditionKey: selectedLeafId, legacyVariantKey: "", selectedLeaf: null };
+    }
+    const rootNode = engineConditions.find(c => c.id === engineConditions.find(p => p.id === leaf.parentId)?.parentId)
+      ?? engineConditions.find(c => c.id === leaf.parentId)
+      ?? leaf;
+    const condKey = rootNode.name ? rootNode.name.toLowerCase().replace(/ /g, "_") : selectedLeafId;
+    const varKey = leaf.name ? leaf.name.toLowerCase().replace(/ /g, "_") : "";
+    return { legacyConditionKey: condKey, legacyVariantKey: varKey, selectedLeaf: leaf };
+  }, [selectedLeafId, engineConditions]);
+
+  const rootName = useMemo(() => {
+    if (!selectedLeaf) return null;
+    return engineConditions.find(c => c.id === engineConditions.find(p => p.id === selectedLeaf.parentId)?.parentId)?.name
+      ?? engineConditions.find(c => c.id === selectedLeaf.parentId)?.name
+      ?? null;
+  }, [selectedLeaf, engineConditions]);
+
+  const showPalSlider = rootName === "Healthy / Preventive" || rootName === "Heart Failure";
+  const isPedsSlider = isPeds && rootName === "Healthy / Preventive";
 
   const dietaryTotals = useMemo(() => helper.calculateDietaryTotals(dietary), [dietary]);
 
@@ -448,20 +474,28 @@ export default function NutritionStandardsDomain() {
   const currentFluid = useMemo(() => dietaryTotals.totalFluid > 0 ? String(Math.round(dietaryTotals.totalFluid)) : "", [dietaryTotals.totalFluid]);
 
   const syncToParent = useCallback(() => {
-    setStandards({ condition, variant, icKcal, icCaf, extraInputs });
-  }, [condition, variant, icKcal, icCaf, extraInputs, setStandards]);
+    setStandards({ condition: selectedLeafId, variant: "", icKcal, icCaf, extraInputs });
+  }, [selectedLeafId, icKcal, icCaf, extraInputs, setStandards]);
 
   useEffect(() => {
-    if (!condition) return;
-    const fields = CONDITION_EXTRA_INPUTS[condition as ConditionKey] || [];
+    if (!selectedLeaf?.extraInputs) return;
     const updates: Record<string, string> = { ...extraInputs };
     let changed = false;
 
-    for (const f of fields) {
-      if (!f.autoPullFrom) continue;
-      if (updates[f.key] !== undefined && updates[f.key] !== "") continue;
+    const AUTO_PULL_MAP: Record<string, string> = {
+      tempMax: "clinical.tempMax",
+      ve: "clinical.ve",
+      fev1Pct: "clinical.fev1",
+      tbsaPct: "clinical.tbsa",
+      hgb: "labs.Hgb",
+    };
 
-      const [domain, fieldKey] = f.autoPullFrom.split(".");
+    for (const field of selectedLeaf.extraInputs) {
+      const autoPullFrom = AUTO_PULL_MAP[field.slug];
+      if (!autoPullFrom) continue;
+      if (updates[field.slug] !== undefined && updates[field.slug] !== "") continue;
+
+      const [domain, fieldKey] = autoPullFrom.split(".");
       let pulled = "";
       if (domain === "clinical") pulled = (clinical as any)?.[fieldKey] || "";
       if (domain === "labs") {
@@ -471,41 +505,13 @@ export default function NutritionStandardsDomain() {
       }
 
       if (pulled) {
-        updates[f.key] = pulled;
+        updates[field.slug] = pulled;
         changed = true;
       }
     }
 
     if (changed) setExtraInputs(updates);
-  }, [condition, clinical, labs, columns]);
-
-  useEffect(() => {
-    if (!bmi || bmi <= 0) return;
-
-    if (condition === "critical_illness") {
-      const bmiGroup = bmi < 30 ? "bmi_lt30" : bmi <= 50 ? "bmi_30_50" : "bmi_gt50";
-      if (variant !== bmiGroup) setVariant(bmiGroup);
-    } else if (condition === "masld_mash") {
-      if (!variant || variant.startsWith("bmi_")) {
-        const bmiGroup = bmi < 30 ? "bmi_lt30" : bmi <= 40 ? "bmi_30_40" : "bmi_gt40";
-        if (variant !== bmiGroup) setVariant(bmiGroup);
-      }
-    } else if (condition === "sickle_cell" && ageYears > 0) {
-      if (ageYears < 18 && !variant.startsWith("peds_")) setVariant("peds_stable");
-      if (ageYears >= 18 && !variant.startsWith("adult_")) setVariant("adult_stable");
-    } else if (condition === "hsct" && ageYears > 0) {
-      let v = "adult";
-      if (ageYears < 6) v = "infant_child";
-      else if (ageYears <= 16) v = "child_16";
-      else if (ageYears < 18) v = "older_adol";
-      if (variant !== v && variant !== "post_engraft") setVariant(v);
-    } else if (condition === "short_bowel") {
-      const isAdultVariant = variant === "adult_standard";
-      const isPedsVariant  = variant === "peds_pn_dependent" || variant === "peds_enteral_autonomous";
-      if (ageYears >= 18 && isPedsVariant) setVariant("adult_standard");
-      if (ageYears < 18 && isAdultVariant) setVariant("");
-    }
-  }, [condition, bmi, variant, ageYears]);
+  }, [selectedLeaf, clinical, labs, columns]);
 
   const { effectiveWeight, weightBasis, nfpeWarning } = useMemo(() => {
     if (anthro.isFluidShift && anthro.edw) {
@@ -521,14 +527,14 @@ export default function NutritionStandardsDomain() {
     else if (clinical.ascites === "Severe") reduction += 0.15;
     if (clinical.pedalEdema === "Yes") reduction += 0.05;
     const calculatedWeight = wtKg * (1 - reduction);
-    const isCirrhosis = condition === "cirrhosis";
+    const isCirrhosis = legacyConditionKey === "cirrhosis";
     const missingNfpe = isCirrhosis && !clinical.ascites && !clinical.pedalEdema;
     return {
       effectiveWeight: calculatedWeight,
       weightBasis: reduction > 0 ? `Estimated Dry Weight (Actual − ${Math.round(reduction * 100)}%)` : "Actual Weight",
       nfpeWarning: missingNfpe,
     };
-  }, [anthro.isFluidShift, anthro.edw, anthro.edwUnit, wtKg, condition, clinical]);
+  }, [anthro.isFluidShift, anthro.edw, anthro.edwUnit, wtKg, legacyConditionKey, clinical]);
 
   const missingAnthro = useMemo(() => {
     const fields = [];
@@ -539,9 +545,9 @@ export default function NutritionStandardsDomain() {
     return fields;
   }, [sexRaw, ageYears, wtKg, htCm]);
 
-  const isReady = missingAnthro.length === 0 && !!condition;
+  const isReady = missingAnthro.length === 0 && !!selectedLeafId;
 
-  const runEvaluation = useCallback(() => {
+  const runEvaluation = useCallback(async () => {
     if (!isReady) return;
 
     // Phase 5 fix: inject overweight status for pediatric healthy path
@@ -555,9 +561,10 @@ export default function NutritionStandardsDomain() {
       isOverweight: weightStatus.useOverweightEER ? "true" : "false",
     };
 
-    const { evaluation, snapshot } = evaluateNutritionRx({
-      condition: condition as ConditionKey,
-      variant: variant || undefined,
+    const { evaluation, snapshot } = await evaluateNutritionRx({
+      conditionId: selectedLeafId as ConditionId,
+      condition: legacyConditionKey as ConditionKey,
+      variant: legacyVariantKey || undefined,
       patient: {
         wtKg: effectiveWeight,
         htCm,
@@ -569,8 +576,8 @@ export default function NutritionStandardsDomain() {
         icMeasuredKcal: parseFloat(standards.icKcal) || 0,
         icCaf:          parseFloat(standards.icCaf)  || 1.0,
         weightLabel:    calculatedMetrics.adjIbw ? "Corrected Wt (Amputee)" : weightBasis,
-        },
-        currentRx: {
+      },
+      currentRx: {
         kcalPerDay: parseFloat(currentKcal) || 0,
         proteinGPerDay: parseFloat(currentProtein) || 0,
         fatGPerDay: parseFloat(currentFat) || 0,
@@ -581,40 +588,19 @@ export default function NutritionStandardsDomain() {
     });
     setEvaluation(evaluation);
     setSnapshot(snapshot);   // writes into standards.snapshot → autosaved with the note
-  }, [isReady, condition, variant, effectiveWeight, htCm, ageYears, sex, bmi, weightBasis, icKcal, icCaf, currentKcal, currentProtein, currentFat, currentCho, currentFluid, extraInputs, calculatedMetrics.ageDays, setSnapshot]);
-// Note: add `setSnapshot` to the useCallback dependency array.
+  }, [isReady, selectedLeafId, legacyConditionKey, legacyVariantKey, effectiveWeight, htCm, ageYears, sex, bmi, weightBasis, icKcal, icCaf, currentKcal, currentProtein, currentFat, currentCho, currentFluid, extraInputs, calculatedMetrics.ageDays, setSnapshot]);
 
   useEffect(() => {
-    if (isReady) runEvaluation();
+    if (isReady) runEvaluation().catch(console.error);
     syncToParent();
-  }, [condition, variant, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs, wtKg, htCm, effectiveWeight, isReady, runEvaluation, syncToParent]);
-
-  const variants = condition ? (CONDITION_VARIANTS[condition] || []) : [];
-
-  const filteredVariants = useMemo(() => {
-    return variants.filter(v => {
-      if (v.sex && sex && v.sex !== sex) return false;
-      if (v.minAge !== undefined && ageYears < v.minAge) return false;
-      if (v.maxAge !== undefined && ageYears > v.maxAge) return false;
-      return true;
-    });
-  }, [variants, sex, ageYears]);
+  }, [selectedLeafId, currentKcal, currentProtein, currentFluid, icKcal, icCaf, extraInputs, wtKg, htCm, effectiveWeight, isReady, runEvaluation, syncToParent]);
 
   const icUsedForKcal = !!icKcal && parseFloat(icKcal) > 0;
 
   // PSU detection: true for either 2003b or 2010
   const isPSU = evaluation?.eeSource === "PSU 2003b" || evaluation?.eeSource === "PSU 2010";
 
-  const isConditionVisible = (key: ConditionKey) => {
-  if (key === "pregnancy" || key === "breastfeeding") {
-    if (sex === "M") return false;
-    if (ageYears > 0 && ageYears < 12) return false;
-  }
-  if (key === "bpd") {
-    if (ageYears >= 18) return false;
-  }
-  return true;
-};
+
 
   const activeCafVal = parseFloat(icCaf) || 1.0;
   const cafLabel = useMemo(() => {
@@ -721,70 +707,47 @@ export default function NutritionStandardsDomain() {
             <label style={subHeaderStyle}>1. Clinical Setting</label>
 
             <div className="input-group">
-              <select value={condition} onChange={e => { setCondition(e.target.value as ConditionKey); setVariant(""); }} style={selectStyle}>
+              <select
+                value={selectedLeafId}
+                onChange={e => setSelectedLeafId(e.target.value)}
+                style={selectStyle}
+              >
                 <option value="">Select Condition...</option>
-                <optgroup label="Acute / Critical Care">
-                  {(["critical_illness", "aki", "acute_pancreatitis", "bpd", "burns", "trauma", "stroke"] as ConditionKey[]).filter(isConditionVisible).map(k => (
-                    <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="Chronic Disease">
-                  {(["copd", "heart_failure", "ckd_3_5", "ckd_5d", "kidney_transplant", "cirrhosis", "liver_transplant", "masld_mash", "cystic_fibrosis", "sickle_cell"] as ConditionKey[]).filter(isConditionVisible).map(k => (
-                    <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="Oncology / Transplant">
-                  {(["oncology", "hsct"] as ConditionKey[]).filter(isConditionVisible).map(k => (
-                    <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="GI / Malabsorption">
-                  {(["short_bowel"] as ConditionKey[]).filter(isConditionVisible).map(k => (
-                    <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="Nutritional Status">
-                  {(["pressure_injuries", "severe_malnutrition", "obesity_stable"] as ConditionKey[]).filter(isConditionVisible).map(k => (
-                    <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
-                  ))}
-                </optgroup>
-                <optgroup label="Life Stage">
-                  {(["pregnancy", "breastfeeding", "healthy"] as ConditionKey[]).filter(isConditionVisible).map(k => (
-                    <option key={k} value={k}>{CONDITION_LABELS[k]}</option>
-                  ))}
-                </optgroup>
+                {rootNodes.map(root => {
+                  const leaves = getLeavesUnderRoot(root.id);
+                  if (leaves.length === 0) return null;
+                  return (
+                    <optgroup key={root.id} label={root.name}>
+                      {leaves.map(leaf => (
+                        <option key={leaf.id} value={leaf.id}>
+                          {leaf.name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
               </select>
             </div>
 
-            {condition === "healthy" || (condition === "heart_failure" && !isPeds) ? (
-              isPeds ? (
+            {showPalSlider ? (
+              isPedsSlider ? (
                 <PalSliderPeds
                   value={Number(extraInputs.pal) || 1.3}
                   onChange={(val) => setExtraInputs(prev => ({ ...prev, pal: val.toString() }))}
                 />
               ) : (
                 <PalSlider
-                  value={Number(extraInputs.pal) || (condition === "heart_failure" ? 1.3 : 1.5)}
+                  value={Number(extraInputs.pal) || (rootName === "Heart Failure" ? 1.3 : 1.5)}
                   onChange={(val) => setExtraInputs(prev => ({ ...prev, pal: val.toString() }))}
                 />
               )
-            ) : filteredVariants.length > 0 && (
-              <div className="input-group">
-                <select value={variant} onChange={e => setVariant(e.target.value)} style={selectStyle}>
-                  <option value="">Select Sub-type...</option>
-                  {filteredVariants.map(v => <option key={v.key} value={v.key}>{v.label}</option>)}
-                </select>
-              </div>
-            )}
+            ) : null}
 
-            {condition && condition !== "healthy" && condition !== "heart_failure" && (
-              <ExtraInputRenderer
-                condition={condition}
-                variant={variant}
-                extraInputs={extraInputs}
-                setExtraInputs={setExtraInputs}
-                ageYears={ageYears}
-                sex={sex}
+            {selectedLeaf?.extraInputs && selectedLeaf.extraInputs.length > 0 && (
+              <DynamicExtraInputRenderer
+                extraInputs={selectedLeaf.extraInputs}
+                values={extraInputs}
+                onChange={(key, value) => setExtraInputs(prev => ({ ...prev, [key]: value }))}
               />
             )}
           </div>

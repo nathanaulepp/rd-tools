@@ -38,6 +38,7 @@ export type {
   CustomCondition,
   CustomEquation,
   CustomEquationNote,
+  ConditionExtraInput,
   EquationTestCase,
   PatientScope,
   EquationEvalResult,

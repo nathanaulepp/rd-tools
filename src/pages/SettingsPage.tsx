@@ -6,6 +6,7 @@ import DysphagiaModManager from "../features/settings/diets/DysphagiaModManager"
 import SubmissionRequirementsPanel from "../features/settings/SubmissionRequirementsPanel";
 import SchemaInfoPanel from "../features/settings/SchemaInfoPanel";
 import ChemistryTemplatesPanel from "../features/settings/ChemistryTemplatesPanel";
+import EquationBuilderDomain from "../features/equation-builder/EquationBuilderDomain";
 // ─── Components ───────────────────────────────────────────────────────────────
 
 interface SettingsPageProps {
@@ -15,7 +16,7 @@ interface SettingsPageProps {
 export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
   useEscapeBackout(handleExitToStart);
 
-  const [activeTab, setActiveTab] = useState<"requirements" | "formulary" | "chemistry" | "diets">("requirements");
+  const [activeTab, setActiveTab] = useState<"requirements" | "formulary" | "chemistry" | "diets" | "equations">("requirements");
   const [toastMsg, setToastMsg] = useState("");
 
   const showToast = (msg: string) => {
@@ -38,10 +39,11 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
               { id: "formulary",    label: "Enteral Formulary" },
               { id: "chemistry",    label: "Chemistry Templates" },
               { id: "diets",        label: "Diet List" },
+              { id: "equations",    label: "⚙ Equation Engine" },
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as "requirements" | "formulary" | "chemistry" | "diets")}
+                onClick={() => setActiveTab(tab.id as "requirements" | "formulary" | "chemistry" | "diets" | "equations")}
                 style={{
                   padding: "6px 16px",
                   borderRadius: "8px",
@@ -60,7 +62,7 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
         </div>
       </header>
 
-      <div style={{ ...s.content, maxWidth: activeTab === "diets" ? "1200px" : "800px" }}>
+      <div style={{ ...s.content, maxWidth: activeTab === "equations" ? "100%" : activeTab === "diets" ? "1200px" : "800px" }}>
         {activeTab === "requirements" ? (
           <>
             <SubmissionRequirementsPanel showToast={showToast} />
@@ -85,6 +87,8 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
               <DysphagiaModManager />
             </section>
           </div>
+        ) : activeTab === "equations" ? (
+          <EquationBuilderDomain />
         ) : (
           <section style={s.section}>
             <h3 style={s.sectionTitle}>Hospital Enteral Formulary</h3>

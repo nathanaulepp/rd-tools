@@ -48,6 +48,18 @@ export interface CustomCondition {
   // Hydrated at runtime
   children?: CustomCondition[];
   equations?: CustomEquation[];
+  notes?: CustomEquationNote[];
+  extraInputs?: ConditionExtraInput[];
+}
+
+export interface ConditionExtraInput {
+  id: string;
+  conditionId: string;
+  slug: string;
+  displayLabel: string;
+  inputType: "number" | "boolean";
+  hintText?: string;
+  sortOrder: number;
 }
 
 export interface CustomEquation {
@@ -64,7 +76,8 @@ export interface CustomEquation {
 
 export interface CustomEquationNote {
   id: string;
-  equationId: string;
+  equationId: string | null;
+  conditionId: string | null;
   noteText: string;
   sortOrder: number;
 }

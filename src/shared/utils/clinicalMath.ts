@@ -319,3 +319,287 @@ export function calcToronto(
 export function isPedsAge(ageYears: number): boolean {
   return ageYears > 0 && ageYears < 18;
 }
+
+// ─── Pediatric Math Logic (Moved from legacy files) ──────────────────────────
+
+/**
+ * Map a continuous PAL slider value (1.0–2.5) to discrete DRI PA coefficients.
+ * Applies to ages >= 3 years only. Infants (< 36 months) bypass PA entirely.
+ */
+export function mapPediatricPA(pal: number): number {
+  if (pal < 1.40) return 1.00;
+  if (pal < 1.60) return 1.13;
+  if (pal < 1.90) return 1.26;
+  return 1.42;
+}
+
+/**
+ * Calculate EER/TEE for healthy pediatric patients.
+ */
+export function calculatePediatricHealthyEER(opts: {
+  ageDays: number;
+  weightKg: number;
+  heightCm: number;
+  sex: "M" | "F";
+  pal: number;
+  isOverweight: boolean;
+}): number {
+  const { ageDays, weightKg, heightCm, sex, pal, isOverweight } = opts;
+  const ageYears = ageDays / 365.25;
+  const heightM  = heightCm / 100;
+
+  // 0–3 months (≤ 91.3125 days)
+  if (ageDays <= 91.3125) return 89 * weightKg + 75;
+
+  // 3–6 months
+  if (ageDays <= 182.625) return 89 * weightKg - 44;
+
+  // 6–12 months
+  if (ageDays <= 365.25) return 89 * weightKg - 78;
+
+  // 12–35.99 months (< 3 years)
+  if (ageDays < 1095.75) return 89 * weightKg + 20;
+
+  // 3–17.99 years
+  const pa     = mapPediatricPA(pal);
+  const isMale = sex === "M";
+
+  if (isOverweight) {
+    if (isMale) {
+      return 114 - (50.9 * ageYears) + pa * (19.5 * weightKg + 1161.4 * heightM);
+    }
+    return 389 - (41.2 * ageYears) + pa * (15 * weightKg + 701.6 * heightM);
+  }
+
+  const growthEnergy = ageYears < 9 ? 20 : 25;
+  if (isMale) {
+    return 88.5 - (61.9 * ageYears) + pa * (26.7 * weightKg + 903 * heightM) + growthEnergy;
+  }
+  return 135.3 - (30.8 * ageYears) + pa * (10 * weightKg + 934 * heightM) + growthEnergy;
+}
+
+/**
+ * Protein RDA for healthy pediatric patients.
+ */
+export function calculatePediatricHealthyProtein(
+  ageDays: number,
+  weightKg: number
+): number {
+  const ageYears = ageDays / 365.25;
+
+  let gPerKg = 0.85; // 14–18y default
+
+  if (ageDays <= 182.625)  gPerKg = 1.52; // 0–6 mo
+  else if (ageDays <= 365.25)  gPerKg = 1.20; // 6–12 mo
+  else if (ageDays < 1461)     gPerKg = 1.05; // 12 mo–4 y
+  else if (ageYears < 14)      gPerKg = 0.95; // 4–14 y
+
+  return weightKg * gPerKg;
+}
+
+/**
+ * Schofield Height-Weight (WH) BMR — Pediatric.
+ * Used as the base REE for all disease-state pediatric energy calculations.
+ */
+export function calculateSchofieldWH(opts: {
+  ageDays: number;
+  weightKg: number;
+  heightCm: number;
+  sex: "M" | "F";
+}): number {
+  const { ageDays, weightKg, heightCm, sex } = opts;
+  const isMale = sex === "M";
+
+  // 0–2.99 years (< 1095.75 days)
+  if (ageDays < 1095.75) {
+    if (isMale) return 0.167 * weightKg + 15.174 * heightCm - 617.6;
+    return 16.252 * weightKg + 10.232 * heightCm - 413.5;
+  }
+
+  // 3.00–9.99 years (< 3652.5 days)
+  if (ageDays < 3652.5) {
+    if (isMale) return 19.59 * weightKg + 1.303 * heightCm + 414.9;
+    return 16.969 * weightKg + 1.618 * heightCm + 371.2;
+  }
+
+  // 10.00–17.99 years
+  if (isMale) return 16.25 * weightKg + 1.372 * heightCm + 515.5;
+  return 8.365 * weightKg + 4.65 * heightCm + 200.0;
+}
+
+/**
+ * Pediatric Stress Factor — maps PAL + clinical condition to a TEE multiplier.
+ */
+export function getPediatricStressFactor(pal: number, condition: string): number {
+  const isInactive    = pal < 1.4;
+  const isActive      = pal >= 1.9;
+  const isSevereStress = ["critical_illness", "burns", "trauma"].includes(condition);
+  const isMalnourished = condition === "severe_malnutrition";
+
+  // 1.7: Active + (catch-up or severe stress)
+  if (isActive && (isMalnourished || isSevereStress)) return 1.7;
+
+  // 1.5: Normally active mild-mod (no severe, no malnutrition)
+  if (!isInactive && !isActive && !isSevereStress && !isMalnourished) return 1.5;
+  // 1.5: Inactive + severe or oncology
+  if (isInactive && (isSevereStress || condition === "oncology")) return 1.5;
+  // 1.5: Inactive + malnutrition catch-up
+  if (isInactive && isMalnourished) return 1.5;
+
+  // 1.3: Inactive, well-nourished, mild-moderate stress
+  if (isInactive && !isSevereStress && !isMalnourished) return 1.3;
+
+  // Fallbacks
+  if (isActive) return 1.5;
+  if (isSevereStress || isMalnourished) return 1.7;
+
+  return 1.5;
+}
+
+/**
+ * Pediatric Safe Daily Intake (SDI) protein by age.
+ */
+export function getPediatricSDI(ageDays: number, weightKg: number): number {
+  const ageYears = ageDays / 365.25;
+
+  if (ageDays <= 182.6)  return 1.31 * weightKg;  // 0–6 mo
+  if (ageDays <= 365.25) return 1.14 * weightKg;  // 6–12 mo
+  if (ageYears < 2)      return 1.03 * weightKg;  // 1–2y
+  if (ageYears < 3)      return 0.97 * weightKg;  // 2–3y
+  if (ageYears < 10)     return 0.91 * weightKg;  // 3–10y
+  if (ageYears < 14)     return 0.91 * weightKg;  // 10–14y
+  return 0.88 * weightKg;                         // 14–18y
+}
+
+/**
+ * Targeted Surgical Protein Goals — ASPEN Critical Care Pediatric.
+ */
+export function calculatePediatricDiseaseProtein(opts: {
+  ageDays: number;
+  weightKg: number;
+  condition: string;
+  variant: string;
+  extraInputs: Record<string, any>;
+}): { min: number; max: number } {
+  const { ageDays, weightKg, condition, variant, extraInputs } = opts;
+  const ageYears = ageDays / 365.25;
+
+  // 1. Burns
+  if (condition === "burns") {
+    return { min: 1.5 * weightKg, max: 2.5 * weightKg };
+  }
+
+  // 2. AKI on dialysis / CRRT
+  if (condition === "aki" && (variant === "dialysis" || variant === "crrt")) {
+    return { min: 0, max: 2.5 * weightKg };
+  }
+
+  // 3. AKI without CRRT
+  if (condition === "aki" && variant === "no_dialysis") {
+    return { min: 0.8 * weightKg, max: 1.2 * weightKg };
+  }
+
+  // 4. Open Abdomen / Surgical Trauma
+  if (condition === "trauma" && variant === "open_abdomen") {
+    let baseGPerKg = 1.5;
+    if (ageYears < 2)  baseGPerKg = 2.5;
+    else if (ageYears < 13) baseGPerKg = 1.75;
+
+    const baseProtein = baseGPerKg * weightKg;
+    const exudateL    = parseFloat(extraInputs.exudateVolumeL) || 0;
+
+    // Source: Hourigan et al. (2010). NPWT exudate protein loss is ~29g/L.
+    const extraProtein = exudateL * 29;
+
+    return {
+      min: baseProtein + extraProtein,
+      max: baseProtein + extraProtein,
+    };
+  }
+
+  // CKD 3–5: upper end of SDI (matrix row 7)
+  if (condition === "ckd_3_5") {
+    const sdi = getPediatricSDI(ageDays, weightKg);
+    return { min: sdi * 0.9, max: sdi };
+  }
+
+  // CKD 5D: SDI + dialysate loss allowance 0.1–0.3 g/kg (matrix row 8)
+  if (condition === "ckd_5d") {
+    const sdi = getPediatricSDI(ageDays, weightKg);
+    return { min: sdi, max: sdi + (0.2 * weightKg) };
+  }
+
+  // Cirrhosis: 2.5–3.0 g/kg to prevent sarcopenia (matrix row 11)
+  if (condition === "cirrhosis_updated") {
+    return { min: 2.5 * weightKg, max: 3.0 * weightKg };
+  }
+
+  // Liver Transplant (matrix row 12)
+  if (condition === "liver_transplant") {
+    if (variant === "acute") return { min: 2.0 * weightKg, max: 2.5 * weightKg };
+    return { min: 1.5 * weightKg, max: 2.0 * weightKg };
+  }
+
+  // Kidney Transplant (matrix row 9)
+  if (condition === "kidney_transplant") {
+    const sdi = getPediatricSDI(ageDays, weightKg);
+    if (variant === "acute") return { min: 1.5 * weightKg, max: 2.0 * weightKg };
+    return { min: sdi * 0.9, max: sdi };
+  }
+
+  // Oncology: standard 1.0–2.5 g/kg (varies by intensity)
+  if (condition === "oncology" || condition === "cancer") {
+    if (variant === "high_protein") return { min: 1.5 * weightKg, max: 2.5 * weightKg };
+    return { min: 1.0 * weightKg, max: 1.5 * weightKg };
+  }
+
+  // HSCT: higher targets for pediatric engraftment
+  if (condition === "hsct") {
+    if (ageYears < 2) return { min: 2.5 * weightKg, max: 3.0 * weightKg };
+    if (ageYears < 6) return { min: 2.0 * weightKg, max: 2.5 * weightKg };
+    return { min: 1.5 * weightKg, max: 2.0 * weightKg };
+  }
+
+  // Trauma: may exceed 2.0 g/kg (matrix row 16)
+  if (condition === "trauma") {
+    if (ageYears < 2)  return { min: 2.0 * weightKg, max: 3.0 * weightKg };
+    if (ageYears < 13) return { min: 1.5 * weightKg, max: 2.5 * weightKg };
+    return { min: 1.5 * weightKg, max: 2.5 * weightKg };
+  }
+
+  // Heart failure: standard 1.5–2.0 g/kg
+  if (condition === "heart_failure") {
+    return { min: 1.5 * weightKg, max: 2.0 * weightKg };
+  }
+
+  // Pressure injuries: replace measured exudate loss (matrix row 15)
+  // Without exudate measurement, use 1.5–2.0 g/kg
+  if (condition === "pressure_injuries") {
+    if (variant === "stage_3_4") return { min: 1.5 * weightKg, max: 2.5 * weightKg };
+    return { min: 1.25 * weightKg, max: 2.0 * weightKg };
+  }
+
+  // Stroke: 1.0–2.5 g/kg depending on hemorrhagic vs ischemic
+  if (condition === "stroke") {
+    if (variant === "hemorrhagic") return { min: 1.5 * weightKg, max: 2.5 * weightKg };
+    return { min: 1.0 * weightKg, max: 1.5 * weightKg };
+  }
+
+  // 5. Default Critical Illness
+  if (ageYears < 2)  return { min: 2.0 * weightKg, max: 3.0 * weightKg };
+  if (ageYears < 13) return { min: 1.5 * weightKg, max: 2.0 * weightKg };
+  return { min: 1.5 * weightKg, max: 1.5 * weightKg };
+}
+
+/**
+ * Pediatric AKI Energy Override.
+ * Schofield WH BMR × 1.3 (strict bedrest stress factor).
+ */
+export function calculatePediatricAKIEnergy(opts: {
+  ageDays: number;
+  weightKg: number;
+  heightCm: number;
+  sex: "M" | "F";
+}): number {
+  return calculateSchofieldWH(opts) * 1.3;
+}
