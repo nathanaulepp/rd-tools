@@ -194,6 +194,8 @@ export function resolveEquation(expr: string, ctx: RuntimeContext): number {
 // The snapshot is also returned to the caller so NutritionStandardsDomain
 // can pass it to useStandardsStore.setStandards() without a second pass.
 
+import type { ConditionId } from "../../../types";
+
 export function buildSnapshot(
   evaluation: NutritionEvaluation,
   ctx: RuntimeContext,
@@ -209,6 +211,10 @@ export function buildSnapshot(
 
   return {
     evaluatedAt:  new Date().toISOString(),
+    conditionId:  "00000000-0000-0000-0000-000000000000" as ConditionId,
+    conditionName: "",
+    conditionPath: [],
+    expressionsUsed: {},
     conditionKey,
     variantKey,
     eeSource:     evaluation.eeSource,

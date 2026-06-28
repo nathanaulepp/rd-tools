@@ -30,3 +30,17 @@ export type { RefeedingScreen, RiskLevel, WtLossSource, EnergyIntakeOption, Elec
 export type { EnteralFormula, EnteralFormulaInput } from "./enteralFormula";
 export type { HospitalDiet, HospitalDietInput } from '../shared/api/db';
 export type { HospitalDysphagiaMode, HospitalDysphagiaModInput } from '../shared/api/db';
+
+export type {
+  ConditionId,
+  VariableCatalogEntry,
+  CatalogDomain,
+  CustomCondition,
+  CustomEquation,
+  CustomEquationNote,
+  EquationTestCase,
+  PatientScope,
+  EquationEvalResult,
+  CompiledConditionEvaluation,
+} from "./equationEngine";
+export { assertIsConditionId } from "./equationEngine";

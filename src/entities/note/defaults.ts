@@ -157,6 +157,7 @@ export const defaultMonitorEval: MonitorEval = {
 };
 
 export const defaultStandards: Standards = {
+  conditionId: "",
   condition: "", variant: "",
   icKcal: "", icCaf: "1.0",
   extraInputs: {},

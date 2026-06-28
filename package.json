@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "//mathjs": "mathjs 15.2.0 minimum due to CVE-2026-40897/CVE-2026-41139 sandbox escapes",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -17,7 +18,8 @@
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "uuid": "^14.0.0",
-    "zustand": "^5.0.14"
+    "zustand": "^5.0.14",
+    "mathjs": "^15.2.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.11.2",

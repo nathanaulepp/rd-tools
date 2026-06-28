@@ -10,38 +10,13 @@
 //   - Standards interface restructured to cleanly separate UI params from snapshot.
 
 import type { EvalStatus } from "../shared/utils/clinicalMath";
+import type { ConditionId } from "./equationEngine";
 export type { EvalStatus };
 
 // ─── Condition Registry ───────────────────────────────────────────────────────
 
-export type ConditionKey =
-  | "aki"
-  | "acute_pancreatitis"
-  | "breastfeeding"
-  | "burns"
-  | "oncology"
-  | "cancer"
-  | "ckd_3_5"
-  | "ckd_5d"
-  | "kidney_transplant"
-  | "copd"
-  | "cirrhosis"
-  | "liver_transplant"
-  | "critical_illness"
-  | "pregnancy"
-  | "pressure_injuries"
-  | "trauma"
-  | "healthy"
-  | "masld_mash"
-  | "short_bowel"
-  | "cystic_fibrosis"
-  | "stroke"
-  | "heart_failure"
-  | "obesity_stable"
-  | "severe_malnutrition"
-  | "sickle_cell"
-  | "hsct"
-  | "bpd";
+// Deprecated: to be removed after migration when all components use ConditionId.
+export type ConditionKey = string;
 
 // ─── Runtime Context ──────────────────────────────────────────────────────────
 //
@@ -131,6 +106,8 @@ export interface CurrentRx {
 }
 
 export interface EvalOptions {
+  conditionId?: ConditionId;
+  /** @deprecated Use conditionId instead */
   condition: ConditionKey;
   variant?: string;
   patient: PatientInputs;
@@ -200,9 +177,11 @@ export interface NutritionEvaluation {
 export interface EvaluationSnapshot {
   /** ISO 8601 timestamp of when this snapshot was written */
   evaluatedAt: string;
-  conditionKey: ConditionKey;
-  variantKey: string;
-  eeSource: EESource;
+  conditionId: ConditionId;
+  conditionName: string;
+  conditionPath: string[];
+  expressionsUsed: Record<string, string>;
+  eeSource: string;
   /** Weight value (kg) used in energy calculation */
   weightUsedKg: number;
   weightLabel: string;
@@ -216,6 +195,11 @@ export interface EvaluationSnapshot {
    * Keys are the dollar-prefixed variable names (e.g. "$wtKg": 72.5).
    */
   contextVars: Record<string, number>;
+
+  /** @deprecated Keep conditionKey for backward compatibility during migration */
+  conditionKey?: ConditionKey;
+  /** @deprecated Keep variantKey for backward compatibility during migration */
+  variantKey?: string;
 }
 
 // ─── Persisted Standards State ────────────────────────────────────────────────
@@ -227,6 +211,8 @@ export interface EvaluationSnapshot {
 
 export interface Standards {
   // ── UI parameters (RD selections) ────────────────────────────────────────
+  conditionId: ConditionId | "";
+  /** @deprecated Use conditionId instead */
   condition: ConditionKey | "";
   variant: string;
   icKcal: string;
