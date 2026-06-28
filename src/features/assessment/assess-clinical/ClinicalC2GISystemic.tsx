@@ -513,7 +513,7 @@ export default function ClinicalC2GISystemic() {
                     type="text"
                     value={clinical.tbsa || ""}
                     onChange={(e) => handleUpdate("tbsa", e.target.value)}
-                    placeholder="For Milner/Toronto formula"
+                    placeholder="For Toronto formula"
                     style={inputStyle}
                   />
                 </div>

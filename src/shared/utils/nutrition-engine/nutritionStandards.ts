@@ -19,7 +19,6 @@ import type { CustomCondition, PatientScope } from "../../../types/equationEngin
 import {
   calcIBW,
   calcBSA,
-  calcFleischBMR,
   calcHarrisBenedict,
   calcMSJ,
   calcPSU2003b,
@@ -38,7 +37,6 @@ import {
 export {
   calcIBW,
   calcBSA,
-  calcFleischBMR,
   calcHarrisBenedict,
   calcMSJ,
   calcPSU2003b,
@@ -200,7 +198,10 @@ export function buildSnapshot(
   evaluation: NutritionEvaluation,
   ctx: RuntimeContext,
   conditionKey: ConditionKey,
-  variantKey: string
+  variantKey: string,
+  conditionId?: ConditionId,
+  conditionName?: string,
+  conditionPath?: string[]
 ): EvaluationSnapshot {
   const contextVars: Record<string, number> = {};
   for (const [k, v] of Object.entries(ctx)) {
@@ -210,10 +211,10 @@ export function buildSnapshot(
   }
 
   return {
-    evaluatedAt:  new Date().toISOString(),
-    conditionId:  "00000000-0000-0000-0000-000000000000" as ConditionId,
-    conditionName: "",
-    conditionPath: [],
+    evaluatedAt:   new Date().toISOString(),
+    conditionId:   conditionId ?? ("00000000-0000-0000-0000-000000000000" as ConditionId),
+    conditionName: conditionName ?? "",
+    conditionPath: conditionPath ?? [],
     expressionsUsed: {},
     conditionKey,
     variantKey,
@@ -276,7 +277,6 @@ export const CONDITION_VARIANTS: Partial<Record<ConditionKey, { key: string; lab
     { key: "late",  label: "7–12 months postpartum", sex: "F", minAge: 12 },
   ],
   burns: [
-    { key: "adult_milner",      label: "Adult — Milner",              minAge: 18 },
     { key: "adult_toronto",     label: "Adult — Toronto (preferred)", minAge: 18 },
     { key: "child_1_11",        label: "Child 1–11y (Galveston)",     minAge: 1,  maxAge: 11.9 },
     { key: "adolescent_12_16",  label: "Adolescent 12–16y (Galveston)", minAge: 12, maxAge: 16.9 },
@@ -396,12 +396,26 @@ export async function evaluateNutritionRx(opts: EvalOptions): Promise<EvaluateRe
 
   const allConditions = useEquationEngineStore.getState().conditions;
 
-  // Find matching leaf node by walking the tree:
-  // Match strategy: find a leaf whose name loosely matches the variant,
-  // under a child that matches "Adult" or "Pediatric",
-  // under a root that matches the condition label.
-  const conditionLabel = CONDITION_LABELS[condition as keyof typeof CONDITION_LABELS];
-  const matchedLeaf = findMatchingLeaf(allConditions, conditionLabel, variant || "", isPeds);
+  // If a valid UUID conditionId was supplied, find the leaf directly — no fuzzy matching needed.
+  let matchedLeaf: CustomCondition | null = null;
+
+  if (opts.conditionId) {
+    matchedLeaf = allConditions.find(c => c.id === opts.conditionId) ?? null;
+    if (matchedLeaf) {
+      // Verify it is actually a leaf (no children); if it has children, something is wrong
+      const hasChildren = allConditions.some(c => c.parentId === matchedLeaf!.id);
+      if (hasChildren) {
+        console.warn(`evaluateNutritionRx: conditionId "${opts.conditionId}" is a branch node, falling back to fuzzy match`);
+        matchedLeaf = null;
+      }
+    }
+  }
+
+  // Fallback: fuzzy string match for backward compatibility with legacy condition keys
+  if (!matchedLeaf) {
+    const conditionLabel = CONDITION_LABELS[condition as keyof typeof CONDITION_LABELS];
+    matchedLeaf = findMatchingLeaf(allConditions, conditionLabel, variant || "", isPeds);
+  }
 
   if (matchedLeaf) {
     return await evaluateWithNewEngine(matchedLeaf, opts, isPeds, sex);
@@ -477,6 +491,16 @@ function findMatchingLeaf(
   return matched ?? leaves[0];
 }
 
+function buildConditionPath(leafId: string, allConditions: CustomCondition[]): string[] {
+  const path: string[] = [];
+  let current = allConditions.find(c => c.id === leafId);
+  while (current) {
+    path.unshift(current.name);
+    current = current.parentId ? allConditions.find(c => c.id === current!.parentId) : undefined;
+  }
+  return path;
+}
+
 async function evaluateWithNewEngine(
   leaf: CustomCondition,
   opts: EvalOptions,
@@ -491,6 +515,12 @@ async function evaluateWithNewEngine(
   for (const [k, v] of Object.entries(extraInputs)) {
     const num = typeof v === "number" ? v : parseFloat(v as string);
     scope[k] = isNaN(num) ? undefined : num;
+  }
+  // Map "pal" extra input to "palValue" which is what the seeded equations reference.
+  // Also map "tbsaPct" → "tbsaBurnedPct" to fix the seed data slug mismatch.
+  if (scope["pal"] !== undefined) scope["palValue"] = scope["pal"];
+  if (scope["tbsaPct"] !== undefined && scope["tbsaBurnedPct"] === undefined) {
+    scope["tbsaBurnedPct"] = scope["tbsaPct"];
   }
 
   // IC override
@@ -601,14 +631,19 @@ async function evaluateWithNewEngine(
     flags,
   };
 
+  const allConditions = useEquationEngineStore.getState().conditions;
+  const conditionPath = buildConditionPath(leaf.id, allConditions);
+
   const ctx = buildRuntimeContext(opts, sex);
   const snapshot = buildSnapshot(
     evaluation,
     ctx,
     opts.condition,
-    opts.variant || ""
+    opts.variant || "",
+    leaf.id,
+    leaf.name,
+    conditionPath
   );
 
   return { evaluation, snapshot };
 }
-

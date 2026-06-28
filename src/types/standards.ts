@@ -136,8 +136,6 @@ export type EESource =
   | "Schofield WH×SF"
   | "DRI/EER"
   | "CF Formula"
-  | "Curreri"
-  | "Milner"
   | "Toronto"
   | "Galveston"
   | "Galveston Infant"

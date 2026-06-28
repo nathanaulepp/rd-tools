@@ -103,6 +103,14 @@ export function buildPatientScope(): PatientScope {
       msjReeKcal = 10 * weightKg + 6.25 * heightCm - 5 * ageYears - 161;
     }
   }
+  let hbeBmrKcal: number | undefined = undefined;
+  if (weightKg !== undefined && heightCm !== undefined && ageYears !== undefined && sex) {
+    if (sex === "M") {
+      hbeBmrKcal = 88.362 + 13.397 * weightKg + 4.799 * heightCm - 5.677 * ageYears;
+    } else {
+      hbeBmrKcal = 447.593 + 9.247 * weightKg + 3.098 * heightCm - 4.330 * ageYears;
+    }
+  }
 
   let schofieldReeKcal: number | undefined = undefined;
   if (weightKg !== undefined && heightCm !== undefined && ageYears !== undefined && sex) {

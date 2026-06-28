@@ -135,6 +135,14 @@ export const VARIABLE_CATALOG: VariableCatalogEntry[] = [
     categoryOptions: null,
   },
   {
+    slug: "hbeBmrKcal",
+    displayName: "Harris-Benedict BMR",
+    domain: "Derived Metrics",
+    dataType: "numeric",
+    unit: "kcal/day",
+    categoryOptions: null,
+  },
+  {
     slug: "schofieldReeKcal",
     displayName: "Schofield BMR/REE",
     domain: "Derived Metrics",

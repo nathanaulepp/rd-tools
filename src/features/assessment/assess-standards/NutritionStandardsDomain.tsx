@@ -393,7 +393,7 @@ export default function NutritionStandardsDomain() {
     if (!engineIsLoaded) useEquationEngineStore.getState().loadConditions();
   }, [engineIsLoaded]);
 
-  const [selectedLeafId, setSelectedLeafId] = useState<string>(standards.condition || "");
+  const [selectedLeafId, setSelectedLeafId] = useState<string>(standards.conditionId || standards.condition || "");
   const [icKcal, setIcKcal] = useState(standards.icKcal || "");
   const [icCaf, setIcCaf] = useState(standards.icCaf || "1.0");
   const [extraInputs, setExtraInputs] = useState<Record<string, string>>(standards.extraInputs || {});
@@ -474,7 +474,7 @@ export default function NutritionStandardsDomain() {
   const currentFluid = useMemo(() => dietaryTotals.totalFluid > 0 ? String(Math.round(dietaryTotals.totalFluid)) : "", [dietaryTotals.totalFluid]);
 
   const syncToParent = useCallback(() => {
-    setStandards({ condition: selectedLeafId, variant: "", icKcal, icCaf, extraInputs });
+    setStandards({ conditionId: selectedLeafId as ConditionId, condition: selectedLeafId, variant: "", icKcal, icCaf, extraInputs });
   }, [selectedLeafId, icKcal, icCaf, extraInputs, setStandards]);
 
   useEffect(() => {
@@ -718,11 +718,16 @@ export default function NutritionStandardsDomain() {
                   if (leaves.length === 0) return null;
                   return (
                     <optgroup key={root.id} label={root.name}>
-                      {leaves.map(leaf => (
-                        <option key={leaf.id} value={leaf.id}>
-                          {leaf.name}
-                        </option>
-                      ))}
+                      {leaves.map(leaf => {
+                        // Build "Adult › Stable" or "Pediatric › VOC / Crisis" label
+                        const parent = engineConditions.find(c => c.id === leaf.parentId);
+                        const parentLabel = (parent && parent.id !== root.id) ? `${parent.name} › ` : "";
+                        return (
+                          <option key={leaf.id} value={leaf.id}>
+                            {parentLabel}{leaf.name}
+                          </option>
+                        );
+                      })}
                     </optgroup>
                   );
                 })}

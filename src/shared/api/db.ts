@@ -1,8 +1,4 @@
 // src/shared/api/db.ts
-// Phase 7: Encounter (Admission) Domain Layer
-//   • encounters table added to group notes by hospital stay
-//   • Idempotent migration links legacy notes via patient_id + admission_date
-//   • admission_date is now primarily an Encounter attribute
 
 import Database from "@tauri-apps/plugin-sql";
 import { getLocalIsoDate } from "../utils/date";
@@ -533,16 +529,7 @@ async function seedEquationEngine(db: Database): Promise<void> {
     // ─── Burns ──────────────────────────────────────────────────────────────
     burns_root: "770bb86c-41b4-4b91-a2b2-d16e98ab3f56",
     burns_adult: "780bb86c-41b4-4b91-a2b2-d16e98ab3f56",
-    burns_milner: "790bb86c-41b4-4b91-a2b2-d16e98ab3f56",
     burns_toronto: "7a0bb86c-41b4-4b91-a2b2-d16e98ab3f56",
-
-    burns_milner_kcal_low: "7b0bb86c-41b4-4b91-a2b2-d16e98ab3f56",
-    burns_milner_kcal_high: "7c0bb86c-41b4-4b91-a2b2-d16e98ab3f56",
-    burns_milner_prot_low: "7d0bb86c-41b4-4b91-a2b2-d16e98ab3f56",
-    burns_milner_prot_high: "7e0bb86c-41b4-4b91-a2b2-d16e98ab3f56",
-    burns_milner_note1: "7f0bb86c-41b4-4b91-a2b2-d16e98ab3f56",
-    burns_milner_note2: "800bb86c-41b4-4b91-a2b2-d16e98ab3f57",
-    burns_milner_note3: "800bb86c-41b4-4b91-a2b2-d16e98ab3f58",
 
     burns_toronto_kcal_low: "800bb86c-41b4-4b91-a2b2-d16e98ab3f59",
     burns_toronto_kcal_high: "80bb86ca-11b4-4b91-a2b2-d16e98ab3f56",
@@ -1317,10 +1304,6 @@ async function seedEquationEngine(db: Database): Promise<void> {
     cf_peds_act_isPancreaticSufficient: "cf819e81-5a0e-4c23-ac1c-bee60b77c017",
     cf_peds_act_cfa:                   "cf819e81-5a0e-4c23-ac1c-bee60b77c018",
 
-    burns_milner_tbsaPct:       "b80bb86c-41b4-4b91-a2b2-d16e98ab3f01",
-    burns_milner_pbd:           "b80bb86c-41b4-4b91-a2b2-d16e98ab3f02",
-    burns_milner_caloricIntake: "b80bb86c-41b4-4b91-a2b2-d16e98ab3f03",
-    burns_milner_coreTemp:      "b80bb86c-41b4-4b91-a2b2-d16e98ab3f04",
     burns_toronto_tbsaPct:       "b80bb86c-41b4-4b91-a2b2-d16e98ab3f05",
     burns_toronto_pbd:           "b80bb86c-41b4-4b91-a2b2-d16e98ab3f06",
     burns_toronto_caloricIntake: "b80bb86c-41b4-4b91-a2b2-d16e98ab3f07",
@@ -1647,7 +1630,6 @@ async function seedEquationEngine(db: Database): Promise<void> {
   await seedCondition(SEED_IDS.pancreatitis_severe_crit, "Severe / Critical", SEED_IDS.pancreatitis_adult, 20, "Severe necrotizing or critical pancreatitis");
   await seedCondition(SEED_IDS.trauma_standard, "Standard / Major Trauma", SEED_IDS.trauma_adult, 10, "Closed abdomen trauma");
   await seedCondition(SEED_IDS.trauma_open_abdomen, "Open Abdomen / NPWT", SEED_IDS.trauma_adult, 20, "NPWT open abdomen trauma");
-  await seedCondition(SEED_IDS.burns_milner, "Milner Formula", SEED_IDS.burns_adult, 10, "Milner equation variant");
   await seedCondition(SEED_IDS.burns_toronto, "Toronto Formula (Preferred)", SEED_IDS.burns_adult, 20, "Toronto equation variant");
   await seedCondition(SEED_IDS.stroke_ischemic, "Ischemic / Standard", SEED_IDS.stroke_adult, 10, "Ischemic stroke variant");
   await seedCondition(SEED_IDS.stroke_hemorrhagic, "Hemorrhagic", SEED_IDS.stroke_adult, 20, "Hemorrhagic stroke variant");
@@ -1719,8 +1701,7 @@ async function seedEquationEngine(db: Database): Promise<void> {
   await seedCondition(SEED_IDS.bf_peds_late, "7–12 Months Postpartum", SEED_IDS.bf_peds, 20, "Late postpartum breastfeeding");
 
   // ─── 2. Equations ────────────────────────────────────────────────────────
-  const torontoExpr = "hbe = ifTrue(isMale, 66.5 + 13.75 * weightKg + 5.003 * heightCm - 6.775 * ageYears, 655.1 + 9.563 * weightKg + 1.85 * heightCm - 4.676 * ageYears); max((-4343) + (10.5 * tbsaBurnedPct) + (0.23 * currentKcalIntake) + (0.84 * hbe) + (114 * coreTempC) - (4.5 * postBurnDay), weightKg * 20)";
-
+  const torontoExpr = "max(-4343 + (10.5 * tbsaBurnedPct) + (0.23 * currentKcalIntake) + (0.84 * hbeBmrKcal) + (114 * coreTempC) - (4.5 * postBurnDay), weightKg * 20)";
   await seedEquation(SEED_IDS.copd_std_kcal_low, SEED_IDS.copd_standard, "energy", "msjReeKcal * 1.15", "kcal/day", "Energy — Lower Bound", 1);
   await seedEquation(SEED_IDS.copd_std_kcal_high, SEED_IDS.copd_standard, "energy", "msjReeKcal * 1.20", "kcal/day", "Energy — Upper Bound", 2);
   await seedEquation(SEED_IDS.copd_std_prot_low, SEED_IDS.copd_standard, "protein", "weightKg * 0.8", "g/day", "Protein — Lower Bound", 3);
@@ -1874,11 +1855,7 @@ async function seedEquationEngine(db: Database): Promise<void> {
   await seedEquation(SEED_IDS.trauma_open_prot_low, SEED_IDS.trauma_open_abdomen, "protein", "weightKg * 1.2 + exudateVolumeL * 29", "g/day", "Protein — Lower Bound", 3);
   await seedEquation(SEED_IDS.trauma_open_prot_high, SEED_IDS.trauma_open_abdomen, "protein", "weightKg * 2.0 + exudateVolumeL * 29", "g/day", "Protein — Upper Bound", 4);
 
-  // Milner equations & notes
-  await seedEquation(SEED_IDS.burns_milner_kcal_low, SEED_IDS.burns_milner, "energy", "weightKg * 25", "kcal/day", "Energy — Lower Bound", 1);
-  await seedEquation(SEED_IDS.burns_milner_kcal_high, SEED_IDS.burns_milner, "energy", "weightKg * 25", "kcal/day", "Energy — Upper Bound", 2);
-  await seedEquation(SEED_IDS.burns_milner_prot_low, SEED_IDS.burns_milner, "protein", "ifTrue(tbsaBurnedPct > 40, weightKg * 2.0, weightKg * 1.5)", "g/day", "Protein — Lower Bound", 3);
-  await seedEquation(SEED_IDS.burns_milner_prot_high, SEED_IDS.burns_milner, "protein", "weightKg * 2.0", "g/day", "Protein — Upper Bound", 4);
+  // Toronto equations & notes
   await seedEquation(SEED_IDS.burns_toronto_kcal_low, SEED_IDS.burns_toronto, "energy", `${torontoExpr} * 0.9`, "kcal/day", "Energy — Lower Bound", 1);
   await seedEquation(SEED_IDS.burns_toronto_kcal_high, SEED_IDS.burns_toronto, "energy", `${torontoExpr} * 1.1`, "kcal/day", "Energy — Upper Bound", 2);
   await seedEquation(SEED_IDS.burns_toronto_prot_low, SEED_IDS.burns_toronto, "protein", "ifTrue(tbsaBurnedPct > 40, weightKg * 2.0, weightKg * 1.5)", "g/day", "Protein — Lower Bound", 3);
@@ -2309,10 +2286,6 @@ async function seedEquationEngine(db: Database): Promise<void> {
   await seedNote(SEED_IDS.trauma_open_note1, null, SEED_IDS.trauma_open_abdomen, "Open abdomen: exudate replacement added — exudateVolumeL × 29g protein = +exudateVolumeL*29g/day; +exudateVolumeL*116 kcal/day energy.", 1);
   await seedNote(SEED_IDS.trauma_open_note2, null, SEED_IDS.trauma_open_abdomen, "Source: Hourigan et al. (2010). Loss of protein, immunoglobulins, and electrolytes in exudates from NPWT. Nutr Clin Pract, 25(5), 510–516. doi:10.1177/0884533610379852", 2);
   await seedNote(SEED_IDS.trauma_open_note3, null, SEED_IDS.trauma_open_abdomen, "Severe/polytrauma: protein may exceed 2.0 g/kg — individualize. Use IC to track energy expenditure changes.", 3);
-  await seedNote(SEED_IDS.burns_milner_note1, null, SEED_IDS.burns_milner, "Milner formula requires Fleisch BMR table lookup — enter target manually or use Toronto formula instead.", 1);
-  await seedNote(SEED_IDS.burns_milner_note2, null, SEED_IDS.burns_milner, "Protein target scaled to TBSA: if TBSA > 40% -> 2.0 g/kg/day; else 1.5–2.0 g/kg/day. Limit glucose to ≤5 mg/kg/min.", 2);
-  await seedNote(SEED_IDS.burns_milner_note3, null, SEED_IDS.burns_milner, "Parkland formula / physiological endpoints — strict I/O monitoring required.", 3);
-  await seedNote(SEED_IDS.burns_ic_note, null, SEED_IDS.burns_milner, "IC strongly recommended for burns — recalculate frequently.", 4);
   await seedNote(SEED_IDS.burns_toronto_note1, null, SEED_IDS.burns_toronto, "Toronto equation preferred: limits glucose to ≤5 mg/kg/min, preventing hepatic steatosis and hypercapnia.", 1);
   await seedNote(SEED_IDS.burns_toronto_note2, null, SEED_IDS.burns_toronto, "Protein target scaled to TBSA: if TBSA > 40% -> 2.0 g/kg/day; else 1.5–2.0 g/kg/day. Limit glucose to ≤5 mg/kg/min.", 2);
   await seedNote(SEED_IDS.burns_toronto_note3, null, SEED_IDS.burns_toronto, "Parkland formula / physiological endpoints — strict I/O monitoring required.", 3);
@@ -2470,14 +2443,13 @@ async function seedEquationEngine(db: Database): Promise<void> {
 
   // Burns (all 4 leaves)
   const burnsLeaves = [
-    { leaf: SEED_IDS.burns_milner, ids: [SEED_IDS.burns_milner_tbsaPct, SEED_IDS.burns_milner_pbd, SEED_IDS.burns_milner_caloricIntake, SEED_IDS.burns_milner_coreTemp] },
     { leaf: SEED_IDS.burns_toronto, ids: [SEED_IDS.burns_toronto_tbsaPct, SEED_IDS.burns_toronto_pbd, SEED_IDS.burns_toronto_caloricIntake, SEED_IDS.burns_toronto_coreTemp] },
     { leaf: SEED_IDS.burns_peds_child, ids: [SEED_IDS.burns_peds_child_tbsaPct, SEED_IDS.burns_peds_child_pbd, SEED_IDS.burns_peds_child_caloricIntake, SEED_IDS.burns_peds_child_coreTemp] },
     { leaf: SEED_IDS.burns_peds_adol, ids: [SEED_IDS.burns_peds_adol_tbsaPct, SEED_IDS.burns_peds_adol_pbd, SEED_IDS.burns_peds_adol_caloricIntake, SEED_IDS.burns_peds_adol_coreTemp] }
   ];
   for (const b of burnsLeaves) {
     await seedExtraInput(b.ids[0], b.leaf, "tbsaPct", "TBSA Burned (%)", "number", null, 1);
-    await seedExtraInput(b.ids[1], b.leaf, "pbd", "Post-Burn Day (PBD)", "number", "Required for Milner and Toronto", 2);
+    await seedExtraInput(b.ids[1], b.leaf, "pbd", "Post-Burn Day (PBD)", "number", "Required for Toronto equation", 2);
     await seedExtraInput(b.ids[2], b.leaf, "caloricIntake", "Current Caloric Intake (kcal/day)", "number", "Required for Toronto equation", 3);
     await seedExtraInput(b.ids[3], b.leaf, "coreTemp", "Core Temperature (°C)", "number", "Required for Toronto equation", 4);
   }

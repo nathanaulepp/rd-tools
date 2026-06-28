@@ -134,28 +134,6 @@ export function calcPSU2010(
   return msjRee * 0.71 + veLPerMin * 64 + tmaxC * 85 - 3085;
 }
 
-/**
- * Fleisch BMR — kcal/m²/hr.
- * Used in the Milner burns formula for adults.
- * Age-stratified table approximation via linear interpolation.
- */
-export function calcFleischBMR(ageYears: number, sex: "M" | "F"): number {
-  if (ageYears >= 20) {
-    if (sex === "M") return Math.max(30, 38 - 0.073 * (ageYears - 20));
-    return Math.max(28, 35 - 0.064 * (ageYears - 20));
-  }
-  if (sex === "M") {
-    if (ageYears < 5)  return 53 - (ageYears - 1) * 0.925;
-    if (ageYears < 10) return 49.3 - (ageYears - 5) * 0.98;
-    if (ageYears < 15) return 44.4 - (ageYears - 10) * 0.52;
-    return 41.8 - (ageYears - 15) * 0.64;
-  } else {
-    if (ageYears < 5)  return 53 - (ageYears - 1) * 1.15;
-    if (ageYears < 10) return 48.4 - (ageYears - 5) * 0.92;
-    if (ageYears < 15) return 43.8 - (ageYears - 10) * 0.8;
-    return 39.8 - (ageYears - 15) * 0.9;
-  }
-}
 
 /**
  * CF (Cystic Fibrosis) BMR — Schofield-based age/sex brackets.

@@ -887,7 +887,6 @@ Root: "CKD Stages 3-5"
 
 Root: "Burns"
   Child: "Adult"
-    Leaf: "Milner Formula"
     Leaf: "Toronto Formula (Preferred)"
   Child: "Pediatric"
     Leaf: "Child 1-11y (Galveston)"
