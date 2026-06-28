@@ -96,6 +96,8 @@ interface NpDietOrderPickerProps {
 
 function NpDietOrderPicker({ value, onChange }: NpDietOrderPickerProps) {
   const [diets, setDiets] = useState<HospitalDiet[]>([]);
+  const [open, setOpen] = useState(false);
+  const wrapRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     let active = true;
@@ -105,39 +107,112 @@ function NpDietOrderPicker({ value, onChange }: NpDietOrderPickerProps) {
     return () => { active = false; };
   }, []);
 
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
   const selected = Array.isArray(value) ? value : (value ? [value] : []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const chosen = Array.from(e.target.selectedOptions).map(o => o.value);
-    onChange(chosen);
+  const handleToggle = (name: string) => {
+    if (selected.includes(name)) {
+      onChange(selected.filter((d) => d !== name));
+    } else {
+      onChange([...selected, name]);
+    }
   };
 
+  const label = selected.length === 0
+    ? "Select diets…"
+    : selected.join(", ");
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem", width: "100%" }}>
-      <select
-        multiple
-        value={selected}
-        onChange={handleChange}
+    <div ref={wrapRef} style={{ position: "relative", width: "100%" }}>
+      <div
+        onClick={() => setOpen((o) => !o)}
         style={{
-          width: "100%",
-          padding: "4px 6px",
+          padding: "5px 28px 5px 8px",
           border: "1px solid #e2e8f0",
           borderRadius: "4px",
+          background: "#fff",
           fontSize: "0.85rem",
+          cursor: "pointer",
+          userSelect: "none",
+          color: selected.length === 0 ? "#a0aec0" : "#2d3748",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          position: "relative",
+          minHeight: "28px",
+          display: "flex",
+          alignItems: "center",
           boxSizing: "border-box",
-          minHeight: "90px",
-          fontFamily: "inherit",
+          width: "100%",
         }}
       >
-        {diets.map((d) => (
-          <option key={d.id} value={d.name}>
-            {d.name}
-          </option>
-        ))}
-      </select>
-      {selected.length > 0 && (
-        <div style={{ fontSize: "0.7rem", color: "#64748b", fontStyle: "italic" }}>
-          {selected.length} diet{selected.length !== 1 ? "s" : ""} selected — Ctrl/Cmd+click to deselect
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        <span style={{ position: "absolute", right: 8, color: "#718096", fontSize: "0.65rem" }}>
+          {open ? "▲" : "▼"}
+        </span>
+      </div>
+
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 2px)",
+            left: 0,
+            right: 0,
+            zIndex: 500,
+            background: "#fff",
+            border: "1px solid #e2e8f0",
+            borderRadius: "4px",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.10)",
+            maxHeight: "200px",
+            overflowY: "auto",
+          }}
+        >
+          {diets.map((d) => {
+            const isSelected = selected.includes(d.name);
+            return (
+              <div
+                key={d.id}
+                onMouseDown={(e) => { e.preventDefault(); handleToggle(d.name); }}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "5px 10px",
+                  cursor: "pointer",
+                  background: isSelected ? "#f0fff4" : "transparent",
+                  color: isSelected ? "#276749" : "#2d3748",
+                  fontWeight: isSelected ? 600 : 400,
+                  fontSize: "0.85rem",
+                  borderBottom: "1px solid #f1f5f9",
+                  userSelect: "none",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "#f8fafc";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.background = isSelected ? "#f0fff4" : "transparent";
+                }}
+              >
+                <span>{d.name}</span>
+                {isSelected && <span style={{ fontSize: "0.75rem" }}>✓</span>}
+              </div>
+            );
+          })}
+          {diets.length === 0 && (
+            <div style={{ padding: "6px 10px", color: "#94a3b8", fontStyle: "italic", fontSize: "0.85rem" }}>
+              Loading diets…
+            </div>
+          )}
         </div>
       )}
     </div>

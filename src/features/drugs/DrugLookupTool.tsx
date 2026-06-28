@@ -204,10 +204,10 @@ function useProductSearch(query: string) {
           CREATE TABLE IF NOT EXISTS rxnorm_products (
             rxcui          TEXT PRIMARY KEY,
             display_name   TEXT NOT NULL,
-            ingredient     TEXT NOT NULL DEFAULT '',
+            ingredient     TEXT,
             strength_value REAL,
-            strength_unit  TEXT NOT NULL DEFAULT '',
-            dose_form      TEXT NOT NULL DEFAULT '',
+            strength_unit  TEXT,
+            dose_form      TEXT,
             tty            TEXT NOT NULL DEFAULT 'SCD'
           )
         `);
@@ -219,7 +219,7 @@ function useProductSearch(query: string) {
         if (!active) return;
 
         if (count === 0) {
-          setSyncMsg("⚠ RxNorm not synced — go to Settings");
+          setSyncMsg("Medication search is unavailable; manual entry is still available");
         } else {
           setSyncMsg(null);
         }
@@ -386,7 +386,7 @@ function ProductCombobox({
         )}
       </div>
 
-      {open && results.length > 0 && (
+      {open && query.trim().length >= 2 && (
         <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 400, maxHeight: "300px", overflowY: "auto" }}>
           {results.map((p) => {
             const q   = query.toLowerCase();
@@ -414,12 +414,25 @@ function ProductCombobox({
               </button>
             );
           })}
-        </div>
-      )}
-
-      {open && query.length >= 2 && results.length === 0 && !loading && (
-        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, background: "#fff", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "0.65rem 1rem", fontSize: "0.82rem", color: "#94a3b8", boxShadow: "0 4px 12px rgba(0,0,0,0.08)", zIndex: 400 }}>
-          No RxNorm match for "{query}" — type to enter manually and select below.
+          <button
+            onClick={() => {
+              onSelect({
+                rxcui: "",
+                displayName: query,
+                ingredient: query,
+                strengthValue: null,
+                strengthUnit: "",
+                doseForm: "",
+                tty: "SCD",
+              });
+              setOpen(false);
+            }}
+            style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", background: "#f8fafc", border: "none", fontSize: "0.84rem", cursor: "pointer", color: "#2563eb", fontWeight: 700, borderTop: results.length > 0 ? "1px solid #e2e8f0" : "none" }}
+            onMouseEnter={e => (e.currentTarget.style.background = "#eff6ff")}
+            onMouseLeave={e => (e.currentTarget.style.background = "#f8fafc")}
+          >
+            + Use "{query}" (manual entry)
+          </button>
         </div>
       )}
     </div>
@@ -710,7 +723,7 @@ export default function DrugLookupTool({
             </span>
           )}
           {syncMsg && (
-            <span style={{ fontSize: "0.62rem", fontWeight: 600, color: syncMsg.includes("⚠") ? "#e74c3c" : "#94a3b8", fontStyle: "italic" }}>
+            <span style={{ fontSize: "0.62rem", fontWeight: 600, color: syncMsg.includes("unavailable") ? "#e74c3c" : "#94a3b8", fontStyle: "italic" }}>
               {syncMsg}
             </span>
           )}

@@ -20,7 +20,17 @@ export default function DietaryD3toD9() {
   const drugs = useMemo(() => {
     try {
       const parsed = JSON.parse(clinical?.medications || "[]");
-      if (Array.isArray(parsed)) return parsed.map((d: any) => d.name).filter(Boolean);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .flatMap((d: any) => {
+            const list = [];
+            if (d.product?.ingredient) list.push(d.product.ingredient);
+            if (d.product?.displayName) list.push(d.product.displayName);
+            if (d.name) list.push(d.name);
+            return list;
+          })
+          .filter(Boolean);
+      }
     } catch {
       return (clinical?.medications || "")
         .split(/[,;\n]+/)

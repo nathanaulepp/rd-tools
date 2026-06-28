@@ -6,6 +6,7 @@ import DysphagiaModManager from "../features/settings/diets/DysphagiaModManager"
 import SubmissionRequirementsPanel from "../features/settings/SubmissionRequirementsPanel";
 import SchemaInfoPanel from "../features/settings/SchemaInfoPanel";
 import ChemistryTemplatesPanel from "../features/settings/ChemistryTemplatesPanel";
+import RxNormSettingsPanel from "../features/settings/RxNormSettingsPanel";
 
 // ─── Components ───────────────────────────────────────────────────────────────
 
@@ -16,7 +17,7 @@ interface SettingsPageProps {
 export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
   useEscapeBackout(handleExitToStart);
 
-  const [activeTab, setActiveTab] = useState<"requirements" | "formulary" | "chemistry" | "diets">("requirements");
+  const [activeTab, setActiveTab] = useState<"requirements" | "rxnorm" | "formulary" | "chemistry" | "diets">("requirements");
   const [toastMsg, setToastMsg] = useState("");
 
   const showToast = (msg: string) => {
@@ -30,19 +31,20 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
         <div style={s.headerInner}>
           <button style={s.backBtn} onClick={handleExitToStart}>← Back to Home</button>
           <h2 style={s.title}>Configuration & Logic</h2>
-          <p style={s.subtitle}>Manage submission requirements and your hospital formulary</p>
+          <p style={s.subtitle}>Manage submission requirements and available inputs</p>
 
           {/* Tab strip */}
           <div style={{ display: "flex", gap: "0.5rem", marginTop: "1rem" }}>
             {[
               { id: "requirements", label: "⚙ Submission Requirements" },
-              { id: "formulary",    label: "🥤 Enteral Formulary" },
-              { id: "chemistry",    label: "🧪 Chemistry Templates" },
-              { id: "diets",        label: "🍽️ Diet List" },
+              { id: "rxnorm",       label: "Medication Search" },
+              { id: "formulary",    label: "Enteral Formulary" },
+              { id: "chemistry",    label: "Chemistry Templates" },
+              { id: "diets",        label: "Diet List" },
             ].map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id as "requirements" | "formulary" | "chemistry" | "diets")}
+                onClick={() => setActiveTab(tab.id as "requirements" | "rxnorm" | "formulary" | "chemistry" | "diets")}
                 style={{
                   padding: "6px 16px",
                   borderRadius: "8px",
@@ -67,6 +69,8 @@ export default function SettingsPage({ handleExitToStart }: SettingsPageProps) {
             <SubmissionRequirementsPanel showToast={showToast} />
             <SchemaInfoPanel />
           </>
+        ) : activeTab === "rxnorm" ? (
+          <RxNormSettingsPanel />
         ) : activeTab === "chemistry" ? (
           <ChemistryTemplatesPanel showToast={showToast} />
         ) : activeTab === "diets" ? (

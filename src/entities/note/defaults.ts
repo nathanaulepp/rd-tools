@@ -77,7 +77,7 @@ export const defaultDietary: Dietary = {
   recall: [{ label: "Meal 1", value: "" }],
   mealPatterns: "", currentDiets: "", fluidIntake: "",
   eeiPercent: "", eeiTimeframe: "",
-  dietOrder: [], oralCalories: "", oralProtein: "", oralCho: "", oralFat: "", oralWater: "",
+  dietOrder: [], foodMod: "", liquidMod: "", oralCalories: "", oralProtein: "", oralCho: "", oralFat: "", oralWater: "",
   physicalLevel: "", adls: "", feedingTasks: "",
   understanding: "", readiness: "5", psychTies: "",
   mealPrep: "", eatingOut: "", bingePurge: "",

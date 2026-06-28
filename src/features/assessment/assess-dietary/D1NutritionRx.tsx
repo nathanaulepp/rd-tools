@@ -15,8 +15,8 @@ import { useDietaryStore } from "../../../stores/useDietaryStore";
 import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 import { useEnteralFormulaStore } from "../../../stores/useEnteralFormulaStore";
 import type { EnteralFormula } from "../../../types/enteralFormula";
-import type { Dietary, HospitalDiet } from "../../../types";
-import { getAllDiets } from "../../../shared/api/db";
+import type { Dietary, HospitalDiet, HospitalDysphagiaMode } from "../../../types";
+import { getAllDiets, getAllDysphagiaeMods } from "../../../shared/api/db";
 import DietaryD14IVOrders from "./DietaryD14IVOrders";
 import PNPrescriptionMatrix from "./PNPrescriptionMatrix";
 
@@ -145,57 +145,121 @@ interface DietOrderPickerProps {
 
 function DietOrderPicker({ value, onChange }: DietOrderPickerProps) {
   const [diets, setDiets] = useState<HospitalDiet[]>([]);
+  const [open, setOpen] = useState(false);
+  const wrapRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     let active = true;
-    const load = async () => {
-      try {
-        const dList = await getAllDiets();
-        if (active) {
-          setDiets(dList);
-        }
-      } catch (err) {
-        console.error("Failed to load diet orders", err);
+    getAllDiets()
+      .then((dList) => { if (active) setDiets(dList); })
+      .catch((err) => console.error("Failed to load diet orders", err));
+    return () => { active = false; };
+  }, []);
+
+  React.useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
       }
     };
-    load();
-    return () => { active = false; };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
   }, []);
 
   const selected = Array.isArray(value) ? value : (value ? [value as unknown as string] : []);
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const chosen = Array.from(e.target.selectedOptions).map(o => o.value);
-    onChange(chosen);
+  const handleToggle = (name: string) => {
+    if (selected.includes(name)) {
+      onChange(selected.filter((d) => d !== name));
+    } else {
+      onChange([...selected, name]);
+    }
   };
 
+  const label = selected.length === 0
+    ? "Select diets…"
+    : selected.join(", ");
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
-      <select
-        multiple
-        value={selected}
-        onChange={handleChange}
+    <div ref={wrapRef} style={{ position: "relative", width: "100%" }}>
+      <div
+        onClick={() => setOpen((o) => !o)}
         style={{
-          width: "100%",
-          padding: "4px 6px",
+          padding: "5px 28px 5px 8px",
           border: "1px solid #cbd5e0",
           borderRadius: "4px",
-          fontSize: "0.8rem",
           background: "#edf2f7",
-          minHeight: "90px",
-          boxSizing: "border-box",
-          fontFamily: "inherit",
+          fontSize: "0.8rem",
+          cursor: "pointer",
+          userSelect: "none",
+          color: selected.length === 0 ? "#a0aec0" : "#2d3748",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          position: "relative",
+          minHeight: "28px",
+          display: "flex",
+          alignItems: "center",
         }}
       >
-        {diets.map((d) => (
-          <option key={d.id} value={d.name}>
-            {d.name}
-          </option>
-        ))}
-      </select>
-      {selected.length > 0 && (
-        <div style={{ fontSize: "0.68rem", color: "#64748b", fontStyle: "italic" }}>
-          {selected.length} diet{selected.length !== 1 ? "s" : ""} selected — Ctrl/Cmd+click to deselect
+        <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+        <span style={{ position: "absolute", right: 8, color: "#718096", fontSize: "0.65rem" }}>
+          {open ? "▲" : "▼"}
+        </span>
+      </div>
+
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 2px)",
+            left: 0,
+            right: 0,
+            zIndex: 500,
+            background: "#fff",
+            border: "1px solid #cbd5e0",
+            borderRadius: "4px",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.10)",
+            maxHeight: "200px",
+            overflowY: "auto",
+          }}
+        >
+          {diets.map((d) => {
+            const isSelected = selected.includes(d.name);
+            return (
+              <div
+                key={d.id}
+                onMouseDown={(e) => { e.preventDefault(); handleToggle(d.name); }}
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "5px 10px",
+                  cursor: "pointer",
+                  background: isSelected ? "#ebf8ff" : "transparent",
+                  color: isSelected ? "#2b6cb0" : "#2d3748",
+                  fontWeight: isSelected ? 600 : 400,
+                  fontSize: "0.8rem",
+                  borderBottom: "1px solid #f1f5f9",
+                  userSelect: "none",
+                }}
+                onMouseEnter={(e) => {
+                  if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "#f7fafc";
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLDivElement).style.background = isSelected ? "#ebf8ff" : "transparent";
+                }}
+              >
+                <span>{d.name}</span>
+                {isSelected && <span style={{ fontSize: "0.75rem" }}>✓</span>}
+              </div>
+            );
+          })}
+          {diets.length === 0 && (
+            <div style={{ padding: "6px 10px", color: "#94a3b8", fontStyle: "italic", fontSize: "0.8rem" }}>
+              Loading diets…
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -206,17 +270,82 @@ interface D11OralProps { dietary: Dietary; setDietary: (d: Dietary) => void; }
 
 function D11Oral({ dietary, setDietary }: D11OralProps) {
   const handleUpdate = (field: string, val: any) => setDietary({ ...dietary, [field]: val });
+
+  const [foodMods, setFoodMods] = useState<HospitalDysphagiaMode[]>([]);
+  const [liquidMods, setLiquidMods] = useState<HospitalDysphagiaMode[]>([]);
+
+  React.useEffect(() => {
+    let active = true;
+    getAllDysphagiaeMods()
+      .then((mList) => {
+        if (active) {
+          setFoodMods(mList.filter((m) => m.category === "Food"));
+          setLiquidMods(mList.filter((m) => m.category === "Liquid"));
+        }
+      })
+      .catch((err) => console.error("Failed to load consistencies in D11Oral", err));
+    return () => {
+      active = false;
+    };
+  }, []);
+
   return (
     <div style={{ marginBottom: "0.5rem" }}>
       <div className="card" style={{ padding: "0.35rem 0.6rem" }}>
         <SectionHeader title="D11: Oral Diet & Intake" color="#3498db" />
         <div style={{ display: "grid", gridTemplateColumns: "2.2fr 0.85fr 0.85fr 0.85fr 0.85fr 0.85fr", gap: "0.35rem" }}>
-          <div className="input-group">
+          <div className="input-group" style={{ display: "flex", flexDirection: "column", gap: "0.25rem" }}>
             <label style={{ fontSize: "0.7rem", fontWeight: 700 }}>Current Rx Diet Order</label>
-            <DietOrderPicker
-              value={Array.isArray(dietary.dietOrder) ? dietary.dietOrder : (dietary.dietOrder ? [dietary.dietOrder as unknown as string] : [])}
-              onChange={val => handleUpdate("dietOrder", val)}
-            />
+            <div style={{ display: "flex", gap: "0.25rem", alignItems: "stretch" }}>
+              <div style={{ flex: 1.2 }}>
+                <DietOrderPicker
+                  value={Array.isArray(dietary.dietOrder) ? dietary.dietOrder : (dietary.dietOrder ? [dietary.dietOrder as unknown as string] : [])}
+                  onChange={val => handleUpdate("dietOrder", val)}
+                />
+              </div>
+              <select
+                value={dietary.foodMod || ""}
+                onChange={(e) => handleUpdate("foodMod", e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "4px 8px",
+                  border: "1px solid #cbd5e0",
+                  borderRadius: "4px",
+                  fontSize: "0.8rem",
+                  background: "#edf2f7",
+                  height: "28px",
+                  boxSizing: "border-box",
+                }}
+              >
+                <option value="">— Food mod —</option>
+                {foodMods.map((m) => (
+                  <option key={m.id} value={m.name}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={dietary.liquidMod || ""}
+                onChange={(e) => handleUpdate("liquidMod", e.target.value)}
+                style={{
+                  flex: 1,
+                  padding: "4px 8px",
+                  border: "1px solid #cbd5e0",
+                  borderRadius: "4px",
+                  fontSize: "0.8rem",
+                  background: "#edf2f7",
+                  height: "28px",
+                  boxSizing: "border-box",
+                }}
+              >
+                <option value="">— Liquid mod —</option>
+                {liquidMods.map((m) => (
+                  <option key={m.id} value={m.name}>
+                    {m.name}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <Field label="Calories (kcal/day)" style={{ gap: "2px" }}><NumInput value={dietary.oralCalories || ""} onChange={v => handleUpdate("oralCalories", v)} placeholder="e.g. 1800" style={{ padding: "4px 6px", fontSize: "0.8rem" }} /></Field>
           <Field label="Protein (g/day)" style={{ gap: "2px" }}><NumInput value={dietary.oralProtein || ""} onChange={v => handleUpdate("oralProtein", v)} placeholder="e.g. 75" style={{ padding: "4px 6px", fontSize: "0.8rem" }} /></Field>

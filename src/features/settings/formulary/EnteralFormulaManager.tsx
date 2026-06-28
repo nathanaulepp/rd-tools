@@ -183,7 +183,7 @@ function FormulaForm({ initial, onSave, onCancel, isSaving, mode }: FormulaFormP
       {/* Route & notes */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "0.6rem", marginBottom: "1rem" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-          <label style={labelStyle}>Route (optional)</label>
+          <label style={labelStyle}>Age Group (optional)</label>
           <select
             value={form.route}
             onChange={e => setForm(prev => ({ ...prev, route: e.target.value as EnteralPopulation }))}

@@ -150,8 +150,8 @@ fn parse_scd(display: &str) -> ScdParts {
 
 fn db_path(app: &AppHandle) -> PathBuf {
     app.path()
-        .app_data_dir()
-        .expect("app data dir must exist")
+        .app_config_dir()
+        .expect("app config dir must exist")
         .join("drugs.db")
 }
 
@@ -167,10 +167,10 @@ fn ensure_schema(conn: &Connection) -> Result<(), String> {
         "CREATE TABLE IF NOT EXISTS rxnorm_products (
             rxcui          TEXT PRIMARY KEY,
             display_name   TEXT NOT NULL,
-            ingredient     TEXT NOT NULL DEFAULT '',
+            ingredient     TEXT,
             strength_value REAL,
-            strength_unit  TEXT NOT NULL DEFAULT '',
-            dose_form      TEXT NOT NULL DEFAULT '',
+            strength_unit  TEXT,
+            dose_form      TEXT,
             tty            TEXT NOT NULL DEFAULT 'SCD'
         );
         CREATE INDEX IF NOT EXISTS idx_rxnorm_display

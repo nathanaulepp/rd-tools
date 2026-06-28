@@ -46,7 +46,7 @@ By reducing time spent on charting, clinicians can expand their scope:
 - [ ] **add** Automated drug-nutrient interactions
 
 #### Dietary
-- [ ] **add** ONS supplements to oral layout: (formula, amount, times per day)
+- [x] **add** ONS supplements to oral layout: (formula, amount, times per day)
 - [ ] **add** D2.1 automated estimated oral intake, integrating Multiple Pass Dietary Recall
 - [x] **add** D2 checkbox of verified receiving current rx diet and supplements 
 - [x] **add** Build a modifiable EN formulary database into ./src/shared/api

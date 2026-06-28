@@ -20,13 +20,36 @@ function CRow({ label, value, unit }: { label: string; value?: string | null; un
 
 // ── Medication formatter ───────────────────────────────────────────────────────
 
-interface SelectedDrug { name: string; dose: string; route: string; frequency: string; notes: string; }
+interface FormattedMedication { name: string; dose: string; route: string; frequency: string; notes: string; }
 
-function parseMedications(value?: string): SelectedDrug[] {
+function parseMedications(value?: string): FormattedMedication[] {
   if (!value) return [];
   try {
     const parsed = JSON.parse(value);
-    if (Array.isArray(parsed)) return parsed.filter(e => e?.name?.trim());
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((med: any) => {
+          if (med.product) {
+            const name = med.product.displayName || "";
+            const dose = med.doseAmount ? `${med.doseAmount} ${med.doseUnit || ""}`.trim() : "";
+            return {
+              name,
+              dose,
+              route: med.route || "",
+              frequency: med.frequency || "",
+              notes: med.notes || "",
+            };
+          }
+          return {
+            name: med.name || "",
+            dose: med.dose || "",
+            route: med.route || "",
+            frequency: med.frequency || "",
+            notes: med.notes || "",
+          };
+        })
+        .filter(e => e.name.trim());
+    }
   } catch {}
   return [];
 }

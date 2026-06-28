@@ -16,6 +16,8 @@ export interface Dietary {
 
   // D1 — Oral Nutrition Rx (written by D1NutritionRx)
   dietOrder: string[];
+  foodMod?: string;
+  liquidMod?: string;
   oralCalories: string;
   oralProtein: string;
   oralCho: string;

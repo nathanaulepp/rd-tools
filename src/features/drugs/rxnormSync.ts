@@ -95,7 +95,8 @@ export async function searchRxNormProducts(
 export async function getRxNormSyncStatus(): Promise<RxNormSyncStatus> {
   try {
     return await invoke<RxNormSyncStatus>("rxnorm_sync_status");
-  } catch {
+  } catch (err) {
+    console.error("Failed to get RxNorm sync status:", err);
     return { synced: false, lastSyncEpoch: null, productCount: 0, needsSync: true };
   }
 }
@@ -206,13 +207,13 @@ export async function bootRxNormSync(): Promise<void> {
     // (import Store from "@tauri-apps/plugin-store" in your App.tsx)
     // We use a dynamic import here to avoid a hard dependency in this module.
     const { load } = await import("@tauri-apps/plugin-store");
-    const store = await load("settings.json", { autoSave: true });
+    const store = await load("settings.json", { autoSave: true, defaults: {} });
     const apiKey = await store.get<string>("umlsApiKey");
 
     if (!apiKey) return; // No key yet — Settings page will prompt user
 
     await triggerRxNormSync(apiKey, false);
-  } catch {
-    // Silent — boot sync is best-effort
+  } catch (err) {
+    console.warn("RxNorm boot sync skipped:", err);
   }
 }
