@@ -17,11 +17,11 @@ const DEFAULT_DYSPHAGIA_MODS: readonly DysphagiaModSeed[] = [
   { name: "Level 5 — Minced & Moist",    category: "Food"   },
   { name: "Level 4 — Pureed",            category: "Food"   },
   { name: "Level 3 — Liquidized",        category: "Food"   },
-  { name: "Level 4 — Extremely Thick",   category: "Liquid" },
-  { name: "Level 3 — Moderately Thick",  category: "Liquid" },
-  { name: "Level 2 — Mildly Thick",      category: "Liquid" },
-  { name: "Level 1 — Slightly Thick",    category: "Liquid" },
   { name: "Level 0 — Thin Liquids",      category: "Liquid" },
+  { name: "Level 1 — Slightly Thick",    category: "Liquid" },
+  { name: "Level 2 — Mildly Thick",      category: "Liquid" },
+  { name: "Level 3 — Moderately Thick",  category: "Liquid" },
+  { name: "Level 4 — Extremely Thick",   category: "Liquid" },
 ];
 
 export async function seedHospitalDysphagiaeMods(db: Database): Promise<void> {

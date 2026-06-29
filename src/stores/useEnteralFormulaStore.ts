@@ -28,7 +28,7 @@ export const useEnteralFormulaStore = create<EnteralFormulaState>((set, get) => 
   loadFormulas: async () => {
     set({ isLoading: true, error: null });
     try {
-      const { getAllFormulas } = await import("../shared/api/db");
+      const { getAllFormulas } = await import("../shared/api/db.commands");
       const formulas = await getAllFormulas();
       set({ formulas, isLoading: false });
     } catch (e) {
@@ -39,7 +39,7 @@ export const useEnteralFormulaStore = create<EnteralFormulaState>((set, get) => 
 
   addFormula: async (input) => {
     try {
-      const { createFormula } = await import("../shared/api/db");
+      const { createFormula } = await import("../shared/api/db.commands");
       const formula = await createFormula(input);
       set((state) => ({ formulas: [...state.formulas, formula] }));
       return formula;
@@ -52,7 +52,7 @@ export const useEnteralFormulaStore = create<EnteralFormulaState>((set, get) => 
 
   updateFormula: async (id, input) => {
     try {
-      const { updateFormula: dbUpdate } = await import("../shared/api/db");
+      const { updateFormula: dbUpdate } = await import("../shared/api/db.commands");
       await dbUpdate(id, input);
       set((state) => ({
         formulas: state.formulas.map((f) =>
@@ -69,7 +69,7 @@ export const useEnteralFormulaStore = create<EnteralFormulaState>((set, get) => 
 
   deleteFormula: async (id) => {
     try {
-      const { deleteFormula: dbDelete } = await import("../shared/api/db");
+      const { deleteFormula: dbDelete } = await import("../shared/api/db.commands");
       await dbDelete(id);
       set((state) => ({
         formulas: state.formulas.filter((f) => f.id !== id),

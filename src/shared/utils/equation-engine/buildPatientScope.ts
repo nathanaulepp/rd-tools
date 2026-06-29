@@ -81,6 +81,8 @@ export function buildPatientScope(): PatientScope {
     ? weightKg / ((heightCm / 100) ** 2)
     : undefined;
 
+  const temperatureC = num(clinical.temp) !== undefined ? (num(clinical.temp)! - 32) * 5 / 9 : undefined;
+
   let ibwKg: number | undefined = undefined;
   if (heightCm !== undefined && heightCm >= 152.4 && sex) { // 60 inches is 152.4 cm
     const heightInches = heightCm / 2.54;
@@ -159,8 +161,10 @@ export function buildPatientScope(): PatientScope {
     ibwKg,
     adjustedIbwKg,
     correctedWeightKg,
+    hbeBmrKcal,
     msjReeKcal,
     schofieldReeKcal,
+    temperatureC,
 
     // Clinical
     heartRate: num(clinical.hr),

@@ -93,7 +93,7 @@ export default function EquationBuilderDomain() {
       <div style={panelRowStyle}>
         {/* Left Panel: Tree */}
         <div style={panelStyle("300px")}>
-          <div style={panelTitleStyle}>Condition Tree — 13b</div>
+          <div style={panelTitleStyle}>Condition Tree</div>
           <div style={{ flex: 1, minHeight: 0 }}>
             <ConditionTreePanel
               toggleExpanded={toggleExpanded}
@@ -104,7 +104,7 @@ export default function EquationBuilderDomain() {
 
         {/* Center Panel: Editor */}
         <div style={panelStyle(undefined, 1)}>
-          <div style={panelTitleStyle}>Equation Editor — 13c</div>
+          <div style={panelTitleStyle}>Equation Editor</div>
           <div style={{ flex: 1, minHeight: 0 }}>
             <EquationEditorPanel />
           </div>

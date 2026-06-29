@@ -150,6 +150,14 @@ export const VARIABLE_CATALOG: VariableCatalogEntry[] = [
     unit: "kcal/day",
     categoryOptions: null,
   },
+  {
+    slug: "temperatureC",
+    displayName: "Body Temperature (°C)",
+    domain: "Derived Metrics",
+    dataType: "numeric",
+    unit: "°C",
+    categoryOptions: null,
+  },
 
   // ── Clinical ──
   {

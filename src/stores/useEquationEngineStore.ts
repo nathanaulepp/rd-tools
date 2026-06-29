@@ -38,7 +38,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   setSelectedCondition: (id) => set({ selectedConditionId: id }),
 
   loadConditions: async () => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
 
     // 1. Query non-archived conditions
@@ -171,7 +171,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   },
 
   addCondition: async (name, parentId, description) => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
 
     // Calculate sort_order based on sibling count
@@ -196,7 +196,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   },
 
   updateCondition: async (id, updates) => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
 
     const fields: string[] = [];
@@ -230,7 +230,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   },
 
   archiveCondition: async (id) => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
     const now = new Date().toISOString();
 
@@ -243,7 +243,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   },
 
   reorderCondition: async (id, newSortOrder) => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
     const now = new Date().toISOString();
 
@@ -256,7 +256,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   },
 
   addEquation: async (conditionId, nutrient, displayLabel, expression, unit) => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
 
     const eqCountRes = await db.select<{ count: number }[]>(
@@ -279,7 +279,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   },
 
   updateEquation: async (equationId, updates) => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
 
     const fields: string[] = [];
@@ -318,7 +318,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   },
 
   deleteEquation: async (equationId) => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
 
     await db.execute("DELETE FROM custom_equation_notes WHERE equation_id = ?", [equationId]);
@@ -328,7 +328,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   },
 
   addEquationNote: async (equationId, noteText) => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
 
     const noteCountRes = await db.select<{ count: number }[]>(
@@ -350,7 +350,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   },
 
   deleteEquationNote: async (noteId) => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
 
     await db.execute("DELETE FROM custom_equation_notes WHERE id = ?", [noteId]);
@@ -359,7 +359,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   },
 
   addConditionNote: async (conditionId, noteText) => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
 
     const noteCountRes = await db.select<{ count: number }[]>(
@@ -381,7 +381,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   },
 
   addExtraInput: async (conditionId, slug, displayLabel, inputType, hintText) => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
 
     const inputCountRes = await db.select<{ count: number }[]>(
@@ -403,7 +403,7 @@ export const useEquationEngineStore = create<EquationEngineState>((set, get) => 
   },
 
   deleteExtraInput: async (extraInputId) => {
-    const { getDb } = await import("../shared/api/db");
+    const { getDb } = await import("../shared/api/db.connection");
     const db = await getDb();
 
     await db.execute("DELETE FROM condition_extra_inputs WHERE id = ?", [extraInputId]);

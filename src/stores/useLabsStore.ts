@@ -220,7 +220,7 @@ export const useLabsStore = create<LabsState>((set, get) => ({
     };
     set((state) => ({ userPresets: [...state.userPresets, preset] }));
 
-    import("../shared/api/db").then(({ insertLabPreset }) => {
+    import("../shared/api/db.commands").then(({ insertLabPreset }) => {
       insertLabPreset(preset).catch((e) =>
         console.error("[useLabsStore] insertLabPreset failed:", e)
       );
@@ -237,7 +237,7 @@ export const useLabsStore = create<LabsState>((set, get) => ({
     };
     set((state) => ({ userPresets: [...state.userPresets, preset] }));
 
-    import("../shared/api/db").then(({ insertLabPreset }) => {
+    import("../shared/api/db.commands").then(({ insertLabPreset }) => {
       insertLabPreset(preset).catch((e) =>
         console.error("[useLabsStore] insertLabPreset failed:", e)
       );
@@ -292,7 +292,7 @@ export const useLabsStore = create<LabsState>((set, get) => ({
       userPresets: state.userPresets.filter((p) => p.id !== presetId),
     }));
 
-    import("../shared/api/db").then(({ deleteLabPreset }) => {
+    import("../shared/api/db.commands").then(({ deleteLabPreset }) => {
       deleteLabPreset(presetId).catch((e) =>
         console.error("[useLabsStore] deleteLabPreset failed:", e)
       );
