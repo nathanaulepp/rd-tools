@@ -4,7 +4,7 @@ import {
   updateSubmissionRequirement,
   addSubmissionRequirement,
   SubmissionRequirement,
-} from "../../shared/api/db";
+} from "../../shared/api/db.commands";
 import { MASTER_DOMAINS } from "../../shared/constants/masterFieldRegistry";
 
 interface SubmissionRequirementsPanelProps {

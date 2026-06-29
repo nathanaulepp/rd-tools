@@ -1,8 +1,8 @@
 import { MASTER_DOMAINS } from "../constants/masterFieldRegistry";
 
 /**
- * Hardcoded list of keys currently validated in src/shared/api/db.ts -> submitNote.
- * Update this whenever fieldValues in db.ts is modified.
+ * Hardcoded list of keys currently validated in src/shared/api/db.commands.ts -> submitNote.
+ * Update this whenever fieldValues in db.commands.ts is modified.
  */
 const VALIDATED_KEYS = [
   "first_name", "last_name", "dob", "sex", "mrn", "languages",
@@ -18,7 +18,7 @@ const VALIDATED_KEYS = [
 
 /**
  * Development-only utility to catch drift between the Master Field Registry
- * and the Submission Validator in db.ts.
+ * and the Submission Validator in db.commands.ts.
  */
 export function checkRegistryDrift(): void {
   if (import.meta.env.PROD) return;

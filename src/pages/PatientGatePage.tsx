@@ -5,7 +5,7 @@ import {
   createNote,
   Patient,
   Note,
-} from "../shared/api/db";
+} from "../shared/api/db.commands";
 import { CreatePatientForm, CreatePatientData } from "../features/patient/CreatePatientForm";
 import { PatientSearch } from "../features/patient/PatientSearch";
 import { useEscapeBackout } from "../shared/utils/ShortcutContext";

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, CSSProperties } from "react";
-import { Patient, Encounter, getAllPatients, deletePatient, getEncountersByPatient, deleteEncounter } from "../../shared/api/db";
+import { Patient, Encounter, getAllPatients, deletePatient, getEncountersByPatient, deleteEncounter } from "../../shared/api/db.commands";
 import { Field } from "../../shared/ui/Field";
 import { FormError } from "../../shared/ui/FormError";
 import { getLocalIsoDate } from "../../shared/utils/date";

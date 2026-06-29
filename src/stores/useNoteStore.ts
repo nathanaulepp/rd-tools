@@ -3,9 +3,9 @@
 // Owns handleOpenNote, handleExitToStart, and resetNoteState — previously in App.tsx.
 
 import { create } from "zustand";
-import type { Patient, Note } from "../shared/api/db";
+import type { Patient, Note } from "../shared/api/db.commands";
 import type { PatientData } from "../types";
-import { autosaveNote } from "../shared/api/db";
+import { autosaveNote } from "../shared/api/db.commands";
 import { getLocalIsoDate } from "../shared/utils/date";
 
 // ── Domain store registration ─────────────────────────────────────────────────

@@ -8,8 +8,8 @@ import {
   createDysphagiaeMod,
   updateDysphagiaeMod,
   deleteDysphagiaeMod,
-} from "../../../shared/api/db";
-import type { HospitalDysphagiaMode, HospitalDysphagiaModInput } from "../../../shared/api/db";
+} from "../../../shared/api/db.commands";
+import type { HospitalDysphagiaMode, HospitalDysphagiaModInput } from "../../../shared/api/db.commands";
 
 // ─── Shared style tokens ──────────────────────────────────────────────────────
 

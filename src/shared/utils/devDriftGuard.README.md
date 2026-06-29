@@ -4,20 +4,20 @@
 checkRegistryDrift() runs once at app boot in development mode only.
 It compares two lists:
 - Every non-locked field key in MASTER_DOMAINS (masterFieldRegistry.ts)
-- Every key in the VALIDATED_KEYS hardcoded list (mirrors fieldValues in submitNote in db.ts)
+- Every key in the VALIDATED_KEYS hardcoded list (mirrors fieldValues in submitNote in db.commands.ts)
 
 If any key exists in one list but not the other it logs a warning to the browser console.
 
 ## When To Update This File
 You MUST update the VALIDATED_KEYS array in devDriftGuard.ts whenever you make any of these changes:
 
-1. Add a new field to the fieldValues map in submitNote() in db.ts
-2. Remove a field from the fieldValues map in submitNote() in db.ts
+1. Add a new field to the fieldValues map in submitNote() in db.commands.ts
+2. Remove a field from the fieldValues map in submitNote() in db.commands.ts
 3. Add a new field to MASTER_DOMAINS in masterFieldRegistry.ts
 4. Remove a field from MASTER_DOMAINS in masterFieldRegistry.ts
 
 ## How To Update
-Open src/shared/utils/devDriftGuard.ts and update the VALIDATED_KEYS array to match the current set of keys in the fieldValues map inside submitNote() in src/shared/api/db.ts.
+Open src/shared/utils/devDriftGuard.ts and update the VALIDATED_KEYS array to match the current set of keys in the fieldValues map inside submitNote() in src/shared/api/db.commands.ts.
 
 ## What To Do When The Guard Fires
 If you see a [DriftGuard] warning in the console:

@@ -16,7 +16,7 @@ import { useCalculatedMetrics } from "../../../stores/useCalculatedMetrics";
 import { useEnteralFormulaStore } from "../../../stores/useEnteralFormulaStore";
 import type { EnteralFormula } from "../../../types/enteralFormula";
 import type { Dietary, HospitalDiet, HospitalDysphagiaMode } from "../../../types";
-import { getAllDiets, getAllDysphagiaeMods } from "../../../shared/api/db";
+import { getAllDiets, getAllDysphagiaeMods } from "../../../shared/api/db.commands";
 import DietaryD14IVOrders from "./DietaryD14IVOrders";
 import PNPrescriptionMatrix from "./PNPrescriptionMatrix";
 

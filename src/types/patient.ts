@@ -1,6 +1,6 @@
 // src/types/patient.ts
 // Strong types for patient identity and note metadata.
-// Mirrors the DB schema in src/shared/api/db.ts — keep in sync.
+// Mirrors the DB schema in src/shared/api/db.commands.ts — keep in sync.
 
 export interface PatientData {
   lastName: string;

@@ -15,7 +15,7 @@ import {
 } from "../../../shared/constants/interventionNpConstants";
 import type { NpOralNutrition, NutrientModifier } from "../../../types/intervention";
 import type { ParsedTargets } from "../../../shared/utils/parseStandardsTargets";
-import { getAllDiets, getAllDysphagiaeMods } from "../../../shared/api/db";
+import { getAllDiets, getAllDysphagiaeMods } from "../../../shared/api/db.commands";
 import type { HospitalDiet } from "../../../types";
 
 // ── Internal sub-component: one dynamic nutrient modifier row ─────────────────

@@ -5,7 +5,7 @@
 // Domain switching triggers automatic saves via effects.
 
 import React, { useRef, useCallback, useEffect } from "react";
-import { submitNote, deleteNote } from "../shared/api/db";
+import { submitNote, deleteNote } from "../shared/api/db.commands";
 import { useEscapeBackout }       from "../shared/utils/ShortcutContext";
 
 // Stores

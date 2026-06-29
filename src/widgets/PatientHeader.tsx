@@ -4,7 +4,7 @@
 // Validation: admissionDate must be >= patient DOB and <= noteDate.
 
 import React, { useState, useEffect } from "react";
-import { autosaveNote, isFirstEncounterNote } from "../shared/api/db";
+import { autosaveNote, isFirstEncounterNote } from "../shared/api/db.commands";
 
 import { validateDateBoundaries } from "../shared/utils/dateValidation";
 import { formatAge } from "../shared/utils/date";

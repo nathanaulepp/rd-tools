@@ -11,7 +11,8 @@
 
 import { useEffect } from "react";
 import "./App.css";
-import { getDb, getLabPresets } from "../shared/api/db";
+import { getDb } from "../shared/api/db.connection";
+import { getLabPresets } from "../shared/api/db.commands";
 import { useUIStore }     from "../stores/useUIStore";
 import { useLabsStore }   from "../stores/useLabsStore";
 import RouteRenderer      from "../widgets/RouteRenderer";

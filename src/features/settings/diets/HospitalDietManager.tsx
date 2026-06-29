@@ -8,8 +8,8 @@ import {
   createDiet,
   updateDiet,
   deleteDiet,
-} from "../../../shared/api/db";
-import type { HospitalDiet, HospitalDietInput } from "../../../shared/api/db";
+} from "../../../shared/api/db.commands";
+import type { HospitalDiet, HospitalDietInput } from "../../../shared/api/db.commands";
 
 const EMPTY_FORM: HospitalDietInput = {
   name: "",
