@@ -176,9 +176,7 @@ export async function seedEquationEngine(db: Database): Promise<void> {
   await cond(SEED_IDS.bf_peds,                  "Adolescent (14–17y)",  SEED_IDS.bf_root,                20, "Adolescent breastfeeding guidelines");
 
   // ─── 4. Leaf conditions — Adult ───────────────────────────────────────────
-  await cond(SEED_IDS.crit_ill_bmi_lt30,        "BMI < 30",                     SEED_IDS.crit_ill_adult,          10, "Non-obese critical illness");
-  await cond(SEED_IDS.crit_ill_bmi_30_50,       "BMI 30–50 (Obese)",            SEED_IDS.crit_ill_adult,          20, "Obese class I/II critical illness");
-  await cond(SEED_IDS.crit_ill_bmi_gt50,        "BMI > 50 (Severely Obese)",    SEED_IDS.crit_ill_adult,          30, "Class III or higher extreme obesity");
+
   await cond(SEED_IDS.aki_no_dialysis,           "No Dialysis",                  SEED_IDS.aki_adult,               10, "Non-dialysis acute kidney injury");
   await cond(SEED_IDS.aki_hemodialysis,          "Hemodialysis / Catabolic",     SEED_IDS.aki_adult,               20, "Intermittent hemodialysis");
   await cond(SEED_IDS.aki_crrt,                  "CRRT",                         SEED_IDS.aki_adult,               30, "Continuous Renal Replacement Therapy");
@@ -229,7 +227,7 @@ export async function seedEquationEngine(db: Database): Promise<void> {
   await cond(SEED_IDS.hl_standard,               "Standard",                     SEED_IDS.hl_adult,                10, "Standard general healthy reference");
 
   // ─── 5. Leaf conditions — Pediatric ──────────────────────────────────────
-  await cond(SEED_IDS.crit_ill_peds_std,              "Standard",                 SEED_IDS.crit_ill_peds,           10, "Standard pediatric critical illness parameters");
+
   await cond(SEED_IDS.aki_peds_nodial,                "No Dialysis",              SEED_IDS.aki_peds,                10, "Pediatric AKI without dialytic support");
   await cond(SEED_IDS.aki_peds_dial,                  "Dialysis / CRRT",          SEED_IDS.aki_peds,                20, "Pediatric AKI with CRRT or dialysis");
   await cond(SEED_IDS.pancreatitis_peds_std,          "Standard",                 SEED_IDS.pancreatitis_peds,       10, "Standard pediatric pancreatitis parameters");
@@ -365,20 +363,10 @@ export async function seedEquationEngine(db: Database): Promise<void> {
   await eq(SEED_IDS.masld_mash_mal_prot_high, SEED_IDS.masld_mash_malnourished,"protein", "weightKg * 1.8",                              "g/day",    "Protein — Upper Bound", 4);
 
   // Critical Illness Adult
-  await eq(SEED_IDS.crit_ill_lt30_kcal_low,  SEED_IDS.crit_ill_bmi_lt30, "energy",  "weightKg * 12",   "kcal/day", "Energy — Lower Bound", 1);
-  await eq(SEED_IDS.crit_ill_lt30_kcal_high, SEED_IDS.crit_ill_bmi_lt30, "energy",  "weightKg * 25",   "kcal/day", "Energy — Upper Bound", 2);
-  await eq(SEED_IDS.crit_ill_lt30_prot_low,  SEED_IDS.crit_ill_bmi_lt30, "protein", "weightKg * 1.2",  "g/day",    "Protein — Lower Bound", 3);
-  await eq(SEED_IDS.crit_ill_lt30_prot_high, SEED_IDS.crit_ill_bmi_lt30, "protein", "weightKg * 2.0",  "g/day",    "Protein — Upper Bound", 4);
-
-  await eq(SEED_IDS.crit_ill_30_50_kcal_low,  SEED_IDS.crit_ill_bmi_30_50, "energy",  "weightKg * 11",  "kcal/day", "Energy — Lower Bound", 1);
-  await eq(SEED_IDS.crit_ill_30_50_kcal_high, SEED_IDS.crit_ill_bmi_30_50, "energy",  "weightKg * 14",  "kcal/day", "Energy — Upper Bound", 2);
-  await eq(SEED_IDS.crit_ill_30_50_prot_low,  SEED_IDS.crit_ill_bmi_30_50, "protein", "ibwKg * 2.0",    "g/day",    "Protein — Lower Bound", 3);
-  await eq(SEED_IDS.crit_ill_30_50_prot_high, SEED_IDS.crit_ill_bmi_30_50, "protein", "ibwKg * 2.0",    "g/day",    "Protein — Upper Bound", 4);
-
-  await eq(SEED_IDS.crit_ill_gt50_kcal_low,  SEED_IDS.crit_ill_bmi_gt50, "energy",  "ibwKg * 22",  "kcal/day", "Energy — Lower Bound", 1);
-  await eq(SEED_IDS.crit_ill_gt50_kcal_high, SEED_IDS.crit_ill_bmi_gt50, "energy",  "ibwKg * 25",  "kcal/day", "Energy — Upper Bound", 2);
-  await eq(SEED_IDS.crit_ill_gt50_prot_low,  SEED_IDS.crit_ill_bmi_gt50, "protein", "ibwKg * 2.5", "g/day",    "Protein — Lower Bound", 3);
-  await eq(SEED_IDS.crit_ill_gt50_prot_high, SEED_IDS.crit_ill_bmi_gt50, "protein", "ibwKg * 2.5", "g/day",    "Protein — Upper Bound", 4);
+  await eq(SEED_IDS.crit_ill_adult_kcal_low,  SEED_IDS.crit_ill_adult, "energy",  "ifTrue(isMechanicallyVentilated, ifTrue(bmi < 30, 0.96 * msjReeKcal + 167 * temperatureC + 31 * minuteVentilationLMin - 6212, ifTrue(ageYears >= 60, 0.71 * msjReeKcal + 85 * temperatureC + 64 * minuteVentilationLMin - 3085, 0.96 * msjReeKcal + 167 * temperatureC + 31 * minuteVentilationLMin - 6212)), ifTrue(bmi < 30, 11 * weightKg, ifTrue(bmi <= 50, 11 * weightKg, 22 * ibwKg)))",   "kcal/day", "Energy — Lower Bound", 1);
+  await eq(SEED_IDS.crit_ill_adult_kcal_high, SEED_IDS.crit_ill_adult, "energy",  "ifTrue(isMechanicallyVentilated, ifTrue(bmi < 30, 0.96 * msjReeKcal + 167 * temperatureC + 31 * minuteVentilationLMin - 6212, ifTrue(ageYears >= 60, 0.71 * msjReeKcal + 85 * temperatureC + 64 * minuteVentilationLMin - 3085, 0.96 * msjReeKcal + 167 * temperatureC + 31 * minuteVentilationLMin - 6212)), ifTrue(bmi < 30, 25 * weightKg, ifTrue(bmi <= 50, 14 * weightKg, 25 * ibwKg)))",   "kcal/day", "Energy — Upper Bound", 2);
+  await eq(SEED_IDS.crit_ill_adult_prot_low,  SEED_IDS.crit_ill_adult, "protein", "ifTrue(bmi < 30, 1.2 * weightKg, ifTrue(bmi < 40, 1.2 * ibwKg, 2.0 * ibwKg))",  "g/day",    "Protein — Lower Bound", 3);
+  await eq(SEED_IDS.crit_ill_adult_prot_high, SEED_IDS.crit_ill_adult, "protein", "ifTrue(bmi < 30, 2.0 * weightKg, ifTrue(bmi < 40, 2.0 * ibwKg, 2.5 * ibwKg))",  "g/day",    "Protein — Upper Bound", 4);
 
   // AKI Adult
   await eq(SEED_IDS.aki_no_dial_kcal_low,  SEED_IDS.aki_no_dialysis, "energy",  "min(msjReeKcal * 1.0, weightKg * 20)", "kcal/day", "Energy — Lower Bound", 1);
@@ -535,10 +523,10 @@ export async function seedEquationEngine(db: Database): Promise<void> {
   await eq(SEED_IDS.hl_prot_high, SEED_IDS.hl_standard, "protein", "weightKg * 1.2",                "g/day",    "Protein — Upper Bound", 4);
 
   // ─── Pediatric equations (Schofield-based) ────────────────────────────────
-  await eq(SEED_IDS.crit_ill_peds_kcal_low,  SEED_IDS.crit_ill_peds_std, "energy",  "schofieldReeKcal * 0.95",  "kcal/day", "Energy — Lower Bound", 1);
-  await eq(SEED_IDS.crit_ill_peds_kcal_high, SEED_IDS.crit_ill_peds_std, "energy",  "schofieldReeKcal * 1.05",  "kcal/day", "Energy — Upper Bound", 2);
-  await eq(SEED_IDS.crit_ill_peds_prot_low,  SEED_IDS.crit_ill_peds_std, "protein", "weightKg * 1.5",           "g/day",    "Protein — Lower Bound", 3);
-  await eq(SEED_IDS.crit_ill_peds_prot_high, SEED_IDS.crit_ill_peds_std, "protein", "weightKg * 2.0",           "g/day",    "Protein — Upper Bound", 4);
+  await eq(SEED_IDS.crit_ill_peds_kcal_low,  SEED_IDS.crit_ill_peds, "energy",  "schofieldReeKcal * 0.95",  "kcal/day", "Energy — Lower Bound", 1);
+  await eq(SEED_IDS.crit_ill_peds_kcal_high, SEED_IDS.crit_ill_peds, "energy",  "schofieldReeKcal * 1.05",  "kcal/day", "Energy — Upper Bound", 2);
+  await eq(SEED_IDS.crit_ill_peds_prot_low,  SEED_IDS.crit_ill_peds, "protein", "ifTrue(ageDays < 731, 2 * weightKg, 1.5 * weightKg)", "g/day",    "Protein — Lower Bound", 3);
+  await eq(SEED_IDS.crit_ill_peds_prot_high, SEED_IDS.crit_ill_peds, "protein", "3 * weightKg",           "g/day",    "Protein — Upper Bound", 4);
 
   await eq(SEED_IDS.aki_peds_nodial_kcal_low,  SEED_IDS.aki_peds_nodial, "energy",  "schofieldReeKcal * 1.3 * 0.95", "kcal/day", "Energy — Lower Bound", 1);
   await eq(SEED_IDS.aki_peds_nodial_kcal_high, SEED_IDS.aki_peds_nodial, "energy",  "schofieldReeKcal * 1.3 * 1.05", "kcal/day", "Energy — Upper Bound", 2);
@@ -751,14 +739,11 @@ export async function seedEquationEngine(db: Database): Promise<void> {
   await note(SEED_IDS.masld_mash_std_note2, null, SEED_IDS.masld_mash_standard, "Maintain protein ≥1.5 g/kg/day to preserve lean body mass during caloric restriction.", 2);
   await note(SEED_IDS.masld_mash_mal_note1, null, SEED_IDS.masld_mash_malnourished, "Underweight/malnourished/sarcopenic MASLD: 30–35 kcal/kg. Do NOT apply caloric deficit.", 1);
   await note(SEED_IDS.masld_mash_mal_note2, null, SEED_IDS.masld_mash_malnourished, "Maintain protein ≥1.5 g/kg/day to preserve lean body mass during caloric restriction.", 2);
-  await note(SEED_IDS.crit_ill_lt30_note1, null, SEED_IDS.crit_ill_bmi_lt30, "IC is the clinical gold standard. Full feeds typically initiated after day 2–3.", 1);
-  await note(SEED_IDS.crit_ill_lt30_note2, null, SEED_IDS.crit_ill_bmi_lt30, "BMI < 30: 12–25 kcal/kg early (hypocaloric). Advance to 25–30 after day 7–10.", 2);
-  await note(SEED_IDS.crit_ill_30_50_note1, null, SEED_IDS.crit_ill_bmi_30_50, "IC is the clinical gold standard. Full feeds typically initiated after day 2–3.", 1);
-  await note(SEED_IDS.crit_ill_30_50_note2, null, SEED_IDS.crit_ill_bmi_30_50, "Obese CI BMI 30–50: PSU 2003b not validated. Use permissive underfeeding 11–14 kcal/kg actual wt.", 2);
-  await note(SEED_IDS.crit_ill_30_50_note3, null, SEED_IDS.crit_ill_bmi_30_50, "Protein: 2.0 g/kg IBW for BMI 30–39.9", 3);
-  await note(SEED_IDS.crit_ill_gt50_note1, null, SEED_IDS.crit_ill_bmi_gt50, "IC is the clinical gold standard. Full feeds typically initiated after day 2–3.", 1);
-  await note(SEED_IDS.crit_ill_gt50_note2, null, SEED_IDS.crit_ill_bmi_gt50, "Severely obese CI (BMI >50): 22–25 kcal/kg IBW.", 2);
-  await note(SEED_IDS.crit_ill_gt50_note3, null, SEED_IDS.crit_ill_bmi_gt50, "Protein: 2.5 g/kg IBW for BMI ≥40", 3);
+  await note(SEED_IDS.crit_ill_adult_note1, null, SEED_IDS.crit_ill_adult, "IC is the clinical gold standard. Full feeds typically initiated after day 2–3.", 1);
+  await note(SEED_IDS.crit_ill_adult_note2, null, SEED_IDS.crit_ill_adult, "Non-ventilated: (BMI < 30) 11–25 kcal/kg actual wt; (BMI 30–50) 11–14 kcal/kg actual wt; (BMI > 50) 22–25 kcal/kg IBW", 2);
+  await note(SEED_IDS.crit_ill_adult_note3, null, SEED_IDS.crit_ill_adult, "Ventilated: Age- and BMI-adjusted Penn State equations (PSU 2003b or modified 2010) to calculate kcal needs", 3);
+  await note(SEED_IDS.crit_ill_adult_note4, null, SEED_IDS.crit_ill_adult, "Protein: (BMI < 30) 1.2–2.0 g/kg actual wt; (BMI 30–50) 1.2–2.0 g/kg IBW; (BMI > 50) 2.0–2.5 g/kg IBW", 4);
+  await note(SEED_IDS.crit_ill_adult_note5, null, SEED_IDS.crit_ill_adult, "OVERRIDES: If on paralytics, if care team inducing hypothermic state, if hypercapnic, reduce kcal needs 10–15%", 5);
   await note(SEED_IDS.aki_no_dial_note1, null, SEED_IDS.aki_no_dialysis, "⚠ Do NOT restrict protein in AKI — restriction worsens outcomes.", 1);
   await note(SEED_IDS.aki_no_dial_note2, null, SEED_IDS.aki_no_dialysis, "24h urine output + 500 mL insensible losses. Add +10% per 1°C fever above 37°C.", 2);
   await note(SEED_IDS.aki_hd_note1, null, SEED_IDS.aki_hemodialysis, "⚠ Do NOT restrict protein in AKI — restriction worsens outcomes.", 1);
@@ -813,9 +798,9 @@ export async function seedEquationEngine(db: Database): Promise<void> {
   await note(SEED_IDS.bf_late_note1, null, SEED_IDS.bf_late, "AI target 3.8 L/day for breastfeeding.", 1);
   await note(SEED_IDS.bf_late_energy_note, null, SEED_IDS.bf_late, "Lactation energy addition: +330 kcal/day above non-pregnant EER (7–12 months).", 2);
   await note(SEED_IDS.hl_note1, null, SEED_IDS.hl_standard, "PAL (Physical Activity Level) must be provided as an extra input. Use 1.2 sedentary through 1.9 very active.", 1);
-  await note(SEED_IDS.crit_ill_peds_note1, null, SEED_IDS.crit_ill_peds_std, "Energy based on Schofield WH BMR (schofieldReeKcal). Age-appropriate coefficients applied automatically by the scope builder.", 1);
-  await note(SEED_IDS.crit_ill_peds_note2, null, SEED_IDS.crit_ill_peds_std, "Protein: <2y: 2.0–3.0 g/kg; 2–12y: 1.5–2.0 g/kg; ≥13y: 1.5 g/kg. Use age-appropriate target.", 2);
-  await note(SEED_IDS.crit_ill_peds_note3, null, SEED_IDS.crit_ill_peds_std, "IC is the clinical gold standard. Avoid overfeeding during the acute phase (use permissive underfeeding/trophic feeds as appropriate).", 3);
+  await note(SEED_IDS.crit_ill_peds_note1, null, SEED_IDS.crit_ill_peds, "IC is the clinical gold standard. Avoid overfeeding during the ebb and early flow phase (use permissive underfeeding/trophic feeds as appropriate)", 1);
+  await note(SEED_IDS.crit_ill_peds_note2, null, SEED_IDS.crit_ill_peds, "Schofield without stress factors because deep sedation, paralytics, and a temporary pause in growth significantly decrease metabolic expenditure", 2);
+  await note(SEED_IDS.crit_ill_peds_note3, null, SEED_IDS.crit_ill_peds, "Protein: <2y: 2.0–3.0 g/kg; ≥2y: 1.5–3.0 g/kg, highly catabolic illnesses require >2g/kg in children", 3);
   await note(SEED_IDS.aki_peds_nodial_note1, null, SEED_IDS.aki_peds_nodial, "Energy based on Schofield WH BMR (schofieldReeKcal). Age-appropriate coefficients applied automatically by the scope builder.", 1);
   await note(SEED_IDS.aki_peds_nodial_note2, null, SEED_IDS.aki_peds_nodial, "Fluid: monitor insensible losses carefully, which scale with body surface area (BSA) in pediatric patients.", 2);
   await note(SEED_IDS.aki_peds_dial_note1, null, SEED_IDS.aki_peds_dial, "Energy based on Schofield WH BMR (schofieldReeKcal). Age-appropriate coefficients applied automatically by the scope builder.", 1);
@@ -899,16 +884,10 @@ export async function seedEquationEngine(db: Database): Promise<void> {
   await note(SEED_IDS.bf_peds_late_note1, null, SEED_IDS.bf_peds_late, "Energy based on Schofield WH BMR (schofieldReeKcal). Age-appropriate coefficients applied automatically by the scope builder.", 1);
 
   // ─── 8. Extra inputs ──────────────────────────────────────────────────────
-  // Critical Illness Adult (3 leaves × 3 inputs)
-  for (const [leaf, ids] of [
-    [SEED_IDS.crit_ill_bmi_lt30,  [SEED_IDS.crit_ill_lt30_isMechVent,  SEED_IDS.crit_ill_lt30_tempMax,  SEED_IDS.crit_ill_lt30_ve]],
-    [SEED_IDS.crit_ill_bmi_30_50, [SEED_IDS.crit_ill_30_50_isMechVent, SEED_IDS.crit_ill_30_50_tempMax, SEED_IDS.crit_ill_30_50_ve]],
-    [SEED_IDS.crit_ill_bmi_gt50,  [SEED_IDS.crit_ill_gt50_isMechVent,  SEED_IDS.crit_ill_gt50_tempMax,  SEED_IDS.crit_ill_gt50_ve]],
-  ] as const) {
-    await extra(ids[0], leaf, "isMechVent", "Mechanically Ventilated",        "boolean", null, 1);
-    await extra(ids[1], leaf, "tempMax",    "Max Temp past 24h (°F)",          "number",  "Required for PSU 2003b / PSU 2010", 2);
-    await extra(ids[2], leaf, "ve",         "Minute Ventilation Ve (L/min)",   "number",  "Required for PSU 2003b / PSU 2010", 3);
-  }
+  // Critical Illness Adult extra inputs
+  await extra(SEED_IDS.crit_ill_adult_isMechVent, SEED_IDS.crit_ill_adult, "isMechVent", "Mechanically Ventilated",        "boolean", null, 1);
+  await extra(SEED_IDS.crit_ill_adult_tempMax,    SEED_IDS.crit_ill_adult, "tempMax",    "Max Temp past 24h (°F)",          "number",  "Required for PSU 2003b / PSU 2010", 2);
+  await extra(SEED_IDS.crit_ill_adult_ve,         SEED_IDS.crit_ill_adult, "ve",         "Minute Ventilation Ve (L/min)",   "number",  "Required for PSU 2003b / PSU 2010", 3);
 
   // CF (6 leaves × 3 inputs)
   const cfLeaves = [

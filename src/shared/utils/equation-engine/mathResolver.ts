@@ -5,13 +5,36 @@ import type { PatientScope } from "../../../types/equationEngine";
 const math = create(all);
 
 // 2. Custom helper functions registered on the instance
+const ifTrue = (args: any[], _math: any, scope: any): any => {
+  if (args.length < 3) {
+    throw new Error("ifTrue requires 3 arguments");
+  }
+  const condition = args[0].compile().evaluate(scope);
+  if (condition) {
+    return args[1].compile().evaluate(scope);
+  } else {
+    return args[2].compile().evaluate(scope);
+  }
+};
+(ifTrue as any).rawArgs = true;
+
+const ifCategory = (args: any[], _math: any, scope: any): any => {
+  if (args.length < 4) {
+    throw new Error("ifCategory requires 4 arguments");
+  }
+  const value = args[0].compile().evaluate(scope);
+  const target = args[1].compile().evaluate(scope);
+  if (value === target) {
+    return args[2].compile().evaluate(scope);
+  } else {
+    return args[3].compile().evaluate(scope);
+  }
+};
+(ifCategory as any).rawArgs = true;
+
 math.import({
-  ifTrue: (condition: any, ifVal: number, elseVal: number) => {
-    return condition ? ifVal : elseVal;
-  },
-  ifCategory: (value: string, target: string, ifVal: number, elseVal: number) => {
-    return value === target ? ifVal : elseVal;
-  },
+  ifTrue,
+  ifCategory,
   clamp: (value: number, min: number, max: number) => {
     return Math.min(Math.max(value, min), max);
   }
@@ -42,8 +65,17 @@ export function evaluateExpression(
     const sanitized = sanitizeExpression(expression);
     const compiled = math.compile(sanitized);
     
-    // Evaluate with a shallow copy of scope to avoid mutations
-    const result = compiled.evaluate({ ...scope });
+    // Clean scope: remove keys with undefined values to prevent mathjs from
+    // attempting operations (like multiplyScalar) on undefined operands.
+    // This allows lazy conditional structures to skip evaluating unused branches
+    // and causes active branches to raise user-friendly "Undefined symbol" errors.
+    const cleanScope: Record<string, any> = {};
+    for (const [key, value] of Object.entries(scope)) {
+      if (value !== undefined) {
+        cleanScope[key] = value;
+      }
+    }
+    const result = compiled.evaluate(cleanScope);
     
     let finalVal: any = result;
     if (result && typeof result === "object" && "entries" in result) {

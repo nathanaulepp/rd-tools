@@ -7,32 +7,15 @@ export const SEED_IDS = {
   // ─── Critical Illness ───────────────────────────────────────────────────
   crit_ill_root:     "24569aa6-3b20-4fc6-a8f5-9ea50d4f8c77",
   crit_ill_adult:    "143da29d-6b66-4f23-a663-5c43c542c7da",
-  crit_ill_bmi_lt30: "555b185e-a90a-4299-bbdf-593fa759f3a7",
-  crit_ill_bmi_30_50:"6b93a785-beb8-48d6-958e-485bef034da8",
-  crit_ill_bmi_gt50: "b2c92094-c5a0-4599-9550-210493b382e4",
-
-  crit_ill_lt30_kcal_low:  "880bb86c-41b4-4b91-a2b2-d16e98ab3f56",
-  crit_ill_lt30_kcal_high: "fa3132dc-9a4c-4963-a3ef-f56fc644f81f",
-  crit_ill_lt30_prot_low:  "2ae93032-beee-4256-8019-a7239b43dcfd",
-  crit_ill_lt30_prot_high: "79326093-ae27-4e7f-9fff-101d3299db21",
-  crit_ill_lt30_note1:     "87c51e30-2cc4-4cb8-8b28-344bdee06b29",
-  crit_ill_lt30_note2:     "e9e4e9a9-0709-4476-bf2c-61b047e690b8",
-
-  crit_ill_30_50_kcal_low:  "684951f9-2dd4-45ec-92ff-bd4c4aed60de",
-  crit_ill_30_50_kcal_high: "823d6c63-1455-46f2-8f93-096cf5e60881",
-  crit_ill_30_50_prot_low:  "33abef6f-cb06-4dbb-851a-87557a21e507",
-  crit_ill_30_50_prot_high: "56a6afdd-7ffa-4406-802b-7efe37df8e85",
-  crit_ill_30_50_note1:     "fbd75c3f-0fff-489d-929c-d6626a4b283a",
-  crit_ill_30_50_note2:     "6e0ac609-ddbf-4d6e-8cb1-7598cef6bf88",
-  crit_ill_30_50_note3:     "cacd724e-d5d6-4a1c-a9ec-9583117245d7",
-
-  crit_ill_gt50_kcal_low:  "02f44926-c894-4e4e-a960-f9e126aa2ffb",
-  crit_ill_gt50_kcal_high: "f5acd20f-38a3-4c66-aa0d-97022da79cbb",
-  crit_ill_gt50_prot_low:  "b19c57f6-2698-4581-82aa-8187005fc8f7",
-  crit_ill_gt50_prot_high: "445d7aba-5fcb-49a4-af3f-83cf0b2809fe",
-  crit_ill_gt50_note1:     "768ffd32-0ed7-41ba-8654-f8a39f566c1a",
-  crit_ill_gt50_note2:     "460cf2b5-b206-40c5-93df-6b95ec435ec6",
-  crit_ill_gt50_note3:     "e131e283-dc12-475d-bf5d-07c96d5da098",
+  crit_ill_adult_kcal_low:  "880bb86c-41b4-4b91-a2b2-d16e98ab3f56",
+  crit_ill_adult_kcal_high: "fa3132dc-9a4c-4963-a3ef-f56fc644f81f",
+  crit_ill_adult_prot_low:  "2ae93032-beee-4256-8019-a7239b43dcfd",
+  crit_ill_adult_prot_high: "79326093-ae27-4e7f-9fff-101d3299db21",
+  crit_ill_adult_note1:     "87c51e30-2cc4-4cb8-8b28-344bdee06b29",
+  crit_ill_adult_note2:     "e9e4e9a9-0709-4476-bf2c-61b047e690b8",
+  crit_ill_adult_note3:     "fbd75c3f-0fff-489d-929c-d6626a4b283a",
+  crit_ill_adult_note4:     "6e0ac609-ddbf-4d6e-8cb1-7598cef6bf88",
+  crit_ill_adult_note5:     "cacd724e-d5d6-4a1c-a9ec-9583117245d7",
 
   // ─── AKI ────────────────────────────────────────────────────────────────
   aki_root:         "d9074d2d-a8d4-455c-8171-57c96655b738",
@@ -489,7 +472,6 @@ export const SEED_IDS = {
 
   // ─── Pediatric Critical Illness ─────────────────────────────────────────
   crit_ill_peds:          "726d5ac3-e334-4539-8ad0-8f1bdf63ef6f",
-  crit_ill_peds_std:      "1aaef0ac-0b89-4a6e-8422-280dfcf57256",
   crit_ill_peds_kcal_low:  "baf23319-c034-44ec-97df-f8b6b00b5d84",
   crit_ill_peds_kcal_high: "84f5a423-110c-414a-a9f5-a6c0a5669d5a",
   crit_ill_peds_prot_low:  "e1fab089-850e-46b5-a835-d30310e5a1c0",
@@ -892,15 +874,9 @@ export const SEED_IDS = {
   bf_peds_late_note1:     "d4171cc0-e5a2-4ab9-b7ce-afa692f4b2f4",
 
   // ─── Extra Inputs ───────────────────────────────────────────────────────
-  crit_ill_lt30_isMechVent:  "3d32ef74-06ac-4e48-8df0-7cc5de0cde00",
-  crit_ill_lt30_tempMax:     "3d32ef74-06ac-4e48-8df0-7cc5de0cde01",
-  crit_ill_lt30_ve:          "3d32ef74-06ac-4e48-8df0-7cc5de0cde02",
-  crit_ill_30_50_isMechVent: "3d32ef74-06ac-4e48-8df0-7cc5de0cde03",
-  crit_ill_30_50_tempMax:    "3d32ef74-06ac-4e48-8df0-7cc5de0cde04",
-  crit_ill_30_50_ve:         "3d32ef74-06ac-4e48-8df0-7cc5de0cde05",
-  crit_ill_gt50_isMechVent:  "3d32ef74-06ac-4e48-8df0-7cc5de0cde06",
-  crit_ill_gt50_tempMax:     "3d32ef74-06ac-4e48-8df0-7cc5de0cde07",
-  crit_ill_gt50_ve:          "3d32ef74-06ac-4e48-8df0-7cc5de0cde08",
+  crit_ill_adult_isMechVent:  "3d32ef74-06ac-4e48-8df0-7cc5de0cde00",
+  crit_ill_adult_tempMax:     "3d32ef74-06ac-4e48-8df0-7cc5de0cde01",
+  crit_ill_adult_ve:          "3d32ef74-06ac-4e48-8df0-7cc5de0cde02",
 
   cf_bb_fev1Pct:                "cf819e81-5a0e-4c23-ac1c-bee60b77c001",
   cf_bb_isPancreaticSufficient:  "cf819e81-5a0e-4c23-ac1c-bee60b77c002",
